@@ -2816,7 +2816,7 @@ A catch() block after a catch (System.Exception e) block can catch non-CLS excep
     <value>params is not valid in this context</value>
   </data>
   <data name="ERR_BadModifiersOnNamespace" xml:space="preserve">
-    <value>A namespace declaration cannot have modifiers or attributes</value>
+    <value>A namespace declaration cannot have modifiers, attributes or decorators</value>
   </data>
   <data name="ERR_BadPlatformType" xml:space="preserve">
     <value>Invalid option '{0}' for /platform; must be anycpu, x86, Itanium or x64</value>
@@ -4674,5 +4674,14 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   </data>
   <data name="ERR_TooManyUserStrings" xml:space="preserve">
     <value>Combined length of user strings used by the program exceeds allowed limit. Try to decrease use of string literals.</value>
+  </data>
+  <data name="ERR_DecoratorOnIncompatibleMember" xml:space="preserve">
+    <value>Decorators are not allowed on fields, events, properties or indexers</value>
+  </data>
+  <data name="ERR_DecoratorOnType" xml:space="preserve">
+    <value>Decorators are not allowed on classes, structs or interfaces</value>
+  </data>
+  <data name="ERR_DecoratorsNotAllowed" xml:space="preserve">
+    <value>Decorators are not valid in this context.</value>
   </data>
 </root>

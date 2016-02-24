@@ -2461,6 +2461,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public static MethodDeclarationSyntax MethodDeclaration(
             SyntaxList<AttributeListSyntax> attributeLists,
+            SyntaxList<DecoratorSyntax> decorators,
             SyntaxTokenList modifiers,
             TypeSyntax returnType,
             ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier,
@@ -2473,6 +2474,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             return SyntaxFactory.MethodDeclaration(
                 attributeLists,
+                decorators,
                 modifiers,
                 returnType,
                 explicitInterfaceSpecifier,
@@ -2487,6 +2489,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public static ConversionOperatorDeclarationSyntax ConversionOperatorDeclaration(
             SyntaxList<AttributeListSyntax> attributeLists,
+            SyntaxList<DecoratorSyntax> decorators,
             SyntaxTokenList modifiers,
             SyntaxToken implicitOrExplicitKeyword,
             SyntaxToken operatorKeyword,
@@ -2497,6 +2500,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             return SyntaxFactory.ConversionOperatorDeclaration(
                 attributeLists: attributeLists,
+                decorators: decorators,
                 modifiers: modifiers,
                 implicitOrExplicitKeyword: implicitOrExplicitKeyword,
                 operatorKeyword: operatorKeyword,
@@ -2509,6 +2513,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public static OperatorDeclarationSyntax OperatorDeclaration(
             SyntaxList<AttributeListSyntax> attributeLists,
+            SyntaxList<DecoratorSyntax> decorators,
             SyntaxTokenList modifiers,
             TypeSyntax returnType,
             SyntaxToken operatorKeyword,
@@ -2519,6 +2524,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             return SyntaxFactory.OperatorDeclaration(
                 attributeLists: attributeLists,
+                decorators: decorators,
                 modifiers: modifiers,
                 returnType: returnType,
                 operatorKeyword: operatorKeyword,

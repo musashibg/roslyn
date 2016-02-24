@@ -48,6 +48,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             var declaration = SyntaxFactory.DestructorDeclaration(
                 attributeLists: AttributeGenerator.GenerateAttributeLists(destructor.GetAttributes(), options),
+                decorators: default(SyntaxList<DecoratorSyntax>),
                 modifiers: default(SyntaxTokenList),
                 tildeToken: SyntaxFactory.Token(SyntaxKind.TildeToken),
                 identifier: CodeGenerationDestructorInfo.GetTypeName(destructor).ToIdentifierToken(),

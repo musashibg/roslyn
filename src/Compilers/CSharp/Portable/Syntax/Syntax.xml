@@ -2890,6 +2890,11 @@
         <summary>Gets the attribute declaration list.</summary>
       </PropertyComment>
     </Field>
+    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;">
+      <PropertyComment>
+        <summary>Gets the decorator list.</summary>
+      </PropertyComment>
+    </Field>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;">
       <PropertyComment>
         <summary>Gets the modifier list.</summary>
@@ -2914,6 +2919,7 @@
     </TypeComment>
     <Kind Name="MethodDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="ReturnType" Type="TypeSyntax">
       <PropertyComment>
@@ -2950,6 +2956,7 @@
     </TypeComment>
     <Kind Name="OperatorDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="ReturnType" Type="TypeSyntax">
       <PropertyComment>
@@ -3003,6 +3010,7 @@
     </TypeComment>
     <Kind Name="ConversionOperatorDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="ImplicitOrExplicitKeyword" Type="SyntaxToken">
       <PropertyComment>
@@ -3038,6 +3046,7 @@
     </TypeComment>
     <Kind Name="ConstructorDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="Identifier" Type="SyntaxToken">
       <PropertyComment>
@@ -3082,6 +3091,7 @@
     </TypeComment>
     <Kind Name="DestructorDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="TildeToken" Type="SyntaxToken">
       <PropertyComment>
@@ -4006,5 +4016,61 @@
       <Kind Name="EndOfDirectiveToken"/>
     </Field>
     <Field Name="IsActive" Type="bool" Override="true"/>
+  </Node>
+  
+  <!-- Decorators -->
+  <Node Name="DecoratorSyntax" Base="CSharpSyntaxNode">
+    <TypeComment>
+      <summary>Class representing a decorator applied to a type member declaration.</summary>
+    </TypeComment>
+    <Kind Name="Decorator"/>
+    <Field Name="PercentToken" Type="SyntaxToken">
+      <Kind Name="PercentToken"/>
+      <PropertyComment>
+        <summary>Gets the percent token.</summary>
+      </PropertyComment>
+    </Field>
+    <Field Name="Name" Type="NameSyntax">
+      <PropertyComment>
+        <summary>Gets the name.</summary>
+      </PropertyComment>
+    </Field>
+    <Field Name="ArgumentList" Type="DecoratorArgumentListSyntax" Optional="true"/>
+  </Node>
+  <Node Name="DecoratorArgumentListSyntax" Base="CSharpSyntaxNode">
+    <TypeComment>
+      <summary>Decorator argument list syntax.</summary>
+    </TypeComment>
+    <Kind Name="DecoratorArgumentList"/>
+    <Field Name="OpenParenToken" Type="SyntaxToken">
+      <PropertyComment>
+        <summary>Gets the open paren token.</summary>
+      </PropertyComment>
+      <Kind Name="OpenParenToken"/>
+    </Field>
+    <Field Name="Arguments" Type="SeparatedSyntaxList&lt;DecoratorArgumentSyntax&gt;">
+      <PropertyComment>
+        <summary>Gets the arguments syntax list.</summary>
+      </PropertyComment>
+    </Field>
+    <Field Name="CloseParenToken" Type="SyntaxToken">
+      <PropertyComment>
+        <summary>Gets the close paren token.</summary>
+      </PropertyComment>
+      <Kind Name="CloseParenToken"/>
+    </Field>
+  </Node>
+  <Node Name="DecoratorArgumentSyntax" Base="CSharpSyntaxNode">
+    <TypeComment>
+      <summary>Decorator argument syntax.</summary>
+    </TypeComment>
+    <Kind Name="DecoratorArgument"/>
+    <Field Name="NameEquals" Type="NameEqualsSyntax" Optional="true"/>
+    <Field Name="NameColon" Type="NameColonSyntax" Optional="true"/>
+    <Field Name="Expression" Type="ExpressionSyntax">
+      <PropertyComment>
+        <summary>Gets the expression.</summary>
+      </PropertyComment>
+    </Field>
   </Node>
 </Tree>

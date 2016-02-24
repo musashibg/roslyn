@@ -1233,7 +1233,14 @@ namespace Microsoft.CodeAnalysis.CSharp
         ERR_EncReferenceToAddedMember = 7101,
         ERR_MutuallyExclusiveOptions = 7102,
 
-        // available 7102-8000
+        // available 7103-7352
+
+        //decorators
+        ERR_DecoratorsNotAllowed = 7353,
+        ERR_DecoratorOnIncompatibleMember = 7354,
+        ERR_DecoratorOnType = 7355,
+
+        // available 7356-8000
 
         WRN_UnimplementedCommandLineSwitch = 8001,
         WRN_ReferencedAssemblyDoesNotHaveStrongName = 8002,

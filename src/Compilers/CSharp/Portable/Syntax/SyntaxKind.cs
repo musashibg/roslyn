@@ -532,5 +532,10 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         ShebangDirectiveTrivia = 8922,
         LoadDirectiveTrivia = 8923,
+
+        // decorators
+        Decorator = 8960,
+        DecoratorArgumentList = 8961,
+        DecoratorArgument = 8962,
     }
 }

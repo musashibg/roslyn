@@ -55,6 +55,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.ConversionOperatorDeclaration(
                 attributeLists: AttributeGenerator.GenerateAttributeLists(method.GetAttributes(), options),
+                decorators: default(SyntaxList<DecoratorSyntax>),
                 modifiers: GenerateModifiers(method),
                 implicitOrExplicitKeyword: keyword,
                 operatorKeyword: SyntaxFactory.Token(SyntaxKind.OperatorKeyword),

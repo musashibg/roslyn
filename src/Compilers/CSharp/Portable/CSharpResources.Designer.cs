@@ -1592,7 +1592,7 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to A namespace declaration cannot have modifiers or attributes.
+        ///   Looks up a localized string similar to A namespace declaration cannot have modifiers, attributes or decorators.
         /// </summary>
         internal static string ERR_BadModifiersOnNamespace {
             get {
@@ -2983,6 +2983,33 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_DecConstError {
             get {
                 return ResourceManager.GetString("ERR_DecConstError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decorators are not allowed on fields, events, properties or indexers.
+        /// </summary>
+        internal static string ERR_DecoratorOnIncompatibleMember {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorOnIncompatibleMember", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decorators are not allowed on classes, structs or interfaces.
+        /// </summary>
+        internal static string ERR_DecoratorOnType {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorOnType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decorators are not valid in this context..
+        /// </summary>
+        internal static string ERR_DecoratorsNotAllowed {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorsNotAllowed", resourceCulture);
             }
         }
         

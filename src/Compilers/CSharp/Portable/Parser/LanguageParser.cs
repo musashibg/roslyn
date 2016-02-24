@@ -2148,6 +2148,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                 case SyntaxKind.OpenBracketToken:
                 case SyntaxKind.ImplicitKeyword:
                 case SyntaxKind.ExplicitKeyword:
+                // decorators
+                case SyntaxKind.PercentToken:
                     return true;
 
                 default:
@@ -2246,6 +2248,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
             }
 
             var attributes = _pool.Allocate<AttributeListSyntax>();
+            var decorators = _pool.Allocate<DecoratorSyntax>();
             var modifiers = _pool.Allocate();
 
             var saveTermState = _termState;
@@ -2254,7 +2257,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
             {
                 this.ParseAttributeDeclarations(attributes);
 
-                if (attributes.Count > 0)
+                this.ParseDecorators(decorators);
+
+                if (attributes.Count > 0 || decorators.Count > 0)
                 {
                     acceptStatement = false;
                 }
@@ -2326,7 +2331,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                     //            missing ';'
                     if (!isGlobalScript && this.CurrentToken.ValueText == typeName)
                     {
-                        return this.ParseConstructorDeclaration(typeName, attributes, modifiers);
+                        return this.ParseConstructorDeclaration(typeName, attributes, decorators, modifiers);
                     }
 
                     // Script: 
@@ -2339,7 +2344,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
 
                         var identifier = this.EatToken();
 
-                        return this.ParseMethodDeclaration(attributes, modifiers, voidType, explicitInterfaceOpt: null, identifier: identifier, typeParameterList: null);
+                        return this.ParseMethodDeclaration(attributes, decorators, modifiers, voidType, explicitInterfaceOpt: null, identifier: identifier, typeParameterList: null);
                     }
                 }
 
@@ -2347,25 +2352,52 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                 // TODO: better error messages for script
                 if (!isGlobalScript && this.CurrentToken.Kind == SyntaxKind.TildeToken)
                 {
-                    return this.ParseDestructorDeclaration(typeName, attributes, modifiers);
+                    return this.ParseDestructorDeclaration(typeName, attributes, decorators, modifiers);
                 }
 
                 // Check for constant (prefers const field over const local variable decl)
                 if (this.CurrentToken.Kind == SyntaxKind.ConstKeyword)
                 {
-                    return this.ParseConstantFieldDeclaration(attributes, modifiers, parentKind);
+                    var constFieldDeclaration = this.ParseConstantFieldDeclaration(attributes, modifiers, parentKind);
+
+                    // we found a constant with a decorator: ignore the decorator and put an error on it
+                    if (decorators.Count > 0)
+                    {
+                        decorators[0] = this.AddError(decorators[0], ErrorCode.ERR_DecoratorOnIncompatibleMember);
+                        constFieldDeclaration = AddLeadingSkippedSyntax(constFieldDeclaration, decorators.ToListNode());
+                    }
+
+                    return constFieldDeclaration;
                 }
 
                 // Check for event.
                 if (this.CurrentToken.Kind == SyntaxKind.EventKeyword)
                 {
-                    return this.ParseEventDeclaration(attributes, modifiers, parentKind);
+                    var eventDeclaration = this.ParseEventDeclaration(attributes, modifiers, parentKind);
+
+                    // we found an event with a decorator: ignore the decorator and put an error on it
+                    if (decorators.Count > 0)
+                    {
+                        decorators[0] = this.AddError(decorators[0], ErrorCode.ERR_DecoratorOnIncompatibleMember);
+                        eventDeclaration = AddLeadingSkippedSyntax(eventDeclaration, decorators.ToListNode());
+                    }
+
+                    return eventDeclaration;
                 }
 
                 // check for fixed size buffers.
                 if (this.CurrentToken.Kind == SyntaxKind.FixedKeyword)
                 {
-                    return this.ParseFixedSizeBufferDeclaration(attributes, modifiers, parentKind);
+                    var fixedSizeBufferDeclaration = this.ParseFixedSizeBufferDeclaration(attributes, modifiers, parentKind);
+
+                    // we found a fixed size buffer with a decorator: ignore the decorator and put an error on it
+                    if (decorators.Count > 0)
+                    {
+                        decorators[0] = this.AddError(decorators[0], ErrorCode.ERR_DecoratorOnIncompatibleMember);
+                        fixedSizeBufferDeclaration = AddLeadingSkippedSyntax(fixedSizeBufferDeclaration, decorators.ToListNode());
+                    }
+
+                    return fixedSizeBufferDeclaration;
                 }
 
                 // Check for conversion operators (implicit/explicit)
@@ -2373,19 +2405,23 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                     this.CurrentToken.Kind == SyntaxKind.ImplicitKeyword ||
                         (this.CurrentToken.Kind == SyntaxKind.OperatorKeyword && !SyntaxFacts.IsAnyOverloadableOperator(this.PeekToken(1).Kind)))
                 {
-                    return this.ParseConversionOperatorDeclaration(attributes, modifiers);
+                    return this.ParseConversionOperatorDeclaration(attributes, decorators, modifiers);
                 }
 
                 if (this.CurrentToken.Kind == SyntaxKind.NamespaceKeyword && parentKind == SyntaxKind.CompilationUnit)
                 {
-                    // we found a namespace with modifier or an attribute: ignore the attribute/modifier and parse as namespace
+                    // we found a namespace with modifier, a decorator or an attribute: ignore the attribute/decorator/modifier and parse as namespace
                     if (attributes.Count > 0)
                     {
                         attributes[0] = this.AddError(attributes[0], ErrorCode.ERR_BadModifiersOnNamespace);
                     }
+                    else if (decorators.Count > 0)
+                    {
+                        decorators[0] = this.AddError(decorators[0], ErrorCode.ERR_BadModifiersOnNamespace);
+                    }
                     else
                     {
-                        // if were no attributes and no modifiers we should have parsed it already in namespace body:
+                        // if were no attributes, no decorators, and no modifiers we should have parsed it already in namespace body:
                         Debug.Assert(modifiers.Count > 0);
 
                         modifiers[0] = this.AddError(modifiers[0], ErrorCode.ERR_BadModifiersOnNamespace);
@@ -2396,6 +2432,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                     if (modifiers.Count > 0)
                     {
                         namespaceDecl = AddLeadingSkippedSyntax(namespaceDecl, modifiers.ToListNode());
+                    }
+
+                    if (decorators.Count > 0)
+                    {
+                        namespaceDecl = AddLeadingSkippedSyntax(namespaceDecl, decorators.ToListNode());
                     }
 
                     if (attributes.Count > 0)
@@ -2409,7 +2450,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                 // It's valid to have a type declaration here -- check for those
                 if (CanStartTypeDeclaration(this.CurrentToken.Kind))
                 {
-                    return this.ParseTypeDeclaration(attributes, modifiers);
+                    var typeDeclaration = this.ParseTypeDeclaration(attributes, modifiers);
+
+                    // we found a type declaration with a decorator: ignore the decorator and put an error on it
+                    if (decorators.Count > 0)
+                    {
+                        decorators[0] = this.AddError(decorators[0], ErrorCode.ERR_DecoratorOnType);
+                        typeDeclaration = AddLeadingSkippedSyntax(typeDeclaration, decorators.ToListNode());
+                    }
+
+                    return typeDeclaration;
                 }
 
                 if (acceptStatement &&
@@ -2452,7 +2502,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                         ErrorCode.ERR_BadModifierLocation,
                         misplacedModifier.Text);
 
-                    return _syntaxFactory.IncompleteMember(attributes, modifiers.ToTokenList(), type);
+                    var incompleteMember = _syntaxFactory.IncompleteMember(attributes, modifiers.ToTokenList(), type);
+
+                    // we found an incomplete member declaration with a decorator: ignore the decorator without displaying an error
+                    if (decorators.Count > 0)
+                    {
+                        incompleteMember = AddLeadingSkippedSyntax(incompleteMember, decorators.ToListNode());
+                    }
+
+                    return incompleteMember;
                 }
 
             parse_member_name:;
@@ -2460,7 +2518,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                 // Allow old-style implicit/explicit casting operator syntax, just so we can give a better error
                 if (IsOperatorKeyword())
                 {
-                    return this.ParseOperatorDeclaration(attributes, modifiers, type);
+                    return this.ParseOperatorDeclaration(attributes, decorators, modifiers, type);
                 }
 
                 if (IsFieldDeclaration(isEvent: false))
@@ -2471,7 +2529,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                         _termState |= TerminatorState.IsPossibleStatementStartOrStop;
                     }
 
-                    return this.ParseNormalFieldDeclaration(attributes, modifiers, type, parentKind);
+                    var fieldDeclaration = this.ParseNormalFieldDeclaration(attributes, modifiers, type, parentKind);
+
+                    // we found a field declaration with a decorator: ignore the decorator and put an error on it
+                    if (decorators.Count > 0)
+                    {
+                        decorators[0] = this.AddError(decorators[0], ErrorCode.ERR_DecoratorOnIncompatibleMember);
+                        fieldDeclaration = AddLeadingSkippedSyntax(fieldDeclaration, decorators.ToListNode());
+                    }
+
+                    return fieldDeclaration;
                 }
 
                 // At this point we can either have indexers, methods, or 
@@ -2486,13 +2553,20 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                 // We need to consume a bad member and try again.
                 if (explicitInterfaceOpt == null && identifierOrThisOpt == null && typeParameterListOpt == null)
                 {
-                    if (attributes.Count == 0 && modifiers.Count == 0 && type.IsMissing)
+                    if (attributes.Count == 0 && decorators.Count == 0 && modifiers.Count == 0 && type.IsMissing)
                     {
                         // we haven't advanced, the caller needs to consume the tokens ahead
                         return null;
                     }
 
                     var incompleteMember = _syntaxFactory.IncompleteMember(attributes, modifiers.ToTokenList(), type.IsMissing ? null : type);
+
+                    // we found an incomplete member declaration with a decorator: ignore the decorator without displaying an error
+                    if (decorators.Count > 0)
+                    {
+                        incompleteMember = AddLeadingSkippedSyntax(incompleteMember, decorators.ToListNode());
+                    }
+
                     if (incompleteMember.ContainsDiagnostics)
                     {
                         return incompleteMember;
@@ -2534,7 +2608,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
 
                 if (identifierOrThisOpt.Kind == SyntaxKind.ThisKeyword)
                 {
-                    return this.ParseIndexerDeclaration(attributes, modifiers, type, explicitInterfaceOpt, identifierOrThisOpt, typeParameterListOpt);
+                    var indexerDeclaration = this.ParseIndexerDeclaration(attributes, modifiers, type, explicitInterfaceOpt, identifierOrThisOpt, typeParameterListOpt);
+
+                    // we found an indexer declaration with a decorator: ignore the decorator and put an error on it
+                    if (decorators.Count > 0)
+                    {
+                        decorators[0] = this.AddError(decorators[0], ErrorCode.ERR_DecoratorOnIncompatibleMember);
+                        indexerDeclaration = AddLeadingSkippedSyntax(indexerDeclaration, decorators.ToListNode());
+                    }
+
+                    return indexerDeclaration;
                 }
                 else
                 {
@@ -2542,11 +2625,20 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                     {
                         case SyntaxKind.OpenBraceToken:
                         case SyntaxKind.EqualsGreaterThanToken:
-                            return this.ParsePropertyDeclaration(attributes, modifiers, type, explicitInterfaceOpt, identifierOrThisOpt, typeParameterListOpt);
+                            var propertyDeclaration = this.ParsePropertyDeclaration(attributes, modifiers, type, explicitInterfaceOpt, identifierOrThisOpt, typeParameterListOpt);
+
+                            // we found a property declaration with a decorator: ignore the decorator and put an error on it
+                            if (decorators.Count > 0)
+                            {
+                                decorators[0] = this.AddError(decorators[0], ErrorCode.ERR_DecoratorOnIncompatibleMember);
+                                propertyDeclaration = AddLeadingSkippedSyntax(propertyDeclaration, decorators.ToListNode());
+                            }
+
+                            return propertyDeclaration;
 
                         default:
                             // treat anything else as a method.
-                            return this.ParseMethodDeclaration(attributes, modifiers, type, explicitInterfaceOpt, identifierOrThisOpt, typeParameterListOpt);
+                            return this.ParseMethodDeclaration(attributes, decorators, modifiers, type, explicitInterfaceOpt, identifierOrThisOpt, typeParameterListOpt);
                     }
                 }
             }
@@ -2696,7 +2788,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
             return true;
         }
 
-        private ConstructorDeclarationSyntax ParseConstructorDeclaration(string typeName, SyntaxListBuilder<AttributeListSyntax> attributes, SyntaxListBuilder modifiers)
+        private ConstructorDeclarationSyntax ParseConstructorDeclaration(string typeName, SyntaxListBuilder<AttributeListSyntax> attributes, SyntaxList<DecoratorSyntax> decorators, SyntaxListBuilder modifiers)
         {
             var name = this.ParseIdentifierToken();
             Debug.Assert(name.ValueText == typeName);
@@ -2718,7 +2810,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
                 SyntaxToken semicolon;
                 this.ParseBodyOrSemicolon(out body, out semicolon);
 
-                return _syntaxFactory.ConstructorDeclaration(attributes, modifiers.ToTokenList(), name, paramList, initializer, body, semicolon);
+                return _syntaxFactory.ConstructorDeclaration(attributes, decorators, modifiers.ToTokenList(), name, paramList, initializer, body, semicolon);
             }
             finally
             {
@@ -2769,7 +2861,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
             return _syntaxFactory.ConstructorInitializer(kind, colon, token, argumentList);
         }
 
-        private DestructorDeclarationSyntax ParseDestructorDeclaration(string typeName, SyntaxListBuilder<AttributeListSyntax> attributes, SyntaxListBuilder modifiers)
+        private DestructorDeclarationSyntax ParseDestructorDeclaration(string typeName, SyntaxListBuilder<AttributeListSyntax> attributes, SyntaxList<DecoratorSyntax> decorators, SyntaxListBuilder modifiers)
         {
             Debug.Assert(this.CurrentToken.Kind == SyntaxKind.TildeToken);
             var tilde = this.EatToken(SyntaxKind.TildeToken);
@@ -2788,7 +2880,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
             this.ParseBodyOrSemicolon(out body, out semicolon);
 
             var parameterList = _syntaxFactory.ParameterList(openParen, default(SeparatedSyntaxList<ParameterSyntax>), closeParen);
-            return _syntaxFactory.DestructorDeclaration(attributes, modifiers.ToTokenList(), tilde, name, parameterList, body, semicolon);
+            return _syntaxFactory.DestructorDeclaration(attributes, decorators, modifiers.ToTokenList(), tilde, name, parameterList, body, semicolon);
         }
 
         /// <summary>
@@ -2920,6 +3012,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
 
         private MethodDeclarationSyntax ParseMethodDeclaration(
             SyntaxListBuilder<AttributeListSyntax> attributes,
+            SyntaxList<DecoratorSyntax> decorators,
             SyntaxListBuilder modifiers,
             TypeSyntax type,
             ExplicitInterfaceSpecifierSyntax explicitInterfaceOpt,
@@ -2985,6 +3078,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
 
                 var decl = _syntaxFactory.MethodDeclaration(
                     attributes,
+                    decorators,
                     modifiers.ToTokenList(),
                     type,
                     explicitInterfaceOpt,
@@ -3029,7 +3123,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
             }
         }
 
-        private ConversionOperatorDeclarationSyntax ParseConversionOperatorDeclaration(SyntaxListBuilder<AttributeListSyntax> attributes, SyntaxListBuilder modifiers)
+        private ConversionOperatorDeclarationSyntax ParseConversionOperatorDeclaration(SyntaxListBuilder<AttributeListSyntax> attributes, SyntaxList<DecoratorSyntax> decorators, SyntaxListBuilder modifiers)
         {
             SyntaxToken style;
             if (this.CurrentToken.Kind == SyntaxKind.ImplicitKeyword || this.CurrentToken.Kind == SyntaxKind.ExplicitKeyword)
@@ -3058,6 +3152,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
 
             var decl = _syntaxFactory.ConversionOperatorDeclaration(
                 attributes,
+                decorators,
                 modifiers.ToTokenList(),
                 style,
                 opKeyword,
@@ -3072,6 +3167,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
 
         private OperatorDeclarationSyntax ParseOperatorDeclaration(
             SyntaxListBuilder<AttributeListSyntax> attributes,
+            SyntaxList<DecoratorSyntax> decorators,
             SyntaxListBuilder modifiers,
             TypeSyntax type)
         {
@@ -3190,6 +3286,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Syntax.InternalSyntax
 
             var decl = _syntaxFactory.OperatorDeclaration(
                 attributes,
+                decorators,
                 modifiers.ToTokenList(),
                 type,
                 opKeyword,

@@ -138,6 +138,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.MethodDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<DecoratorSyntax>),
                 AsModifierList(accessibility, modifiers, SyntaxKind.MethodDeclaration),
                 returnType != null ? (TypeSyntax)returnType : SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)),
                 default(ExplicitInterfaceSpecifierSyntax),
@@ -158,18 +159,19 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
             var semicolon = !hasBody ? SyntaxFactory.Token(SyntaxKind.SemicolonToken) : default(SyntaxToken);
             var modifierList = AsModifierList(accessibility, modifiers, SyntaxKind.OperatorDeclaration);
             var attributes = default(SyntaxList<AttributeListSyntax>);
+            var decorators = default(SyntaxList<DecoratorSyntax>);
 
             if (kind == OperatorKind.ImplicitConversion || kind == OperatorKind.ExplicitConversion)
             {
                 return SyntaxFactory.ConversionOperatorDeclaration(
-                    attributes, modifierList, SyntaxFactory.Token(GetTokenKind(kind)),
+                    attributes, decorators, modifierList, SyntaxFactory.Token(GetTokenKind(kind)),
                     SyntaxFactory.Token(SyntaxKind.OperatorKeyword),
                     returnTypeNode, parameterList, body, semicolon);
             }
             else
             {
                 return SyntaxFactory.OperatorDeclaration(
-                    attributes, modifierList, returnTypeNode,
+                    attributes, decorators, modifierList, returnTypeNode,
                     SyntaxFactory.Token(SyntaxKind.OperatorKeyword),
                     SyntaxFactory.Token(GetTokenKind(kind)),
                     parameterList, body, semicolon);
@@ -228,6 +230,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
         {
             return SyntaxFactory.ConstructorDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<DecoratorSyntax>),
                 AsModifierList(accessibility, modifiers, SyntaxKind.ConstructorDeclaration),
                 (name ?? "ctor").ToIdentifierToken(),
                 AsParameterList(parameters),

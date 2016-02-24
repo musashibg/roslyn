@@ -252,6 +252,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public static OperatorDeclarationSyntax Update(
             this OperatorDeclarationSyntax syntax,
             SyntaxList<AttributeListSyntax> attributeLists,
+            SyntaxList<DecoratorSyntax> decorators,
             SyntaxTokenList modifiers,
             TypeSyntax returnType,
             SyntaxToken operatorKeyword,
@@ -262,6 +263,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             return syntax.Update(
                 attributeLists,
+                decorators,
                 modifiers,
                 returnType,
                 operatorKeyword,
@@ -275,6 +277,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public static MethodDeclarationSyntax Update(
             this MethodDeclarationSyntax syntax,
             SyntaxList<AttributeListSyntax> attributeLists,
+            SyntaxList<DecoratorSyntax> decorators,
             SyntaxTokenList modifiers,
             TypeSyntax returnType,
             ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier,
@@ -287,6 +290,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             return syntax.Update(
                 attributeLists,
+                decorators,
                 modifiers,
                 returnType,
                 explicitInterfaceSpecifier,
