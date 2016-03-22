@@ -200,6 +200,11 @@ namespace Microsoft.CodeAnalysis.CSharp
             return new SingleLookupResult(LookupResultKind.NotAnAttributeType, symbol, error);
         }
 
+        internal static SingleLookupResult NotADecoratorType(Symbol symbol, DiagnosticInfo error)
+        {
+            return new SingleLookupResult(LookupResultKind.NotADecoratorType, symbol, error);
+        }
+
         /// <summary>
         /// Set current result according to another.
         /// </summary>

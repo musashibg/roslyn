@@ -74,7 +74,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         FinishAsyncMethodChecks = 1 << 12,
         StartMethodChecks = 1 << 13,
         FinishMethodChecks = 1 << 14,
-        MethodSymbolAll = Attributes | ReturnTypeAttributes | Parameters | Type | TypeParameters | StartMethodChecks | FinishMethodChecks | StartAsyncMethodChecks | FinishAsyncMethodChecks,
+        Decorators = 1 << 15,
+        MethodSymbolAll = Attributes | ReturnTypeAttributes | Parameters | Type | TypeParameters | StartMethodChecks | FinishMethodChecks | StartAsyncMethodChecks | FinishAsyncMethodChecks | Decorators,
 
         // For type parameter symbols
         TypeParameterConstraints = 1 << 11,

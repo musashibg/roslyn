@@ -86,6 +86,7 @@
     <Compile Include="Binder\Binder_Constraints.cs" />
     <Compile Include="Binder\Binder_Conversions.cs" />
     <Compile Include="Binder\Binder_Crefs.cs" />
+    <Compile Include="Binder\Binder_Decorators.cs" />
     <Compile Include="Binder\Binder_Expressions.cs" />
     <Compile Include="Binder\Binder_Flags.cs" />
     <Compile Include="Binder\Binder_Initializers.cs" />
@@ -112,6 +113,7 @@
     <Compile Include="Binder\ConstantFieldsInProgress.cs" />
     <Compile Include="Binder\ConstantFieldsInProgressBinder.cs" />
     <Compile Include="Binder\ContextualAttributeBinder.cs" />
+    <Compile Include="Binder\ContextualDecoratorBinder.cs" />
     <Compile Include="Binder\EarlyWellKnownAttributeBinder.cs" />
     <Compile Include="Binder\ExecutableCodeBinder.cs" />
     <Compile Include="Binder\ExtensionMethodScope.cs" />
@@ -380,6 +382,10 @@
     <Compile Include="Lowering\AsyncRewriter\AsyncRewriter.cs" />
     <Compile Include="Lowering\AsyncRewriter\AsyncStateMachine.cs" />
     <Compile Include="Lowering\AsyncRewriter\AwaitExpressionSpiller.cs" />
+    <Compile Include="Lowering\DecorationRewriter\DecorationRewriterFlags.cs" />
+    <Compile Include="Lowering\DecorationRewriter\SplicedMethodBodyRewriter.cs" />
+    <Compile Include="Lowering\DecorationRewriter\DecorationPass.cs" />
+    <Compile Include="Lowering\DecorationRewriter\DecorationRewriter.cs" />
     <Compile Include="Lowering\DiagnosticsPass_ExpressionTrees.cs" />
     <Compile Include="Lowering\DiagnosticsPass_Warnings.cs" />
     <Compile Include="Lowering\Extensions.cs" />
@@ -535,6 +541,7 @@
     <Compile Include="Symbols\ConstructedNamedTypeSymbol.cs" />
     <Compile Include="Symbols\ConversionSignatureComparer.cs" />
     <Compile Include="Symbols\CustomModifier.cs" />
+    <Compile Include="Symbols\Decorators\DecoratorData.cs" />
     <Compile Include="Symbols\DynamicTypeEraser.cs" />
     <Compile Include="Symbols\DynamicTypeSymbol.cs" />
     <Compile Include="Symbols\EnumConversions.cs" />

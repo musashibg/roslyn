@@ -4684,4 +4684,49 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_DecoratorsNotAllowed" xml:space="preserve">
     <value>Decorators are not valid in this context.</value>
   </data>
+  <data name="ERR_AbstractDecoratorClass" xml:space="preserve">
+    <value>Cannot apply decorator class '{0}' because it is abstract</value>
+  </data>
+  <data name="ERR_BadDecoratorArgument" xml:space="preserve">
+    <value>A decorator argument must be of the same type as the corresponding decorator parameter</value>
+  </data>
+  <data name="ERR_BadDecoratorParamDefaultArgument" xml:space="preserve">
+    <value>Decorator constructor parameter '{0}' is optional, but no default parameter value was specified.</value>
+  </data>
+  <data name="ERR_BadNamedDecoratorArgument" xml:space="preserve">
+    <value>'{0}' is not a valid named decorator argument. Named decorator arguments must be fields which are not readonly, static, or const, or read-write properties which are public and not static.</value>
+  </data>
+  <data name="ERR_DecoratedIteratorMethod" xml:space="preserve">
+    <value>Decoration of iterator methods is not supported</value>
+  </data>
+  <data name="ERR_DecoratorDoesNotSupportMethods" xml:space="preserve">
+    <value>Cannot apply decorator class '{0}' to method '{1}' because it does not support decoration of methods</value>
+  </data>
+  <data name="ERR_DecoratorMethodWithoutBody" xml:space="preserve">
+    <value>Cannot apply decorator class '{0}' because its decoration method has no body</value>
+  </data>
+  <data name="ERR_DuplicateNamedDecoratorArgument" xml:space="preserve">
+    <value>'{0}' duplicate named decorator argument</value>
+  </data>
+  <data name="ERR_InvalidInvokeInDecorator" xml:space="preserve">
+    <value>Only calls to MethodBase.Invoke on the target method with the target object and a variable containing a list of arguments are currently supported</value>
+  </data>
+  <data name="ERR_MultipleInvokesInDecorator" xml:space="preserve">
+    <value>Multiple splice locations in a single decoration method are not currently supported</value>
+  </data>
+  <data name="ERR_NonSourceDecoratorClass" xml:space="preserve">
+    <value>Cannot apply decorator class '{0}' because it is not part of the same assembly</value>
+  </data>
+  <data name="ERR_NotADecoratorClass" xml:space="preserve">
+    <value>'{0}' is not a decorator class</value>
+  </data>
+  <data name="ERR_ThisReferenceInDecorator" xml:space="preserve">
+    <value>Decoration methods cannot access the decorator object or its members</value>
+  </data>
+  <data name="ERR_BaseDecoratorMethodCallNotSupported" xml:space="preserve">
+    <value>Base decoration method calls are not currently supported</value>
+  </data>
+  <data name="ERR_InvalidSpliceLocation" xml:space="preserve">
+    <value>Splicing of target method body is not allowed inside loop conditions/initializations/increments and catch block exception source and filter expressions</value>
+  </data>
 </root>

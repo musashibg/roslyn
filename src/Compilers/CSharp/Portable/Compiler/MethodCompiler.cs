@@ -923,6 +923,13 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                 bool hasErrors = _hasDeclarationErrors || diagsForCurrentMethod.HasAnyErrors() || processedInitializers.HasErrors;
 
+                if (!hasErrors && flowAnalyzedBody != null)
+                {
+                    // Apply any decorators
+                    flowAnalyzedBody = DecorationPass.Rewrite(methodSymbol, flowAnalyzedBody, compilationState, diagsForCurrentMethod);
+                    hasErrors = diagsForCurrentMethod.HasAnyErrors();
+                }
+
                 // Record whether or not the bound tree for the lowered method body (including any initializers) contained any
                 // errors (note: errors, not diagnostics).
                 SetGlobalErrorIfTrue(hasErrors);

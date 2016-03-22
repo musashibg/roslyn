@@ -35,7 +35,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             inStaticContext = false;
 
-            if (InConstructorInitializer || InAttributeArgument)
+            if (InConstructorInitializer || InAttributeArgument || InDecoratorArgument)
             {
                 return false;
             }
@@ -76,6 +76,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         internal bool InCref
         {
             get { return this.Flags.Includes(BinderFlags.Cref); }
+        }
+
+        internal bool InDecoratorArgument
+        {
+            get { return this.Flags.Includes(BinderFlags.DecoratorArgument); }
         }
 
         protected bool InCrefButNotParameterOrReturnType
@@ -1287,7 +1292,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                         Error(diagnostics, ErrorCode.ERR_FieldInitRefNonstatic, node, member);
                         hasErrors = true;
                     }
-                    else if (InConstructorInitializer || InAttributeArgument)
+                    else if (InConstructorInitializer || InAttributeArgument || InDecoratorArgument)
                     {
                         //can't access "this" in constructor initializers or attribute arguments
                         Error(diagnostics, ErrorCode.ERR_ObjectRequired, node, member);
@@ -1837,7 +1842,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             RefKind refKind,
             bool allowArglist)
         {
-            Debug.Assert(argumentSyntax is ArgumentSyntax || argumentSyntax is AttributeArgumentSyntax);
+            Debug.Assert(argumentSyntax is ArgumentSyntax || argumentSyntax is AttributeArgumentSyntax || argumentSyntax is DecoratorArgumentSyntax);
 
             BindValueKind valueKind = refKind == RefKind.None ? BindValueKind.RValue : BindValueKind.OutParameter;
 

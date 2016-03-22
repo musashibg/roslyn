@@ -189,6 +189,26 @@ namespace Microsoft.CodeAnalysis
         Awaiter = 33,
 
         /// <summary>
+        /// Local variable which substitutes a decoration method's parameter in the rewritten body of a decorated method.
+        /// </summary>
+        DecoratorParameter = 47,
+
+        /// <summary>
+        /// Local variable which substitutes a decoration method's local variable in the rewritten body of a decorated method.
+        /// </summary>
+        DecoratorLocal = 48,
+
+        /// <summary>
+        /// Local variable which will hold the return result of a target method body splicing in the rewritten body of a decorated method.
+        /// </summary>
+        DecoratorTempResult = 49,
+
+        /// <summary>
+        /// Temporary local variable generated during the rewriting of a decorated method to preserve semantics or optimize the transformed code.
+        /// </summary>
+        DecoratorTempLocal = 50,
+
+        /// <summary>
         /// All values have to be less than or equal to <see cref="MaxValidValueForLocalVariableSerializedToDebugInformation"/> 
         /// (<see cref="EditAndContinueMethodDebugInformation"/>)
         /// </summary>

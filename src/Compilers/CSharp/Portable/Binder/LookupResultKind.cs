@@ -49,6 +49,8 @@ namespace Microsoft.CodeAnalysis.CSharp
         StaticInstanceMismatch,
         OverloadResolutionFailure,
 
+        NotADecoratorType,
+
         // Note: within LookupResult, LookupResultKind.Ambiguous is currently not used (in C#). Instead
         // ambiguous results are determined later by examining multiple viable results to determine if
         // they are ambiguous or overloaded. Thus, LookupResultKind.Ambiguous does not occur in a LookupResult,
@@ -85,6 +87,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 case LookupResultKind.OverloadResolutionFailure: return CandidateReason.OverloadResolutionFailure;
                 case LookupResultKind.Ambiguous: return CandidateReason.Ambiguous;
                 case LookupResultKind.MemberGroup: return CandidateReason.MemberGroup;
+                case LookupResultKind.NotADecoratorType: return CandidateReason.NotADecoratorType;
 
                 case LookupResultKind.Viable:
                     Debug.Assert(false, "Should not call this on LookupResultKind.Viable");

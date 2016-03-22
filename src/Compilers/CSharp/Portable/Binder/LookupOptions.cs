@@ -96,6 +96,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// Do not consider symbols that are method type parameters.
         /// </summary>
         MustNotBeMethodTypeParameter = 1 << 14,
+
+        /// <summary>
+        /// Consider only decorator types.
+        /// </summary>
+        DecoratorTypeOnly = (1 << 15) | NamespacesOrTypesOnly,
     }
 
     internal static class LookupOptionExtensions
@@ -189,6 +194,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         internal static bool IsVerbatimNameAttributeTypeLookup(this LookupOptions options)
         {
             return (options & LookupOptions.VerbatimNameAttributeTypeOnly) == LookupOptions.VerbatimNameAttributeTypeOnly;
+        }
+
+        internal static bool IsDecoratorTypeLookup(this LookupOptions options)
+        {
+            return (options & LookupOptions.DecoratorTypeOnly) == LookupOptions.DecoratorTypeOnly;
         }
     }
 }

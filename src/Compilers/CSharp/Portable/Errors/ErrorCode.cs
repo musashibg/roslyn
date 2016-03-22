@@ -1239,8 +1239,24 @@ namespace Microsoft.CodeAnalysis.CSharp
         ERR_DecoratorsNotAllowed = 7353,
         ERR_DecoratorOnIncompatibleMember = 7354,
         ERR_DecoratorOnType = 7355,
+        ERR_BadDecoratorArgument = 7356,
+        ERR_DuplicateNamedDecoratorArgument = 7357,
+        ERR_BadNamedDecoratorArgument = 7358,
+        ERR_BadDecoratorParamDefaultArgument = 7359,
+        ERR_NotADecoratorClass = 7360,
+        ERR_AbstractDecoratorClass = 7361,
+        ERR_NonSourceDecoratorClass = 7362,
+        ERR_DecoratorDoesNotSupportMethods = 7363,
+        ERR_DecoratorMethodWithoutBody = 7364,
+        ERR_DecoratedIteratorMethod = 7365,
+        ERR_ThisReferenceInDecorator = 7366,
+        ERR_InvalidSpliceLocation = 7367,
 
-        // available 7356-8000
+        ERR_InvalidInvokeInDecorator = 7370,
+        ERR_MultipleInvokesInDecorator = 7371,
+        ERR_BaseDecoratorMethodCallNotSupported = 7372,
+
+        // available 7372-8000
 
         WRN_UnimplementedCommandLineSwitch = 8001,
         WRN_ReferencedAssemblyDoesNotHaveStrongName = 8002,

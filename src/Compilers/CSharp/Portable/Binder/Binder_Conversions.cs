@@ -464,7 +464,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             else if (WasImplicitReceiver(receiverOpt))
             {
-                if (InFieldInitializer && !ContainingType.IsScriptClass || InConstructorInitializer || InAttributeArgument)
+                if (InFieldInitializer && !ContainingType.IsScriptClass || InConstructorInitializer || InAttributeArgument || InDecoratorArgument)
                 {
                     CSharpSyntaxNode errorNode = node;
                     if (node.Parent != null && node.Parent.Kind() == SyntaxKind.InvocationExpression)

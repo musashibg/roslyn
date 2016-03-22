@@ -152,6 +152,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cannot apply decorator class &apos;{0}&apos; because it is abstract.
+        /// </summary>
+        internal static string ERR_AbstractDecoratorClass {
+            get {
+                return ResourceManager.GetString("ERR_AbstractDecoratorClass", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to &apos;{0}&apos;: abstract event cannot have initializer.
         /// </summary>
         internal static string ERR_AbstractEventInitializer {
@@ -1259,6 +1268,24 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A decorator argument must be of the same type as the corresponding decorator parameter.
+        /// </summary>
+        internal static string ERR_BadDecoratorArgument {
+            get {
+                return ResourceManager.GetString("ERR_BadDecoratorArgument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decorator constructor parameter &apos;{0}&apos; is optional, but no default parameter value was specified..
+        /// </summary>
+        internal static string ERR_BadDecoratorParamDefaultArgument {
+            get {
+                return ResourceManager.GetString("ERR_BadDecoratorParamDefaultArgument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Delegate &apos;{0}&apos; does not take {1} arguments.
         /// </summary>
         internal static string ERR_BadDelArgCount {
@@ -1633,6 +1660,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_BadNamedAttributeArgumentType {
             get {
                 return ResourceManager.GetString("ERR_BadNamedAttributeArgumentType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; is not a valid named decorator argument. Named decorator arguments must be fields which are not readonly, static, or const, or read-write properties which are public and not static..
+        /// </summary>
+        internal static string ERR_BadNamedDecoratorArgument {
+            get {
+                return ResourceManager.GetString("ERR_BadNamedDecoratorArgument", resourceCulture);
             }
         }
         
@@ -2101,6 +2137,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_BaseConstraintConflict {
             get {
                 return ResourceManager.GetString("ERR_BaseConstraintConflict", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Base decoration method calls are not currently supported.
+        /// </summary>
+        internal static string ERR_BaseDecoratorMethodCallNotSupported {
+            get {
+                return ResourceManager.GetString("ERR_BaseDecoratorMethodCallNotSupported", resourceCulture);
             }
         }
         
@@ -2987,6 +3032,33 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Decoration of iterator methods is not supported.
+        /// </summary>
+        internal static string ERR_DecoratedIteratorMethod {
+            get {
+                return ResourceManager.GetString("ERR_DecoratedIteratorMethod", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot apply decorator class &apos;{0}&apos; to method &apos;{1}&apos; because it does not support decoration of methods.
+        /// </summary>
+        internal static string ERR_DecoratorDoesNotSupportMethods {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorDoesNotSupportMethods", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot apply decorator class &apos;{0}&apos; because its decoration method has no body.
+        /// </summary>
+        internal static string ERR_DecoratorMethodWithoutBody {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorMethodWithoutBody", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Decorators are not allowed on fields, events, properties or indexers.
         /// </summary>
         internal static string ERR_DecoratorOnIncompatibleMember {
@@ -3388,6 +3460,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_DuplicateNamedAttributeArgument {
             get {
                 return ResourceManager.GetString("ERR_DuplicateNamedAttributeArgument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; duplicate named decorator argument.
+        /// </summary>
+        internal static string ERR_DuplicateNamedDecoratorArgument {
+            get {
+                return ResourceManager.GetString("ERR_DuplicateNamedDecoratorArgument", resourceCulture);
             }
         }
         
@@ -5228,6 +5309,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Only calls to MethodBase.Invoke on the target method with the target object and a variable containing a list of arguments are currently supported.
+        /// </summary>
+        internal static string ERR_InvalidInvokeInDecorator {
+            get {
+                return ResourceManager.GetString("ERR_InvalidInvokeInDecorator", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The line number specified for #line directive is missing or invalid.
         /// </summary>
         internal static string ERR_InvalidLineNumber {
@@ -5332,6 +5422,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_InvalidSpecifier {
             get {
                 return ResourceManager.GetString("ERR_InvalidSpecifier", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Splicing of target method body is not allowed inside loop conditions/initializations/increments and catch block exception source and filter expressions.
+        /// </summary>
+        internal static string ERR_InvalidSpliceLocation {
+            get {
+                return ResourceManager.GetString("ERR_InvalidSpliceLocation", resourceCulture);
             }
         }
         
@@ -5876,6 +5975,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Multiple splice locations in a single decoration method are not currently supported.
+        /// </summary>
+        internal static string ERR_MultipleInvokesInDecorator {
+            get {
+                return ResourceManager.GetString("ERR_MultipleInvokesInDecorator", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cannot use more than one type in a for, using, fixed, or declaration statement.
         /// </summary>
         internal static string ERR_MultiTypeInDeclaration {
@@ -6380,6 +6488,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cannot apply decorator class &apos;{0}&apos; because it is not part of the same assembly.
+        /// </summary>
+        internal static string ERR_NonSourceDecoratorClass {
+            get {
+                return ResourceManager.GetString("ERR_NonSourceDecoratorClass", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cannot embed interop types from assembly &apos;{0}&apos; because it is missing the &apos;{1}&apos; attribute..
         /// </summary>
         internal static string ERR_NoPIAAssemblyMissingAttribute {
@@ -6448,6 +6565,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_NoSuchMemberOrExtensionNeedUsing {
             get {
                 return ResourceManager.GetString("ERR_NoSuchMemberOrExtensionNeedUsing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; is not a decorator class.
+        /// </summary>
+        internal static string ERR_NotADecoratorClass {
+            get {
+                return ResourceManager.GetString("ERR_NotADecoratorClass", resourceCulture);
             }
         }
         
@@ -8113,6 +8239,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_ThisOrBaseExpected {
             get {
                 return ResourceManager.GetString("ERR_ThisOrBaseExpected", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decoration methods cannot access the decorator object or its members.
+        /// </summary>
+        internal static string ERR_ThisReferenceInDecorator {
+            get {
+                return ResourceManager.GetString("ERR_ThisReferenceInDecorator", resourceCulture);
             }
         }
         

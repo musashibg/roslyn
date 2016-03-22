@@ -98,6 +98,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// </summary>
         InLoadedSyntaxTree = 1 << 28,
 
+        /// <summary>
+        /// Decorator argument
+        /// </summary>
+        DecoratorArgument = 1 << 29,
+
         // Groups
 
         AllClearedAtExecutableCodeBoundary = InLockBody | InCatchBlock | InCatchFilter | InFinallyBlock | InTryBlockOfTryCatch | InNestedFinallyBlock,

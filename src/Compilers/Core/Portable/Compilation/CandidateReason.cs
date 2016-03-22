@@ -117,5 +117,11 @@ namespace Microsoft.CodeAnalysis
         /// but there is more than one result, for example nameof(int.ToString).
         /// </summary>
         MemberGroup = 16,
+
+        /// <summary>
+        /// Only a decorator type was valid in the given location, but the candidate symbol was
+        /// of the wrong kind.
+        /// </summary>
+        NotADecoratorType = 17,
     }
 }

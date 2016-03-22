@@ -164,6 +164,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private CustomAttributesBag<CSharpAttributeData> _lazyCustomAttributesBag;
         private CustomAttributesBag<CSharpAttributeData> _lazyReturnTypeCustomAttributesBag;
 
+        private ImmutableArray<DecoratorData> _lazyDecorators;
+
         private OverriddenOrHiddenMembersResult _lazyOverriddenOrHiddenMembers;
 
         // some symbols may not have a syntax (e.g. lambdas, synthesized event accessors)
@@ -726,6 +728,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     case CompletionPart.StartMethodChecks:
                     case CompletionPart.FinishMethodChecks:
                         LazyMethodChecks();
+                        break;
+
+                    case CompletionPart.Decorators:
+                        GetDecorators();
                         goto done;
 
                     case CompletionPart.None:
@@ -1491,6 +1497,55 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         #endregion
 
+        public sealed override ImmutableArray<DecoratorData> GetDecorators()
+        {
+            var decorators = _lazyDecorators;
+            if (!decorators.IsDefault)
+            {
+                return decorators;
+            }
+
+            return GetDecorators(ref _lazyDecorators);
+        }
+
+        private ImmutableArray<DecoratorData> GetDecorators(ref ImmutableArray<DecoratorData> decorators)
+        {
+            var methodSyntax = SyntaxNode as BaseMethodDeclarationSyntax;
+            int decoratorCount = methodSyntax?.Decorators.Count ?? 0;
+
+            if (decoratorCount == 0)
+            {
+                decorators = ImmutableArray<DecoratorData>.Empty;
+            }
+            else
+            {
+                var diagnostics = DiagnosticBag.GetInstance();
+
+                // Bind decorator types
+                Binder methodBinder = DeclaringCompilation.GetBinderFactory(SyntaxTree).GetBinder(methodSyntax);
+                var bindersBuilder = new Binder[decoratorCount];
+                var boundDecoratorTypes = new NamedTypeSymbol[decoratorCount];
+                for (int i = 0; i < decoratorCount; i++)
+                {
+                    bindersBuilder[i] = new ContextualDecoratorBinder(methodBinder, this);
+                }
+                ImmutableArray<Binder> binders = bindersBuilder.ToImmutableArray();
+                ImmutableArray<DecoratorSyntax> decoratorsToBind = methodSyntax.Decorators.ToImmutableArray();
+                Binder.BindDecoratorTypes(binders, decoratorsToBind, this, boundDecoratorTypes, diagnostics);
+
+                // Bind decorators
+                var decoratorsBuilder = new DecoratorData[decoratorCount];
+                Binder.GetDecorators(binders, decoratorsToBind, boundDecoratorTypes.ToImmutableArray(), decoratorsBuilder, diagnostics);
+
+                AddDeclarationDiagnostics(diagnostics);
+
+                decorators = decoratorsBuilder.ToImmutableArray();
+            }
+
+            state.NotePartComplete(CompletionPart.Decorators);
+            return decorators;
+        }
+
         internal override void AddSynthesizedAttributes(ModuleCompilationState compilationState, ref ArrayBuilder<SynthesizedAttributeData> attributes)
         {
             base.AddSynthesizedAttributes(compilationState, ref attributes);
@@ -1561,10 +1616,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         {
             // Method without body doesn't declare locals.
             Debug.Assert(this.BodySyntax != null);
-            Debug.Assert(this.BodySyntax.SyntaxTree == localTree);
+
+            // These assertions are no longer valid, when we can have code from decorators merged into the current method's body
+            //Debug.Assert(this.BodySyntax.SyntaxTree == localTree);
+            //Debug.Assert(this.BodySyntax.Span.Contains(localPosition));
 
             // All locals are declared within the body of the method.
-            Debug.Assert(this.BodySyntax.Span.Contains(localPosition));
+            if (localTree == this.BodySyntax.SyntaxTree)
+            {
+                Debug.Assert(this.BodySyntax.Span.Contains(localPosition));
+            }
 
             return localPosition - this.BodySyntax.SpanStart;
         }

@@ -45,9 +45,9 @@
       <IncludeOutputGroupsInVSIXLocalOnly>DebugSymbolsProjectOutputGroup</IncludeOutputGroupsInVSIXLocalOnly>
       <ForceIncludeInVSIX>true</ForceIncludeInVSIX>
     </ProjectReference>
-    <ProjectReference Include="..\Core\Source\ResultProvider\Portable\ResultProvider.Portable.csproj">
+    <ProjectReference Include="..\Core\Source\ResultProvider\NetFX20\ResultProvider.NetFX20.csproj">
       <Project>{BEDC5A4A-809E-4017-9CFD-6C8D4E1847F0}</Project>
-      <Name>ResultProvider.Portable</Name>
+      <Name>ResultProvider.NetFX20</Name>
       <IncludeOutputGroupsInVSIX>BuiltProjectOutputGroup</IncludeOutputGroupsInVSIX>
       <IncludeOutputGroupsInVSIXLocalOnly>DebugSymbolsProjectOutputGroup</IncludeOutputGroupsInVSIXLocalOnly>
       <ForceIncludeInVSIX>true</ForceIncludeInVSIX>
@@ -59,9 +59,9 @@
       <IncludeOutputGroupsInVSIXLocalOnly>DebugSymbolsProjectOutputGroup</IncludeOutputGroupsInVSIXLocalOnly>
       <ForceIncludeInVSIX>true</ForceIncludeInVSIX>
     </ProjectReference>
-    <ProjectReference Include="..\CSharp\Source\ResultProvider\Portable\CSharpResultProvider.Portable.csproj">
+    <ProjectReference Include="..\CSharp\Source\ResultProvider\NetFX20\CSharpResultProvider.NetFX20.csproj">
       <Project>{BF9DAC1E-3A5E-4DC3-BB44-9A64E0D4E9D3}</Project>
-      <Name>CSharpResultProvider.Portable</Name>
+      <Name>CSharpResultProvider.NetFX20</Name>
       <IncludeOutputGroupsInVSIX>BuiltProjectOutputGroup%3bVsdConfigOutputGroup</IncludeOutputGroupsInVSIX>
       <IncludeOutputGroupsInVSIXLocalOnly>DebugSymbolsProjectOutputGroup</IncludeOutputGroupsInVSIXLocalOnly>
       <ForceIncludeInVSIX>true</ForceIncludeInVSIX>

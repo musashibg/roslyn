@@ -144,7 +144,8 @@ namespace Microsoft.CodeAnalysis.CSharp
         internal bool IsEqualOrDerivedFromWellKnownClass(TypeSymbol type, WellKnownType wellKnownType, ref HashSet<DiagnosticInfo> useSiteDiagnostics)
         {
             Debug.Assert(wellKnownType == WellKnownType.System_Attribute ||
-                         wellKnownType == WellKnownType.System_Exception);
+                         wellKnownType == WellKnownType.System_Exception ||
+                         wellKnownType == WellKnownType.CSharp_Meta_Decorator);
 
             if (type.Kind != SymbolKind.NamedType || type.TypeKind != TypeKind.Class)
             {

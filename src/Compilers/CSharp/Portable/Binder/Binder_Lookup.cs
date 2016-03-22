@@ -33,6 +33,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             {
                 this.LookupAttributeType(result, qualifierOpt, plainName, arity, basesBeingResolved, options, diagnose, ref useSiteDiagnostics);
             }
+            else if (options.IsDecoratorTypeLookup())
+            {
+                this.LookupDecoratorType(result, qualifierOpt, plainName, arity, basesBeingResolved, options, diagnose, ref useSiteDiagnostics);
+            }
             else
             {
                 this.LookupSymbolsOrMembersInternal(result, qualifierOpt, plainName, arity, basesBeingResolved, options, diagnose, ref useSiteDiagnostics);
@@ -630,6 +634,218 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
 
             diagInfo = diagnose ? new CSDiagnosticInfo(ErrorCode.ERR_NotAnAttributeClass, symbol) : null;
+            return false;
+        }
+
+        #endregion
+
+        #region "DecoratorTypeLookup"
+
+        /// <summary>
+        /// Lookup decorator name in the given binder. By default two name lookups are performed:
+        ///     (1) With the provided name
+        ///     (2) With a Decorator suffix added to the provided name
+        /// 
+        /// If either lookup is ambiguous, we return the corresponding result with ambiguous symbols.
+        /// Else if exactly one result is single viable decorator type, we return that result.
+        /// Otherwise, we return a non-viable result with LookupResult.NotADecoratorType or an empty result.
+        /// </summary>
+        private void LookupDecoratorType(
+            LookupResult result,
+            NamespaceOrTypeSymbol qualifierOpt,
+            string name,
+            int arity,
+            ConsList<Symbol> basesBeingResolved,
+            LookupOptions options,
+            bool diagnose,
+            ref HashSet<DiagnosticInfo> useSiteDiagnostics)
+        {
+            Debug.Assert(result.IsClear);
+            Debug.Assert(options.AreValid());
+            Debug.Assert(options.IsDecoratorTypeLookup());
+
+            // Lookup symbols without decorator suffix.
+            LookupSymbolsOrMembersInternal(result, qualifierOpt, name, arity, basesBeingResolved, options, diagnose, ref useSiteDiagnostics);
+
+            // Result without 'Decorator' suffix added.
+            Symbol symbolWithoutSuffix;
+            bool resultWithoutSuffixIsViable = IsSingleViableDecoratorType(result, out symbolWithoutSuffix);
+
+            // Generic types are not allowed.
+            Debug.Assert(arity == 0 || !result.IsMultiViable);
+
+            // Lookup symbols with decorator suffix.
+            LookupResult resultWithSuffix = LookupResult.GetInstance();
+            this.LookupSymbolsOrMembersInternal(resultWithSuffix, qualifierOpt, name + "Decorator", arity, basesBeingResolved, options, diagnose, ref useSiteDiagnostics);
+
+            // Result with 'Decorator' suffix added.
+            Symbol symbolWithSuffix;
+            bool resultWithSuffixIsViable = IsSingleViableDecoratorType(resultWithSuffix, out symbolWithSuffix);
+
+            // Generic types are not allowed.
+            Debug.Assert(arity == 0 || !result.IsMultiViable);
+
+            if (resultWithoutSuffixIsViable && resultWithSuffixIsViable)
+            {
+                // Single viable lookup symbol found both with and without Decorator suffix.
+                // We merge both results, ambiguity error will be reported later in ResultSymbol.
+                result.MergeEqual(resultWithSuffix);
+            }
+            else if (resultWithoutSuffixIsViable)
+            {
+                // single viable lookup symbol only found without Decorator suffix, return result.
+            }
+            else if (resultWithSuffixIsViable)
+            {
+                Debug.Assert(resultWithSuffix != null);
+
+                // Single viable lookup symbol only found with Decorator suffix, return resultWithSuffix.
+                result.SetFrom(resultWithSuffix);
+            }
+            else
+            {
+                // Both results are clear, non-viable or ambiguous.
+
+                if (!result.IsClear)
+                {
+                    if ((object)symbolWithoutSuffix != null) // was not ambiguous, but not viable
+                    {
+                        result.SetFrom(GenerateNonViableDecoratorTypeResult(symbolWithoutSuffix, result.Error, diagnose));
+                    }
+                }
+
+                if (resultWithSuffix != null)
+                {
+                    if (!resultWithSuffix.IsClear)
+                    {
+                        if ((object)symbolWithSuffix != null)
+                        {
+                            resultWithSuffix.SetFrom(GenerateNonViableDecoratorTypeResult(symbolWithSuffix, resultWithSuffix.Error, diagnose));
+                        }
+                    }
+
+                    result.MergePrioritized(resultWithSuffix);
+                }
+            }
+
+            resultWithSuffix?.Free();
+        }
+
+        private bool IsAmbiguousDecoratorTypeResult(LookupResult result, out Symbol resultSymbol)
+        {
+            resultSymbol = null;
+            var symbols = result.Symbols;
+
+            switch (symbols.Count)
+            {
+                case 0:
+                    return false;
+                case 1:
+                    resultSymbol = symbols[0];
+                    return false;
+                default:
+                    resultSymbol = ResolveMultipleSymbolsInDecoratorTypeLookup(symbols);
+                    return (object)resultSymbol == null;
+            }
+        }
+
+        private Symbol ResolveMultipleSymbolsInDecoratorTypeLookup(ArrayBuilder<Symbol> symbols)
+        {
+            Debug.Assert(symbols.Count >= 2);
+
+            var originalSymbols = symbols.ToImmutable();
+
+            for (int i = 0; i < symbols.Count; i++)
+            {
+                symbols[i] = UnwrapAliasNoDiagnostics(symbols[i]);
+            }
+
+            BestSymbolInfo secondBest;
+            BestSymbolInfo best = GetBestSymbolInfo(symbols, out secondBest);
+
+            Debug.Assert(!best.IsNone);
+            Debug.Assert(!secondBest.IsNone);
+
+            if (best.IsFromCompilation && !secondBest.IsFromCompilation)
+            {
+                var srcSymbol = symbols[best.Index];
+                var mdSymbol = symbols[secondBest.Index];
+
+                //if names match, arities match, and containing symbols match (recursively), ...
+                if (srcSymbol.ToDisplayString(SymbolDisplayFormat.QualifiedNameArityFormat) ==
+                    mdSymbol.ToDisplayString(SymbolDisplayFormat.QualifiedNameArityFormat))
+                {
+                    return originalSymbols[best.Index];
+                }
+            }
+
+            return null;
+        }
+
+        private bool IsSingleViableDecoratorType(LookupResult result, out Symbol symbol)
+        {
+            if (IsAmbiguousDecoratorTypeResult(result, out symbol))
+            {
+                return false;
+            }
+
+            if (result == null || result.Kind != LookupResultKind.Viable || (object)symbol == null)
+            {
+                return false;
+            }
+
+            DiagnosticInfo discarded = null;
+            return CheckDecoratorTypeViability(UnwrapAliasNoDiagnostics(symbol), diagnose: false, diagInfo: ref discarded);
+        }
+
+        private SingleLookupResult GenerateNonViableDecoratorTypeResult(Symbol symbol, DiagnosticInfo diagInfo, bool diagnose)
+        {
+            Debug.Assert((object)symbol != null);
+
+            symbol = UnwrapAliasNoDiagnostics(symbol);
+            CheckDecoratorTypeViability(symbol, diagnose, ref diagInfo);
+            return LookupResult.NotADecoratorType(symbol, diagInfo);
+        }
+
+        private bool CheckDecoratorTypeViability(Symbol symbol, bool diagnose, ref DiagnosticInfo diagInfo)
+        {
+            Debug.Assert((object)symbol != null);
+
+            if (symbol.Kind == SymbolKind.NamedType)
+            {
+                var namedType = (NamedTypeSymbol)symbol;
+                if (namedType.IsAbstract)
+                {
+                    // Decorator class cannot be abstract.
+                    diagInfo = diagnose ? new CSDiagnosticInfo(ErrorCode.ERR_AbstractDecoratorClass, symbol) : null;
+                    return false;
+                }
+                else
+                {
+                    HashSet<DiagnosticInfo> useSiteDiagnostics = null;
+
+                    NamedTypeSymbol decoratorBaseType = Compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator);
+                    if (namedType.IsDerivedFrom(decoratorBaseType, false, ref useSiteDiagnostics))
+                    {
+                        // Reuse existing diagnostic info.
+                        return true;
+                    }
+
+                    if (diagnose && !useSiteDiagnostics.IsNullOrEmpty())
+                    {
+                        foreach (var info in useSiteDiagnostics)
+                        {
+                            if (info.Severity == DiagnosticSeverity.Error)
+                            {
+                                diagInfo = info;
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            diagInfo = diagnose ? new CSDiagnosticInfo(ErrorCode.ERR_NotADecoratorClass, symbol) : null;
             return false;
         }
 

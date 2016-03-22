@@ -575,6 +575,10 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                 return isVerbatimIdentifier ? LookupOptions.VerbatimNameAttributeTypeOnly : LookupOptions.AttributeTypeOnly;
             }
+            else if (SyntaxFacts.IsDecoratorName(node))
+            {
+                return LookupOptions.DecoratorTypeOnly;
+            }
             else
             {
                 return LookupOptions.NamespacesOrTypesOnly;

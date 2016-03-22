@@ -40,6 +40,29 @@ namespace Microsoft.CodeAnalysis.CSharp
             return p != null && p.Name == node;
         }
 
+        public static bool IsDecoratorName(SyntaxNode node)
+        {
+            var parent = node.Parent;
+            if (parent == null || !IsName(node.Kind()))
+            {
+                return false;
+            }
+
+            switch (parent.Kind())
+            {
+                case QualifiedName:
+                    var qn = (QualifiedNameSyntax)parent;
+                    return qn.Right == node ? IsDecoratorName(parent) : false;
+
+                case AliasQualifiedName:
+                    var an = (AliasQualifiedNameSyntax)parent;
+                    return an.Name == node ? IsDecoratorName(parent) : false;
+            }
+
+            var p = node.Parent as DecoratorSyntax;
+            return p != null && p.Name == node;
+        }
+
         /// <summary>
         /// Returns true if the node is the object of an invocation expression.
         /// </summary>

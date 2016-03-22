@@ -131,6 +131,7 @@ static Microsoft.CodeAnalysis.CSharp.SyntaxFactory.XmlThreadSafetyElement() -> M
 static Microsoft.CodeAnalysis.CSharp.SyntaxFactory.XmlThreadSafetyElement(bool static, bool instance) -> Microsoft.CodeAnalysis.CSharp.Syntax.XmlEmptyElementSyntax
 static Microsoft.CodeAnalysis.CSharp.SyntaxFactory.XmlValueElement(Microsoft.CodeAnalysis.SyntaxList<Microsoft.CodeAnalysis.CSharp.Syntax.XmlNodeSyntax> content) -> Microsoft.CodeAnalysis.CSharp.Syntax.XmlElementSyntax
 static Microsoft.CodeAnalysis.CSharp.SyntaxFactory.XmlValueElement(params Microsoft.CodeAnalysis.CSharp.Syntax.XmlNodeSyntax[] content) -> Microsoft.CodeAnalysis.CSharp.Syntax.XmlElementSyntax
+static Microsoft.CodeAnalysis.CSharp.SyntaxFacts.IsDecoratorName(Microsoft.CodeAnalysis.SyntaxNode node) -> bool
 virtual Microsoft.CodeAnalysis.CSharp.CSharpSyntaxVisitor.VisitDecorator(Microsoft.CodeAnalysis.CSharp.Syntax.DecoratorSyntax node) -> void
 virtual Microsoft.CodeAnalysis.CSharp.CSharpSyntaxVisitor.VisitDecoratorArgument(Microsoft.CodeAnalysis.CSharp.Syntax.DecoratorArgumentSyntax node) -> void
 virtual Microsoft.CodeAnalysis.CSharp.CSharpSyntaxVisitor.VisitDecoratorArgumentList(Microsoft.CodeAnalysis.CSharp.Syntax.DecoratorArgumentListSyntax node) -> void
