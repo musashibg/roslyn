@@ -1317,6 +1317,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             CheckSequentialOnPartialType(diagnostics);
             CheckForProtectedInStaticClass(diagnostics);
             CheckForUnmatchedOperators(diagnostics);
+
+            // Decorators
+            HashSet<DiagnosticInfo> useSiteDiagnostics = null;
+            if (this is SourceNamedTypeSymbol
+                && this.IsDerivedFrom(DeclaringCompilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator), false, ref useSiteDiagnostics))
+            {
+                CheckDecoratorTypeSafety(diagnostics);
+            }
         }
 
         private void CheckMemberNamesDistinctFromType(DiagnosticBag diagnostics)
@@ -1848,6 +1856,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             // Equals and GetHashCode, or if Equals is overridden without GetHashCode.
 
             CheckForEqualityAndGetHashCode(diagnostics);
+        }
+
+        private void CheckDecoratorTypeSafety(DiagnosticBag diagnostics)
+        {
+            SourceMemberMethodSymbol decoratorMethod = ((SourceNamedTypeSymbol)this).FindDecoratorMethod();
+            if (decoratorMethod != null)
+            {
+                DecoratorMethodTypeChecker.PerformTypeCheck(DeclaringCompilation, decoratorMethod, diagnostics);
+            }
+
+            // TODO: Handle other decoration methods
         }
 
         private void CheckForUnmatchedOperator(DiagnosticBag diagnostics, string operatorName1, string operatorName2)

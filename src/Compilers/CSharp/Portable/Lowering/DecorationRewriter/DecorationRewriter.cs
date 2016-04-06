@@ -1,9 +1,7 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Symbols;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -40,6 +38,9 @@ namespace Microsoft.CodeAnalysis.CSharp
             Debug.Assert(factory.CurrentType == containingMethod.ContainingType);
             _diagnostics = diagnostics;
             _replacementSymbols = new Dictionary<Symbol, LocalSymbol>();
+
+            _flags = DecorationRewriterFlags.None;
+            _spliceOrdinal = 0;
         }
 
         public static BoundBlock Rewrite(
@@ -57,9 +58,19 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             try
             {
-                BoundStatement decoratorBody;
-                var decoratorMethod = GetDecoratorMethod(compilation, method, decoratorData, compilationState, diagnostics, out decoratorBody);
-                if (decoratorMethod == null || decoratorBody == null || decoratorBody.HasAnyErrors)
+                SourceMemberMethodSymbol decoratorMethod = GetDecoratorMethod(compilation, method, decoratorData, compilationState, diagnostics);
+                if (decoratorMethod == null)
+                {
+                    return methodBody;
+                }
+
+                BoundStatement decoratorBody = decoratorMethod.EarlyBoundBody;
+                if (decoratorBody == null)
+                {
+                    diagnostics.Add(ErrorCode.ERR_DecoratorMethodWithoutBody, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorMethod.ContainingType);
+                    return methodBody;
+                }
+                else if (decoratorBody.HasAnyErrors)
                 {
                     return methodBody;
                 }
@@ -152,12 +163,17 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public override BoundNode Visit(BoundNode node)
         {
+            if (node == null)
+            {
+                return null;
+            }
+
             if (node is BoundStatement)
             {
                 ArrayBuilder<BoundStatement> outerSplicedStatements = _splicedStatements;
 
                 _splicedStatements = new ArrayBuilder<BoundStatement>();
-                var rewrittenNode = base.Visit(node);
+                BoundNode rewrittenNode = base.Visit(node);
                 if (_splicedStatements.Count == 0)
                 {
                     _splicedStatements.Free();
@@ -192,7 +208,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             // References to the decorator object would be meaningless in the target method's context
             // Report an error and replace with a null literal just to preserve type safety
             _diagnostics.Add(ErrorCode.ERR_ThisReferenceInDecorator, node.Syntax.Location);
-            return new BoundLiteral(node.Syntax, ConstantValue.Null, node.Type);
+            return new BoundBadExpression(node.Syntax, LookupResultKind.Empty, ImmutableArray<Symbol>.Empty, ImmutableArray<BoundNode>.Empty, node.Type);
         }
 
         public override BoundNode VisitBlock(BoundBlock node)
@@ -245,7 +261,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 }
             }
 
-            if (IsBaseDecorationMethodCall(node))
+            if (IsBaseDecoratorMethodCall(node))
             {
                 _diagnostics.Add(ErrorCode.ERR_BaseDecoratorMethodCallNotSupported, node.Syntax.Location);
                 return new BoundBadExpression(node.Syntax, LookupResultKind.Empty, ImmutableArray<Symbol>.Empty, ImmutableArray<BoundNode>.Empty, node.Type);
@@ -397,7 +413,15 @@ namespace Microsoft.CodeAnalysis.CSharp
             // References to the decorator object would be meaningless in the target method's context
             // Report an error and replace with a null literal just to preserve type safety
             _diagnostics.Add(ErrorCode.ERR_ThisReferenceInDecorator, node.Syntax.Location);
-            return new BoundLiteral(node.Syntax, ConstantValue.Null, node.Type);
+            return new BoundBadExpression(node.Syntax, LookupResultKind.Empty, ImmutableArray<Symbol>.Empty, ImmutableArray<BoundNode>.Empty, node.Type);
+        }
+
+        public override BoundNode VisitUsingStatement(BoundUsingStatement node)
+        {
+            var declarationsOpt = (BoundMultipleLocalDeclarations)VisitWithExtraFlags(DecorationRewriterFlags.ProhibitSpliceLocation, node.DeclarationsOpt);
+            var expressionOpt = (BoundExpression)VisitWithExtraFlags(DecorationRewriterFlags.ProhibitSpliceLocation, node.ExpressionOpt);
+            var body = (BoundStatement)Visit(node.Body);
+            return node.Update(node.Locals, declarationsOpt, expressionOpt, node.IDisposableConversion, body);
         }
 
         public override BoundNode VisitWhileStatement(BoundWhileStatement node)
@@ -405,6 +429,18 @@ namespace Microsoft.CodeAnalysis.CSharp
             var condition = (BoundExpression)VisitWithExtraFlags(DecorationRewriterFlags.ProhibitSpliceLocation, node.Condition);
             var body = (BoundStatement)Visit(node.Body);
             return node.Update(condition, body, node.BreakLabel, node.ContinueLabel);
+        }
+
+        public override BoundNode VisitYieldBreakStatement(BoundYieldBreakStatement node)
+        {
+            _diagnostics.Add(ErrorCode.ERR_BadYieldInDecoratorMethod, node.Syntax.Location);
+            return new BoundBadStatement(node.Syntax, ImmutableArray<BoundNode>.Empty);
+        }
+
+        public override BoundNode VisitYieldReturnStatement(BoundYieldReturnStatement node)
+        {
+            _diagnostics.Add(ErrorCode.ERR_BadYieldInDecoratorMethod, node.Syntax.Location);
+            return new BoundBadStatement(node.Syntax, ImmutableArray<BoundNode>.Empty);
         }
 
         public BoundNode VisitWithExtraFlags(DecorationRewriterFlags extraFlags, BoundNode node)
@@ -424,67 +460,36 @@ namespace Microsoft.CodeAnalysis.CSharp
             MethodSymbol targetMethod,
             DecoratorData decoratorData,
             TypeCompilationState compilationState,
-            DiagnosticBag diagnostics,
-            out BoundStatement decoratorBody)
+            DiagnosticBag diagnostics)
         {
             var decoratorClass = decoratorData.DecoratorClass as SourceNamedTypeSymbol;
             if (decoratorClass == null)
             {
                 diagnostics.Add(ErrorCode.ERR_NonSourceDecoratorClass, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorClass);
-                decoratorBody = null;
                 return null;
             }
 
-            SourceMemberMethodSymbol decoratorMethod = FindDecoratorMethod(compilation, decoratorClass);
+            SourceMemberMethodSymbol decoratorMethod = decoratorClass.FindDecoratorMethod();
             while (decoratorMethod == null)
             {
                 decoratorClass = decoratorClass.BaseType as SourceNamedTypeSymbol;
                 if (decoratorData == null)
                 {
                     diagnostics.Add(ErrorCode.ERR_DecoratorDoesNotSupportMethods, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorClass, targetMethod);
-                    decoratorBody = null;
                     return null;
                 }
-                decoratorMethod = FindDecoratorMethod(compilation, decoratorClass);
+                decoratorMethod = decoratorClass.FindDecoratorMethod();
             }
-
-            var blockSyntax = decoratorMethod.BodySyntax as BlockSyntax;
-            if (blockSyntax == null)
-            {
-                diagnostics.Add(ErrorCode.ERR_DecoratorMethodWithoutBody, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorClass);
-                decoratorBody = null;
-                return null;
-            }
-
-            decoratorBody = MethodCompiler.BindMethodBody(decoratorMethod, compilationState, diagnostics);
             return decoratorMethod;
         }
 
-        private static SourceMemberMethodSymbol FindDecoratorMethod(
-            CSharpCompilation compilation,
-            SourceNamedTypeSymbol decoratorType)
+        private static bool CheckIsSpecificParameter(BoundExpression node, ParameterSymbol parameter)
         {
-            var candidateMethods = decoratorType.GetMembers("DecorateMethod");
-            if (candidateMethods.Length == 0)
+            while (node.Kind == BoundKind.Conversion)
             {
-                return null;
+                node = ((BoundConversion)node).Operand;
             }
-
-            foreach (SourceMemberMethodSymbol method in candidateMethods)
-            {
-                if (method.Arity == 0
-                    && method.IsOverride
-                    && method.ParameterCount == 3
-                    && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo)
-                    && method.Parameters[1].Type.IsObjectType()
-                    && method.Parameters[2].Type.IsArray()
-                    && ((ArrayTypeSymbol)method.Parameters[2].Type).ElementType.IsObjectType())
-                {
-                    return method;
-                }
-            }
-
-            return null;
+            return node.Kind == BoundKind.Parameter && ((BoundParameter)node).ParameterSymbol == parameter;
         }
 
         private LocalSymbol GetReplacementSymbol(Symbol originalSymbol, CSharpSyntaxNode syntax)
@@ -525,35 +530,27 @@ namespace Microsoft.CodeAnalysis.CSharp
         private bool IsSpliceLocation(BoundCall call)
         {
             MethodSymbol method = call.Method;
-            if (method.ContainingType.Equals(_compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodBase))
-                && method.Name == "Invoke"
-                && !method.IsStatic
-                && method.ParameterCount == 2
-                && method.ParameterTypes[0].IsObjectType()
-                && method.ParameterTypes[1].IsArray()
-                && ((ArrayTypeSymbol)method.ParameterTypes[1]).ElementType.IsObjectType())
+            if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
             {
                 // This is a call to MethodBase.Invoke(object obj, object[] parameters)
                 if (call.ReceiverOpt != null
-                    && call.ReceiverOpt is BoundParameter
-                    && ((BoundParameter)call.ReceiverOpt).ParameterSymbol == _decoratorMethod.Parameters[0]
-                    && call.Arguments[0] is BoundParameter
-                    && ((BoundParameter)call.Arguments[0]).ParameterSymbol == _decoratorMethod.Parameters[1]
-                    && (call.Arguments[1] is BoundParameter || call.Arguments[1] is BoundLocal))
+                    && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
+                    && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
+                    && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
                 {
                     return true;
                 }
                 else
                 {
                     // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
-                    // (as they might use a different thisObject, or the might refer to this method through a different local variable, leading to infinite recursion)
+                    // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
                     _diagnostics.Add(ErrorCode.ERR_InvalidInvokeInDecorator, call.Syntax.Location);
                 }
             }
             return false;
         }
 
-        private bool IsBaseDecorationMethodCall(BoundCall call)
+        private bool IsBaseDecoratorMethodCall(BoundCall call)
         {
             MethodSymbol method = call.Method;
             if (method.Name != _decoratorMethod.Name

@@ -246,7 +246,9 @@ namespace Microsoft.CodeAnalysis
         System_Runtime_GCLatencyMode,
         System_IFormatProvider,
 
+        // Decorators
         CSharp_Meta_Decorator,
+        CSharp_Meta_MetaPrimitives,
 
         Available,
         Last = Available - 1,
@@ -490,6 +492,7 @@ namespace Microsoft.CodeAnalysis
             "System.IFormatProvider",
 
             "CSharp.Meta.Decorator",
+            "CSharp.Meta.MetaPrimitives",
         };
 
         private readonly static Dictionary<string, WellKnownType> s_nameToTypeIdMap = new Dictionary<string, WellKnownType>((int)Count);
@@ -521,7 +524,7 @@ namespace Microsoft.CodeAnalysis
                 }
                 else if (typeId == WellKnownType.Last)
                 {
-                    typeIdName = "CSharp.Meta.Decorator";
+                    typeIdName = "CSharp.Meta.MetaPrimitives";
                 }
                 else
                 {

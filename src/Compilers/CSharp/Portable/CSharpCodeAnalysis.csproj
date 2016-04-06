@@ -542,6 +542,10 @@
     <Compile Include="Symbols\ConversionSignatureComparer.cs" />
     <Compile Include="Symbols\CustomModifier.cs" />
     <Compile Include="Symbols\Decorators\DecoratorData.cs" />
+    <Compile Include="Symbols\Decorators\DecoratorMethodTypeChecker.cs" />
+    <Compile Include="Symbols\Decorators\DecoratorMethodTypeCheckerFlags.cs" />
+    <Compile Include="Symbols\Decorators\DecoratorTypeExtensions.cs" />
+    <Compile Include="Symbols\Decorators\DecoratorUtils.cs" />
     <Compile Include="Symbols\DynamicTypeEraser.cs" />
     <Compile Include="Symbols\DynamicTypeSymbol.cs" />
     <Compile Include="Symbols\EnumConversions.cs" />

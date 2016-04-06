@@ -3,6 +3,6 @@
     internal enum DecorationRewriterFlags
     {
         None,
-        ProhibitSpliceLocation = 1 << 1,
+        ProhibitSpliceLocation = 1 << 0,
     }
 }

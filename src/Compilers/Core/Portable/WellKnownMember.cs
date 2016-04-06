@@ -51,6 +51,7 @@ namespace Microsoft.CodeAnalysis
 
         System_Type__GetTypeFromCLSID,
         System_Type__GetTypeFromHandle,
+        System_Type__IsAssignableFrom,
         System_Type__Missing,
 
         System_Reflection_AssemblyKeyFileAttribute__ctor,
@@ -58,7 +59,10 @@ namespace Microsoft.CodeAnalysis
 
         System_Reflection_MethodBase__GetMethodFromHandle,
         System_Reflection_MethodBase__GetMethodFromHandle2,
+        System_Reflection_MethodBase__Invoke,
+        System_Reflection_MethodBase__IsStatic,
         System_Reflection_MethodInfo__CreateDelegate,
+        System_Reflection_MethodInfo__ReturnType,
         System_Delegate__CreateDelegate,
         System_Delegate__CreateDelegate4,
         System_Reflection_FieldInfo__GetFieldFromHandle,
@@ -355,6 +359,13 @@ namespace Microsoft.CodeAnalysis
         System_Runtime_GCLatencyMode__SustainedLowLatency,
 
         System_String__Format_IFormatProvider,
+
+        // Decorators
+        CSharp_Meta_MetaPrimitives__CloneArguments,
+        CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray,
+        CSharp_Meta_MetaPrimitives__ParameterType,
+        CSharp_Meta_MetaPrimitives__ThisObjectType,
+
         Count
     }
 }

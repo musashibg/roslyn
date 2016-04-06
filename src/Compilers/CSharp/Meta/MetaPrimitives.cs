@@ -74,5 +74,23 @@ namespace CSharp.Meta
 
             return parameters[parameterIndex].ParameterType;
         }
+
+        /// <summary>
+        /// Returns the type of the this-reference of a method, or typeof(void) if the method is static. Used to introduce this-reference subtyping assertions in decorator method type checking.
+        /// </summary>
+        /// <param name="method">A method's runtime reflection information.</param>
+        /// <returns>The type of the this-reference of the method, or typeof(void) if it is static.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="method"/> is null.
+        /// </exception>
+        public static Type ThisObjectType(MethodBase method)
+        {
+            if (method == null)
+            {
+                throw new ArgumentNullException(nameof(method));
+            }
+
+            return method.IsStatic ? typeof(void) : method.DeclaringType;
+        }
     }
 }

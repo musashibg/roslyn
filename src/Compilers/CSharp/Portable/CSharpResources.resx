@@ -4703,7 +4703,7 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
     <value>Cannot apply decorator class '{0}' to method '{1}' because it does not support decoration of methods</value>
   </data>
   <data name="ERR_DecoratorMethodWithoutBody" xml:space="preserve">
-    <value>Cannot apply decorator class '{0}' because its decoration method has no body</value>
+    <value>The decorator method of decorator class '{0}' has no body</value>
   </data>
   <data name="ERR_DuplicateNamedDecoratorArgument" xml:space="preserve">
     <value>'{0}' duplicate named decorator argument</value>
@@ -4723,10 +4723,67 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_ThisReferenceInDecorator" xml:space="preserve">
     <value>Decoration methods cannot access the decorator object or its members</value>
   </data>
+  <data name="ERR_BadDecoratedMethodArgumentArrayIndex" xml:space="preserve">
+    <value>Decorated method argument arrays may only be indexed using a local variable</value>
+  </data>
+  <data name="ERR_BadYieldInDecoratorMethod" xml:space="preserve">
+    <value>Decorator methods should not contain yield statements</value>
+  </data>
   <data name="ERR_BaseDecoratorMethodCallNotSupported" xml:space="preserve">
     <value>Base decoration method calls are not currently supported</value>
   </data>
+  <data name="ERR_DecoratedDecoratorMethod" xml:space="preserve">
+    <value>Decorator methods cannot have decorators applied</value>
+  </data>
+  <data name="ERR_DecoratedMethodArgumentArrayAssignedToOrdinaryArray" xml:space="preserve">
+    <value>Decorated method argument arrays cannot be assigned to ordinary array variables</value>
+  </data>
+  <data name="ERR_DecoratedMethodArgumentArrayRequired" xml:space="preserve">
+    <value>Only an expression representing a decorator method argument array may be used here</value>
+  </data>
+  <data name="ERR_DecoratedMethodArgumentArrayVariableRequired" xml:space="preserve">
+    <value>Only a parameter or local variable containing a decorated method argument array may be passed here</value>
+  </data>
+  <data name="ERR_DecoratedMethodSpecialTypeInConditionalOperator" xml:space="preserve">
+    <value>Decorated method argument arrays, arguments and return values are only allowed in the branches of conditional expressions when typecasting to the expression's type is guaranteed to be safe</value>
+  </data>
+  <data name="ERR_DecoratorMethodParameterModification" xml:space="preserve">
+    <value>A decorator method's parameters cannot be modified</value>
+  </data>
+  <data name="ERR_InvalidDecoratedMethodArgumentArrayCast" xml:space="preserve">
+    <value>Typecasting of a decorated method argument array is not allowed</value>
+  </data>
+  <data name="ERR_InvalidDecoratedMethodArgumentArrayUse" xml:space="preserve">
+    <value>Decorated method argument arrays are not allowed in this location</value>
+  </data>
   <data name="ERR_InvalidSpliceLocation" xml:space="preserve">
     <value>Splicing of target method body is not allowed inside loop conditions/initializations/increments and catch block exception source and filter expressions</value>
+  </data>
+  <data name="ERR_LanguageFeatureNotSupportedInDecorator" xml:space="preserve">
+    <value>This language feature is not supported inside decorators</value>
+  </data>
+  <data name="ERR_OrdinaryArrayAssignedToDecoratedMethodArgumentArray" xml:space="preserve">
+    <value>Ordinary arrays cannot be assigned to decorated method argument array variables</value>
+  </data>
+  <data name="ERR_UnsafeDecoratedMethodArgumentCast" xml:space="preserve">
+    <value>Typecasting of a decorated method argument is only allowed when it is guaranteed to be safe</value>
+  </data>
+  <data name="ERR_UnsafeDecoratedMethodReturnValueCast" xml:space="preserve">
+    <value>Typecasting of a decorated method return value or direct use of its value is only allowed when it is guaranteed to be safe</value>
+  </data>
+  <data name="ERR_UnsafeDecoratedMethodReturnValueRefParameterUse" xml:space="preserve">
+    <value>Passing a decorated method return value variable by reference is only allowed when the parameter's type is guaranteed to be assignable to the decorated method's return type</value>
+  </data>
+  <data name="ERR_UnsafeDecoratedMethodThisObjectCast" xml:space="preserve">
+    <value>Typecasting of a decorated method this-reference or direct use of its value is only allowed when it is guaranteed to be safe</value>
+  </data>
+  <data name="ERR_UnsafeValueAssignedToDecoratedMethodArgument" xml:space="preserve">
+    <value>Assignment of values to decorated method arguments is only allowed when the value is guaranteed to be compatible</value>
+  </data>
+  <data name="ERR_UnsafeValueAssignedToDecoratedMethodReturnValue" xml:space="preserve">
+    <value>Assignment of values to decorated method return value variables is only allowed when the value is guaranteed to be compatible</value>
+  </data>
+  <data name="ERR_UnsafeValueReturnedByDecoratorMethod" xml:space="preserve">
+    <value>The value returned by a decorator method must be guaranteed to be assignable to the decorated method's return type</value>
   </data>
 </root>
