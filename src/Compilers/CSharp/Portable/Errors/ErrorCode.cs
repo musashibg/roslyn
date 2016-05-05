@@ -1270,9 +1270,12 @@ namespace Microsoft.CodeAnalysis.CSharp
         ERR_LanguageFeatureNotSupportedInDecorator = 7384,
         ERR_DecoratorMethodSpecialTypeInConditionalOperator = 7385,
         ERR_DecoratedDecoratorMethod = 7386,
+        ERR_StaticMetaException = 7387,
+        ERR_StaticNullReference = 7388,
+        ERR_StaticAmbiguousMatch = 7389,
+        ERR_StaticIndexOutOfBounds = 7390,
 
         ERR_InvalidInvokeInDecorator = 7400,
-        ERR_MultipleInvokesInDecorator = 7401,
         ERR_BaseDecoratorMethodCallNotSupported = 7402,
 
         // available 7403-8000

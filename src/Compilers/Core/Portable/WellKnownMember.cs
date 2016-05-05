@@ -10,6 +10,7 @@ namespace Microsoft.CodeAnalysis
 
         System_Array__get_Length,
         System_Array__Empty,
+        System_Array__Length,
 
         System_Convert__ToBooleanDecimal,
         System_Convert__ToBooleanInt32,
@@ -49,26 +50,59 @@ namespace Microsoft.CodeAnalysis
         System_FlagsAttribute__ctor,
         System_Guid__ctor,
 
+        System_Type__FullName,
         System_Type__GetTypeFromCLSID,
         System_Type__GetTypeFromHandle,
+        System_Type__IsAbstract,
+        System_Type__IsArray,
         System_Type__IsAssignableFrom,
+        System_Type__IsByRef,
+        System_Type__IsClass,
+        System_Type__IsConstructedGenericType,
+        System_Type__IsEnum,
+        System_Type__IsGenericParameter,
+        System_Type__IsGenericType,
+        System_Type__IsGenericTypeDefinition,
+        System_Type__IsInterface,
+        System_Type__IsNested,
+        System_Type__IsNestedAssembly,
+        System_Type__IsNestedPrivate,
+        System_Type__IsNestedPublic,
+        System_Type__IsNotPublic,
+        System_Type__IsPublic,
+        System_Type__IsSealed,
+        System_Type__IsValueType,
+        System_Type__IsVisible,
         System_Type__Missing,
+        System_Type__Name,
+        System_Type__Namespace,
 
         System_Reflection_AssemblyKeyFileAttribute__ctor,
         System_Reflection_AssemblyKeyNameAttribute__ctor,
 
+        System_Reflection_MemberInfo__DeclaringType,
+        System_Reflection_MemberInfo__Name,
         System_Reflection_MethodBase__GetMethodFromHandle,
         System_Reflection_MethodBase__GetMethodFromHandle2,
+        System_Reflection_MethodBase__GetParameters,
         System_Reflection_MethodBase__Invoke,
         System_Reflection_MethodBase__IsStatic,
         System_Reflection_MethodInfo__CreateDelegate,
         System_Reflection_MethodInfo__ReturnType,
+        System_Reflection_ParameterInfo__IsOut,
+        System_Reflection_ParameterInfo__Member,
+        System_Reflection_ParameterInfo__Name,
+        System_Reflection_ParameterInfo__ParameterType,
+        System_Reflection_ParameterInfo__Position,
         System_Delegate__CreateDelegate,
         System_Delegate__CreateDelegate4,
         System_Reflection_FieldInfo__GetFieldFromHandle,
         System_Reflection_FieldInfo__GetFieldFromHandle2,
 
         System_Reflection_Missing__Value,
+
+        System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T, // Works on MemberInfo
+        System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T2, // Works on ParameterInfo
 
         System_IEquatable_T__Equals,
 

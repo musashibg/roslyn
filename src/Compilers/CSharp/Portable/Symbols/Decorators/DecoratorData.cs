@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 
-namespace Microsoft.CodeAnalysis.CSharp.Symbols
+namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 {
     internal class DecoratorData
     {

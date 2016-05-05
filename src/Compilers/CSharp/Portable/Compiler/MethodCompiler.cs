@@ -15,6 +15,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Emit;
 using Roslyn.Utilities;
+using Microsoft.CodeAnalysis.CSharp.Meta;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -926,7 +927,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 if (!hasErrors && flowAnalyzedBody != null)
                 {
                     // Apply any decorators
-                    flowAnalyzedBody = DecorationPass.Rewrite(methodSymbol, flowAnalyzedBody, compilationState, diagsForCurrentMethod);
+                    flowAnalyzedBody = DecorationPass.Rewrite(methodSymbol, flowAnalyzedBody, compilationState, diagsForCurrentMethod, _cancellationToken);
                     hasErrors = diagsForCurrentMethod.HasAnyErrors();
                 }
 

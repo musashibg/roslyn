@@ -1,12 +1,13 @@
-﻿using Roslyn.Utilities;
+﻿using Microsoft.CodeAnalysis.CSharp.Meta;
+using Roslyn.Utilities;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Threading;
+using System.Linq;
 
-namespace Microsoft.CodeAnalysis.CSharp.Symbols
+namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 {
-    internal class DecoratorMethodTypeChecker : BoundTreeVisitor<ImmutableHashSet<DecoratorMethodTypeChecker.SubtypingAssertion>, DecoratorMethodTypeChecker.DecoratorTypingResult>
+    internal class DecoratorMethodTypeChecker : BoundTreeVisitor<ImmutableHashSet<SubtypingAssertion>, DecoratorTypingResult>
     {
         private readonly CSharpCompilation _compilation;
         private readonly SourceMemberMethodSymbol _decoratorMethod;
@@ -17,8 +18,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private ImmutableHashSet<LocalSymbol> _blacklistedLocals;
         private ImmutableDictionary<Symbol, ExtendedTypeInfo> _variableTypes;
         private ImmutableHashSet<Symbol> _outerScopeVariables;
-        // TODO: Remove this when multiple splices are allowed
-        private int _spliceOrdinal;
 
         public DecoratorMethodTypeChecker(
             CSharpCompilation compilation,
@@ -40,7 +39,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             _outerScopeVariables = ImmutableHashSet.Create<Symbol>();
 
             _flags = DecoratorMethodTypeCheckerFlags.None;
-            _spliceOrdinal = 0;
         }
 
         public static void PerformTypeCheck(
@@ -56,7 +54,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
             var typeChecker = new DecoratorMethodTypeChecker(compilation, decoratorMethod, diagnostics);
 
-            var decoratorBody = decoratorMethod.EarlyBoundBody;
+            BoundBlock decoratorBody = decoratorMethod.EarlyBoundBody;
             if (decoratorBody == null)
             {
                 diagnostics.Add(ErrorCode.ERR_DecoratorMethodWithoutBody, decoratorMethod.SyntaxNode.Location, decoratorMethod.ContainingType);
@@ -95,7 +93,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitAnonymousObjectCreationExpression(BoundAnonymousObjectCreationExpression node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Arguments, ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.Constructor, node.Arguments, default(ImmutableArray<RefKind>), ref subtypingAssertions);
             isSuccessful &= VisitList(node.Declarations, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
@@ -139,7 +137,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 }
             }
             bool isSuccessful = expressionTypingResult.IsSuccessful;
-            isSuccessful &= VisitList(node.Indices, ref subtypingAssertions);
+            isSuccessful &= VisitExpressions(node.Indices, ref subtypingAssertions);
 
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
@@ -159,7 +157,41 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitArrayInitialization(BoundArrayInitialization node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Initializers, ref subtypingAssertions);
+            bool isSuccessful = true;
+            for (int i = 0; i < node.Initializers.Length; i++)
+            {
+                BoundExpression argument = node.Initializers[i];
+                DecoratorTypingResult argumentTypingResult = Visit(argument, subtypingAssertions);
+
+                subtypingAssertions = argumentTypingResult.UpdatedSubtypingAssertions;
+
+                ExtendedTypeInfo argumentType = argumentTypingResult.Type;
+                if (!argumentType.IsOrdinaryType)
+                {
+                    switch (argumentType.Kind)
+                    {
+                        case ExtendedTypeKind.ThisObject:
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(argument.Type), argumentType, subtypingAssertions))
+                            {
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodThisObjectCast, argument);
+                            }
+                            break;
+
+                        case ExtendedTypeKind.ArgumentArray:
+                            // Argument arrays cannot be passed to array initializers
+                            argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, argument);
+                            break;
+
+                        case ExtendedTypeKind.ReturnValue:
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(argument.Type), argumentType, subtypingAssertions))
+                            {
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueCast, argument);
+                            }
+                            break;
+                    }
+                }
+                isSuccessful &= argumentTypingResult.IsSuccessful;
+            }
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -372,7 +404,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
             #region Handle special method invocations
 
-            if (IsSpliceLocation(node))
+            if (CheckIsSpliceLocation(node))
             {
                 if (_flags.HasFlag(DecoratorMethodTypeCheckerFlags.ProhibitSpliceLocation))
                 {
@@ -391,22 +423,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                         argumentArrayArgument);
                 }
 
-                // TODO: Remove when multiple splice locations are supported
-                if (_spliceOrdinal > 0)
-                {
-                    _diagnostics.Add(ErrorCode.ERR_MultipleInvokesInDecorator, node.Syntax.Location);
-                    return new DecoratorTypingResult(false, ExtendedTypeInfo.CreateReturnValueType(_compilation, false), subtypingAssertions);
-                }
-
-                _spliceOrdinal++;
-
                 return new DecoratorTypingResult(
                     argumentArrayArgumentTypingResult.IsSuccessful,
                     ExtendedTypeInfo.CreateReturnValueType(_compilation, false),
                     argumentArrayArgumentTypingResult.UpdatedSubtypingAssertions);
             }
 
-            if (IsBaseDecoratorMethodCall(node))
+            if (CheckIsBaseDecoratorMethodCall(node))
             {
                 // Base method calls are not allowed
                 _diagnostics.Add(ErrorCode.ERR_BaseDecoratorMethodCallNotSupported, node.Syntax.Location);
@@ -484,76 +507,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 isSuccessful &= receiverTypingResult.IsSuccessful;
             }
 
-            for (int i = 0; i < method.ParameterCount; i++)
-            {
-                BoundExpression argument = node.Arguments[i];
-                DecoratorTypingResult argumentTypingResult = Visit(argument, subtypingAssertions);
-
-                subtypingAssertions = argumentTypingResult.UpdatedSubtypingAssertions;
-
-                // If the argument is passed as a ref or out argument, it should not be any of the decorator method parameters, and if it is a local, it should be invalidated
-                RefKind argumentRefKind = node.ArgumentRefKindsOpt.IsDefault
-                                            ? RefKind.None
-                                            : node.ArgumentRefKindsOpt[i];
-                if (argumentRefKind != RefKind.None)
-                {
-                    switch (argument.Kind)
-                    {
-                        case BoundKind.Parameter:
-                            if (_decoratorMethod.Parameters.Contains(((BoundParameter)argument).ParameterSymbol))
-                            {
-                                _diagnostics.Add(ErrorCode.ERR_DecoratorMethodParameterModification, argument.Syntax.Location);
-                                argumentTypingResult = argumentTypingResult.WithIsSuccessful(false);
-                            }
-                            break;
-
-                        case BoundKind.Local:
-                            AddInvalidatedLocal(((BoundLocal)argument).LocalSymbol, ref subtypingAssertions);
-                            break;
-                    }
-                }
-
-                ExtendedTypeInfo argumentType = argumentTypingResult.Type;
-                if (!argumentType.IsOrdinaryType)
-                {
-                    switch (argumentType.Kind)
-                    {
-                        case ExtendedTypeKind.ThisObject:
-                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(method.ParameterTypes[i]), argumentType, subtypingAssertions))
-                            {
-                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodThisObjectCast, argument);
-                            }
-                            break;
-
-                        case ExtendedTypeKind.ArgumentArray:
-                            // Argument arrays cannot be passed to arbitrary method calls
-                            argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, argument);
-                            break;
-
-                        case ExtendedTypeKind.Parameter:
-                            // Decorated method argument expressions should always be indexings of an argument array, so they cannot be passed as ref or out arguments according to C#'s syntax
-                            Debug.Assert(argumentRefKind == RefKind.None);
-                            break;
-
-                        case ExtendedTypeKind.ReturnValue:
-                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(method.ParameterTypes[i]), argumentType, subtypingAssertions))
-                            {
-                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueCast, argument);
-                            }
-
-                            if (argumentRefKind != RefKind.None)
-                            {
-                                // If a return value variable is used as a ref or out argument, the call parameter's type needs to be assignable to the decorated method's return type
-                                if (!CheckSpecialTypeIsAssignableFrom(argumentType, new ExtendedTypeInfo(method.ParameterTypes[i]), subtypingAssertions))
-                                {
-                                    argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueRefParameterUse, argument);
-                                }
-                            }
-                            break;
-                    }
-                }
-                isSuccessful &= argumentTypingResult.IsSuccessful;
-            }
+            isSuccessful &= VisitArguments(method, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
 
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
@@ -605,13 +559,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitCollectionElementInitializer(BoundCollectionElementInitializer node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Arguments, ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.AddMethod, node.Arguments, default(ImmutableArray<RefKind>), ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
         public override DecoratorTypingResult VisitCollectionInitializerExpression(BoundCollectionInitializerExpression node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Initializers, ref subtypingAssertions);
+            bool isSuccessful = VisitExpressions(node.Initializers, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -783,7 +737,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitDynamicCollectionElementInitializer(BoundDynamicCollectionElementInitializer node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Arguments, ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.ApplicableMethods, node.Arguments, default(ImmutableArray<RefKind>), ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -797,7 +751,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 isSuccessful &= receiverTypingResult.IsSuccessful;
                 subtypingAssertions = receiverTypingResult.UpdatedSubtypingAssertions;
             }
-            isSuccessful &= VisitList(node.Arguments, ref subtypingAssertions);
+            isSuccessful &= VisitArguments(node.ApplicableIndexers, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -807,7 +761,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             bool isSuccessful = expressionTypingResult.IsSuccessful;
             subtypingAssertions = expressionTypingResult.UpdatedSubtypingAssertions;
 
-            isSuccessful &= VisitList(node.Arguments, ref subtypingAssertions);
+            isSuccessful &= VisitArguments(node.ApplicableMethods, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
 
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
@@ -820,7 +774,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitDynamicObjectCreationExpression(BoundDynamicObjectCreationExpression node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Arguments, ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.ApplicableMethods, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
 
             BoundExpression initializerExpressionOpt = node.InitializerExpressionOpt;
             if (initializerExpressionOpt != null)
@@ -1087,13 +1041,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 // Argument arrays should not have indexers (array access is handled in VisitArrayAccess)
                 Debug.Assert(receiverTypingResult.Type.Kind != ExtendedTypeKind.ArgumentArray);
             }
-            isSuccessful &= VisitList(node.Arguments, ref subtypingAssertions);
+            isSuccessful &= VisitArguments(node.Indexer, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
         public override DecoratorTypingResult VisitInterpolatedString(BoundInterpolatedString node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Parts, ref subtypingAssertions);
+            bool isSuccessful = VisitExpressions(node.Parts, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -1202,10 +1156,19 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             if (initializerOpt != null)
             {
                 DecoratorTypingResult initializerTypingResult = VisitAndCleanUpInvalidatedLocals(initializerOpt, subtypingAssertions);
-                localDeclarationTypingResult = localDeclarationTypingResult.Update(initializerTypingResult.IsSuccessful, localExtendedType, initializerTypingResult.UpdatedSubtypingAssertions);
+
+                // Set the declaration's type to the variable's type temporarily, so that we can validate the assignment if it is a special type
+                localDeclarationTypingResult = localDeclarationTypingResult.Update(initializerTypingResult.IsSuccessful, localExtendedType, localDeclarationTypingResult.UpdatedSubtypingAssertions);
 
                 ValidateSpecialTypeAssignment(ref localDeclarationTypingResult, ref initializerTypingResult, initializerTypingResult.UpdatedSubtypingAssertions, node);
+                subtypingAssertions = localDeclarationTypingResult.UpdatedSubtypingAssertions;
             }
+
+            bool argumentsSuccessful = VisitList(node.ArgumentsOpt, ref subtypingAssertions);
+            localDeclarationTypingResult = localDeclarationTypingResult.Update(
+                localDeclarationTypingResult.IsSuccessful && argumentsSuccessful,
+                null,
+                subtypingAssertions);
 
             return localDeclarationTypingResult;
         }
@@ -1303,7 +1266,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitNameOfOperator(BoundNameOfOperator node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            DecoratorTypingResult argumentTypingResult = Visit(node, subtypingAssertions);
+            DecoratorTypingResult argumentTypingResult = Visit(node.Argument, subtypingAssertions);
             Debug.Assert(subtypingAssertions == argumentTypingResult.UpdatedSubtypingAssertions);
             return new DecoratorTypingResult(argumentTypingResult.IsSuccessful, new ExtendedTypeInfo(node.Type), argumentTypingResult.UpdatedSubtypingAssertions);
         }
@@ -1357,7 +1320,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitObjectCreationExpression(BoundObjectCreationExpression node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Arguments, ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.Constructor, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
 
             BoundExpression initializerExpressionOpt = node.InitializerExpressionOpt;
             if (initializerExpressionOpt != null)
@@ -1372,13 +1335,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitObjectInitializerExpression(BoundObjectInitializerExpression node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Initializers, ref subtypingAssertions);
+            bool isSuccessful = VisitExpressions(node.Initializers, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
         public override DecoratorTypingResult VisitObjectInitializerMember(BoundObjectInitializerMember node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.Arguments, ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.MemberSymbol, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -1494,19 +1457,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitPseudoVariable(BoundPseudoVariable node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            ExtendedTypeInfo localType;
-            if (_variableTypes.TryGetValue(node.LocalSymbol, out localType))
-            {
-                // The ordinary type of the local variable obtained from its declaration should match the bound local's type
-                Debug.Assert(node.Type == localType.OrdinaryType);
-
-                return new DecoratorTypingResult(true, localType, subtypingAssertions);
-            }
-            else
-            {
-                _diagnostics.Add(ErrorCode.ERR_NameNotInContext, node.Syntax.Location, node.LocalSymbol.Name);
-                return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
-            }
+            // Such nodes should only exist after lowering of the original source code
+            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecoratorTypingResult VisitQueryClause(BoundQueryClause node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
@@ -1722,7 +1674,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override DecoratorTypingResult VisitTryStatement(BoundTryStatement node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            DecoratorTypingResult tryBlockTypingResult = Visit(node, subtypingAssertions);
+            DecoratorTypingResult tryBlockTypingResult = Visit(node.TryBlock, subtypingAssertions);
             bool isSuccessful = tryBlockTypingResult.IsSuccessful;
 
             ImmutableHashSet<SubtypingAssertion> preCatchSubtypingAssertions = tryBlockTypingResult.UpdatedSubtypingAssertions;
@@ -1920,6 +1872,174 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return typingResult;
         }
 
+        public bool VisitArguments(
+            IEnumerable<Symbol> applicableMethodsOrProperties,
+            ImmutableArray<BoundExpression> arguments,
+            ImmutableArray<RefKind> argumentRefKindsOpt,
+            ref ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
+        {
+            bool isSuccessful = true;
+            foreach (Symbol methodOrProperty in applicableMethodsOrProperties)
+            {
+                isSuccessful &= VisitArguments(methodOrProperty, arguments, argumentRefKindsOpt, ref subtypingAssertions);
+            }
+            return isSuccessful;
+        }
+
+        public bool VisitList<T>(ImmutableArray<T> list, ref ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
+            where T : BoundNode
+        {
+            bool isSuccessful = true;
+            if (!list.IsDefaultOrEmpty)
+            {
+                for (int i = 0; i < list.Length; i++)
+                {
+                    DecoratorTypingResult typingResult = Visit(list[i], subtypingAssertions);
+                    isSuccessful &= typingResult.IsSuccessful;
+                    subtypingAssertions = typingResult.UpdatedSubtypingAssertions;
+                }
+            }
+            return isSuccessful;
+        }
+
+        public bool VisitArguments(
+            Symbol methodOrProperty,
+            ImmutableArray<BoundExpression> arguments,
+            ImmutableArray<RefKind> argumentRefKindsOpt,
+            ref ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
+        {
+            Debug.Assert(methodOrProperty == null || methodOrProperty is MethodSymbol || methodOrProperty is PropertySymbol);
+
+            ImmutableArray<TypeSymbol> parameterTypes;
+            if (methodOrProperty == null)
+            {
+                parameterTypes = Enumerable.Repeat<TypeSymbol>(_compilation.ObjectType, arguments.Length).ToImmutableArray();
+            }
+            else if (methodOrProperty is MethodSymbol)
+            {
+                parameterTypes = ((MethodSymbol)methodOrProperty).ParameterTypes;
+            }
+            else if (methodOrProperty is PropertySymbol)
+            {
+                parameterTypes = ((PropertySymbol)methodOrProperty).ParameterTypes;
+            }
+
+            bool isSuccessful = true;
+            for (int i = 0; i < arguments.Length; i++)
+            {
+                BoundExpression argument = arguments[i];
+                DecoratorTypingResult argumentTypingResult = Visit(argument, subtypingAssertions);
+
+                subtypingAssertions = argumentTypingResult.UpdatedSubtypingAssertions;
+
+                // If the argument is passed as a ref or out argument, it should not be any of the decorator method parameters, and if it is a local, it should be invalidated
+                RefKind argumentRefKind = argumentRefKindsOpt.IsDefault
+                                            ? RefKind.None
+                                            : argumentRefKindsOpt[i];
+                if (argumentRefKind != RefKind.None)
+                {
+                    switch (argument.Kind)
+                    {
+                        case BoundKind.Parameter:
+                            if (_decoratorMethod.Parameters.Contains(((BoundParameter)argument).ParameterSymbol))
+                            {
+                                _diagnostics.Add(ErrorCode.ERR_DecoratorMethodParameterModification, argument.Syntax.Location);
+                                argumentTypingResult = argumentTypingResult.WithIsSuccessful(false);
+                            }
+                            break;
+
+                        case BoundKind.Local:
+                            AddInvalidatedLocal(((BoundLocal)argument).LocalSymbol, ref subtypingAssertions);
+                            break;
+                    }
+                }
+
+                ExtendedTypeInfo argumentType = argumentTypingResult.Type;
+                if (!argumentType.IsOrdinaryType)
+                {
+                    switch (argumentType.Kind)
+                    {
+                        case ExtendedTypeKind.ThisObject:
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterTypes[i]), argumentType, subtypingAssertions))
+                            {
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodThisObjectCast, argument);
+                            }
+                            break;
+
+                        case ExtendedTypeKind.ArgumentArray:
+                            // Argument arrays cannot be passed to arbitrary method or indexer calls
+                            argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, argument);
+                            break;
+
+                        case ExtendedTypeKind.Parameter:
+                            // Decorated method argument expressions should always be indexings of an argument array, so they cannot be passed as ref or out arguments according to C#'s syntax
+                            Debug.Assert(argumentRefKind == RefKind.None);
+                            break;
+
+                        case ExtendedTypeKind.ReturnValue:
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterTypes[i]), argumentType, subtypingAssertions))
+                            {
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueCast, argument);
+                            }
+
+                            if (argumentRefKind != RefKind.None)
+                            {
+                                // If a return value variable is used as a ref or out argument, the call parameter's type needs to be assignable to the decorated method's return type
+                                if (!CheckSpecialTypeIsAssignableFrom(argumentType, new ExtendedTypeInfo(parameterTypes[i]), subtypingAssertions))
+                                {
+                                    argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueRefParameterUse, argument);
+                                }
+                            }
+                            break;
+                    }
+                }
+                isSuccessful &= argumentTypingResult.IsSuccessful;
+            }
+            return isSuccessful;
+        }
+
+        public bool VisitExpressions(ImmutableArray<BoundExpression> expressions, ref ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
+        {
+            bool isSuccessful = true;
+            for (int i = 0; i < expressions.Length; i++)
+            {
+                BoundExpression expression = expressions[i];
+                DecoratorTypingResult expressionTypingResult = Visit(expression, subtypingAssertions);
+
+                subtypingAssertions = expressionTypingResult.UpdatedSubtypingAssertions;
+
+                ExtendedTypeInfo argumentType = expressionTypingResult.Type;
+                if (!argumentType.IsOrdinaryType)
+                {
+                    switch (argumentType.Kind)
+                    {
+                        case ExtendedTypeKind.ThisObject:
+                            // Ensure that a this-reference is assignable to the expression's ordinary type
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(expression.Type), argumentType, subtypingAssertions))
+                            {
+                                expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodThisObjectCast, expression);
+                            }
+                            break;
+
+                        case ExtendedTypeKind.ArgumentArray:
+                            // Argument arrays cannot be passed to arbitrary method calls
+                            expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, expression);
+                            break;
+
+                        case ExtendedTypeKind.ReturnValue:
+                            // Ensure that a return value is assignable to the expression's ordinary type
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(expression.Type), argumentType, subtypingAssertions))
+                            {
+                                expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueCast, expression);
+                            }
+                            break;
+                    }
+                }
+                isSuccessful &= expressionTypingResult.IsSuccessful;
+            }
+            return isSuccessful;
+        }
+
         private static ImmutableHashSet<SubtypingAssertion> EmptyAssertions
         {
             get { return ImmutableHashSet.Create<SubtypingAssertion>(SubtypingAssertionComparer.Singleton); }
@@ -2033,7 +2153,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     if (targetType.Kind == ExtendedTypeKind.OrdinaryType
                         && subtypingAssertion.Supertype.Kind == ExtendedTypeKind.OrdinaryType)
                     {
-                        if (DecoratorUtils.CheckTypeIsAssignableFrom(targetType.OrdinaryType, subtypingAssertion.Supertype.OrdinaryType))
+                        if (MetaUtils.CheckTypeIsAssignableFrom(targetType.OrdinaryType, subtypingAssertion.Supertype.OrdinaryType))
                         {
                             return true;
                         }
@@ -2065,7 +2185,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     if (sourceType.Kind == ExtendedTypeKind.OrdinaryType
                         && subtypingAssertion.Subtype.Kind == ExtendedTypeKind.OrdinaryType)
                     {
-                        if (DecoratorUtils.CheckTypeIsAssignableFrom(subtypingAssertion.Subtype.OrdinaryType, sourceType.OrdinaryType))
+                        if (MetaUtils.CheckTypeIsAssignableFrom(subtypingAssertion.Subtype.OrdinaryType, sourceType.OrdinaryType))
                         {
                             return true;
                         }
@@ -2089,23 +2209,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return node.Kind == BoundKind.Parameter && ((BoundParameter)node).ParameterSymbol == parameter;
         }
 
-        private bool VisitList<T>(ImmutableArray<T> list, ref ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
-            where T : BoundNode
-        {
-            bool isSuccessful = true;
-            if (!list.IsDefault)
-            {
-                for (int i = 0; i < list.Length; i++)
-                {
-                    DecoratorTypingResult typingResult = Visit(list[i], subtypingAssertions);
-                    isSuccessful &= typingResult.IsSuccessful;
-                    subtypingAssertions = typingResult.UpdatedSubtypingAssertions;
-                }
-            }
-            return isSuccessful;
-        }
-
-        private bool IsSpliceLocation(BoundCall call)
+        private bool CheckIsSpliceLocation(BoundCall call)
         {
             MethodSymbol method = call.Method;
             if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
@@ -2128,7 +2232,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return false;
         }
 
-        private bool IsBaseDecoratorMethodCall(BoundCall call)
+        private bool CheckIsBaseDecoratorMethodCall(BoundCall call)
         {
             MethodSymbol method = call.Method;
             if (method.Name != _decoratorMethod.Name
@@ -2444,391 +2548,5 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
             return unambiguousType;
         }
-
-        #region Extended types
-
-        internal enum ExtendedTypeKind
-        {
-            OrdinaryType,
-            ThisObject,
-            ArgumentArray,
-            Parameter,
-            ReturnValue,
-        }
-
-        internal class ExtendedTypeInfo
-        {
-            private readonly ExtendedTypeKind _kind;
-            private readonly TypeSymbol _ordinaryType;
-            private readonly bool _isAmbiguous;
-            private readonly LocalSymbol _parameterIndexLocal;
-            private readonly Symbol _rootSymbol;
-
-            public ExtendedTypeKind Kind
-            {
-                get { return _kind; }
-            }
-
-            public TypeSymbol OrdinaryType
-            {
-                get { return _ordinaryType; }
-            }
-
-            public bool IsAmbiguous
-            {
-                get { return _isAmbiguous; }
-            }
-
-            public LocalSymbol ParameterIndexLocal
-            {
-                get { return _parameterIndexLocal; }
-            }
-
-            public Symbol RootSymbol
-            {
-                get { return _rootSymbol; }
-            }
-
-            public bool IsOrdinaryType
-            {
-                get
-                {
-                    return Kind == ExtendedTypeKind.OrdinaryType;
-                }
-            }
-
-            public ExtendedTypeInfo(TypeSymbol ordinaryType)
-            {
-                _kind = ExtendedTypeKind.OrdinaryType;
-                _ordinaryType = ordinaryType;
-                _isAmbiguous = false;
-                _parameterIndexLocal = null;
-            }
-
-            public ExtendedTypeInfo(ExtendedTypeKind kind, TypeSymbol ordinaryType, bool isAmbiguous, LocalSymbol parameterIndexLocal = null, Symbol rootSymbol = null)
-            {
-                Debug.Assert(kind != ExtendedTypeKind.Parameter || parameterIndexLocal != null);
-                Debug.Assert(!IsAmbiguous || rootSymbol != null);
-
-                _kind = kind;
-                _ordinaryType = ordinaryType;
-                _isAmbiguous = isAmbiguous;
-                _parameterIndexLocal = parameterIndexLocal;
-                _rootSymbol = rootSymbol;
-            }
-
-            public static ExtendedTypeInfo CreateThisObjectType(CSharpCompilation compilation)
-            {
-                return new ExtendedTypeInfo(ExtendedTypeKind.ThisObject, compilation.ObjectType, false);
-            }
-
-            public static ExtendedTypeInfo CreateArgumentArrayType(CSharpCompilation compilation, bool isAmbiguous, Symbol rootSymbol = null)
-            {
-                TypeSymbol objectArrayType = compilation.CreateArrayTypeSymbol(compilation.ObjectType);
-                return new ExtendedTypeInfo(ExtendedTypeKind.ArgumentArray, objectArrayType, isAmbiguous, rootSymbol: rootSymbol);
-            }
-
-            public static ExtendedTypeInfo CreateParameterType(CSharpCompilation compilation, LocalSymbol parameterIndexLocal)
-            {
-                return new ExtendedTypeInfo(ExtendedTypeKind.Parameter, compilation.ObjectType, false, parameterIndexLocal);
-            }
-
-            public static ExtendedTypeInfo CreateReturnValueType(CSharpCompilation compilation, bool isAmbiguous, Symbol rootSymbol = null)
-            {
-                TypeSymbol objectType = compilation.ObjectType;
-                return new ExtendedTypeInfo(ExtendedTypeKind.ReturnValue, objectType, isAmbiguous, rootSymbol: rootSymbol);
-            }
-
-            public bool MatchesSpecialType(ExtendedTypeInfo other)
-            {
-                return Kind == other.Kind && ParameterIndexLocal == other.ParameterIndexLocal;
-            }
-
-            public ExtendedTypeInfo UpdateToUnambiguousOrdinaryType()
-            {
-                Debug.Assert(IsAmbiguous);
-
-                return new ExtendedTypeInfo(OrdinaryType);
-            }
-
-            public ExtendedTypeInfo UpdateToUnambiguousSpecialType()
-            {
-                Debug.Assert(IsAmbiguous);
-
-                return new ExtendedTypeInfo(Kind, OrdinaryType, false, ParameterIndexLocal);
-            }
-        }
-
-        internal struct SubtypingAssertion
-        {
-            public readonly ExtendedTypeInfo Supertype;
-            public readonly ExtendedTypeInfo Subtype;
-
-            public SubtypingAssertion(ExtendedTypeInfo supertype, ExtendedTypeInfo subtype)
-            {
-                Supertype = supertype;
-                Subtype = subtype;
-            }
-        }
-
-        internal class SubtypingAssertionComparer : IEqualityComparer<SubtypingAssertion>
-        {
-            private static SubtypingAssertionComparer _singleton;
-
-            public static SubtypingAssertionComparer Singleton
-            {
-                get
-                {
-                    if (_singleton == null)
-                    {
-                        var singleton = new SubtypingAssertionComparer();
-                        Interlocked.CompareExchange(ref _singleton, singleton, null);
-                    }
-                    return _singleton;
-                }
-            }
-
-            private SubtypingAssertionComparer()
-            {
-            }
-
-            public bool Equals(SubtypingAssertion x, SubtypingAssertion y)
-            {
-                ExtendedTypeInfo xSupertype = x.Supertype;
-                ExtendedTypeInfo xSubtype = x.Subtype;
-                ExtendedTypeInfo ySupertype = y.Supertype;
-                ExtendedTypeInfo ySubtype = y.Subtype;
-                return xSupertype.Kind == ySupertype.Kind
-                       && xSupertype.OrdinaryType == ySupertype.OrdinaryType
-                       && xSupertype.ParameterIndexLocal == ySupertype.ParameterIndexLocal
-                       && xSubtype.Kind == ySubtype.Kind
-                       && xSubtype.OrdinaryType == ySubtype.OrdinaryType
-                       && xSubtype.ParameterIndexLocal == ySubtype.ParameterIndexLocal;
-            }
-
-            public int GetHashCode(SubtypingAssertion obj)
-            {
-                return (int)obj.Supertype.Kind * 673
-                       + obj.Supertype.OrdinaryType.GetHashCode() * 877
-                       + (obj.Supertype.ParameterIndexLocal?.GetHashCode() ?? 0) * 569
-                       + (int)obj.Subtype.Kind * 1193
-                       + obj.Subtype.OrdinaryType.GetHashCode() * 397
-                       + (obj.Subtype.ParameterIndexLocal?.GetHashCode() ?? 0) * 67;
-            }
-        }
-
-        //internal class CompoundExtendedType
-        //{
-        //    private readonly ImmutableArray<ExtendedTypeInfo> _candidateTypes;
-
-        //    public ImmutableArray<ExtendedTypeInfo> CandidateTypes
-        //    {
-        //        get { return _candidateTypes; }
-        //    }
-
-        //    public bool IsAmbiguous
-        //    {
-        //        get
-        //        {
-        //            return CandidateTypes.Length > 1;
-        //        }
-        //    }
-
-        //    public bool IsOrdinaryType
-        //    {
-        //        get
-        //        {
-        //            return !IsAmbiguous && CandidateTypes[0].Kind == ExtendedTypeKind.OrdinaryType;
-        //        }
-        //    }
-
-        //    public TypeSymbol OrdinaryType
-        //    {
-        //        get
-        //        {
-        //            return CandidateTypes[0].OrdinaryType;
-        //        }
-        //    }
-
-        //    public CompoundExtendedType(params ExtendedTypeInfo[] candidateTypes)
-        //    {
-        //        // We should have at least one candidate type, and all candidate types should have the same ordinary type
-        //        Debug.Assert(candidateTypes != null && candidateTypes.Length > 0);
-        //        Debug.Assert(candidateTypes.Skip(1).All(ct => ct.OrdinaryType == candidateTypes[0].OrdinaryType));
-
-        //        _candidateTypes = candidateTypes.ToImmutableArray();
-        //    }
-
-        //    public ExtendedTypeInfo GetSpecialType()
-        //    {
-        //        Debug.Assert(!IsOrdinaryType);
-
-        //        return CandidateTypes.First(ct => ct.Kind != ExtendedTypeKind.OrdinaryType);
-        //    }
-
-        //    public static CompoundExtendedType CreateOrdinaryType(TypeSymbol ordinaryType)
-        //    {
-        //        return new CompoundExtendedType(new ExtendedTypeInfo(ordinaryType));
-        //    }
-
-        //    public static CompoundExtendedType CreateArgumentArrayType(CSharpCompilation compilation, bool isAmbiguous)
-        //    {
-        //        TypeSymbol objectArrayType = compilation.CreateArrayTypeSymbol(compilation.ObjectType);
-        //        var argumentArrayTypeInfo = new ExtendedTypeInfo(ExtendedTypeKind.ArgumentArray, objectArrayType);
-        //        if (isAmbiguous)
-        //        {
-        //            return new CompoundExtendedType(argumentArrayTypeInfo, new ExtendedTypeInfo(objectArrayType));
-        //        }
-        //        else
-        //        {
-        //            return new CompoundExtendedType(argumentArrayTypeInfo);
-        //        }
-        //    }
-
-        //    public static CompoundExtendedType CreateParameterType(CSharpCompilation compilation, LocalSymbol parameterIndexLocal)
-        //    {
-        //        return new CompoundExtendedType(
-        //            new ExtendedTypeInfo(ExtendedTypeKind.Parameter, compilation.ObjectType, parameterIndexLocal));
-        //    }
-
-        //    public static CompoundExtendedType CreateParameterType(TypeSymbol ordinaryType, LocalSymbol parameterIndexLocal)
-        //    {
-        //        return new CompoundExtendedType(
-        //            new ExtendedTypeInfo(ExtendedTypeKind.Parameter, ordinaryType, parameterIndexLocal));
-        //    }
-
-        //    public static CompoundExtendedType CreateReturnValueType(CSharpCompilation compilation, bool isAmbiguous)
-        //    {
-        //        TypeSymbol objectType = compilation.ObjectType;
-        //        var returnValueTypeInfo = new ExtendedTypeInfo(ExtendedTypeKind.ReturnValue, objectType);
-        //        if (isAmbiguous)
-        //        {
-        //            return new CompoundExtendedType(returnValueTypeInfo, new ExtendedTypeInfo(objectType));
-        //        }
-        //        else
-        //        {
-        //            return new CompoundExtendedType(returnValueTypeInfo);
-        //        }
-        //    }
-
-        //    public static CompoundExtendedType CreateReturnValueType(TypeSymbol ordinaryType, bool isAmbiguous)
-        //    {
-        //        var returnValueTypeInfo = new ExtendedTypeInfo(ExtendedTypeKind.ReturnValue, ordinaryType);
-        //        if (isAmbiguous)
-        //        {
-        //            return new CompoundExtendedType(returnValueTypeInfo, new ExtendedTypeInfo(ordinaryType));
-        //        }
-        //        else
-        //        {
-        //            return new CompoundExtendedType(returnValueTypeInfo);
-        //        }
-        //    }
-        //}
-
-        internal class DecoratorTypingResult
-        {
-            private readonly bool _isSuccessful;
-            private readonly ExtendedTypeInfo _type;
-            private readonly ImmutableHashSet<SubtypingAssertion> _updatedSubtypingAssertions;
-            private readonly ImmutableHashSet<SubtypingAssertion> _assertionsIfTrue;
-            private readonly ImmutableHashSet<SubtypingAssertion> _assertionsIfFalse;
-
-            public bool IsSuccessful
-            {
-                get { return _isSuccessful; }
-            }
-
-            public ExtendedTypeInfo Type
-            {
-                get { return _type; }
-            }
-
-            public ImmutableHashSet<SubtypingAssertion> UpdatedSubtypingAssertions
-            {
-                get { return _updatedSubtypingAssertions; }
-            }
-
-            public ImmutableHashSet<SubtypingAssertion> AssertionsIfTrue
-            {
-                get { return _assertionsIfTrue; }
-            }
-
-            public ImmutableHashSet<SubtypingAssertion> AssertionsIfFalse
-            {
-                get { return _assertionsIfFalse; }
-            }
-
-            public DecoratorTypingResult(
-                bool isSuccessful,
-                ExtendedTypeInfo type,
-                ImmutableHashSet<SubtypingAssertion> updatedSubtypingAssertions,
-                ImmutableHashSet<SubtypingAssertion> assertionsIfTrue = default(ImmutableHashSet<SubtypingAssertion>),
-                ImmutableHashSet<SubtypingAssertion> assertionsIfFalse = default(ImmutableHashSet<SubtypingAssertion>))
-            {
-                // Only the type-checking of boolean expressions should have assertions
-                if (assertionsIfTrue != null || assertionsIfFalse != null)
-                {
-                    Debug.Assert(type.IsOrdinaryType && type.OrdinaryType.SpecialType == SpecialType.System_Boolean);
-                }
-
-                _isSuccessful = isSuccessful;
-                _type = type;
-                _updatedSubtypingAssertions = updatedSubtypingAssertions;
-                _assertionsIfTrue = assertionsIfTrue;
-                _assertionsIfFalse = assertionsIfFalse;
-            }
-
-            public DecoratorTypingResult WithIsSuccessful(bool isSuccessful)
-            {
-                if (IsSuccessful == isSuccessful)
-                {
-                    return this;
-                }
-                else
-                {
-                    return new DecoratorTypingResult(isSuccessful, Type, UpdatedSubtypingAssertions, AssertionsIfTrue, AssertionsIfFalse);
-                }
-            }
-
-            public DecoratorTypingResult WithType(ExtendedTypeInfo type)
-            {
-                if (Type == type)
-                {
-                    return this;
-                }
-                else
-                {
-                    return new DecoratorTypingResult(IsSuccessful, type, UpdatedSubtypingAssertions, AssertionsIfTrue, AssertionsIfFalse);
-                }
-            }
-
-            public DecoratorTypingResult WithUpdatedSubtypingAssertions(ImmutableHashSet<SubtypingAssertion> updatedSubtypingAssertions)
-            {
-                if (UpdatedSubtypingAssertions == updatedSubtypingAssertions)
-                {
-                    return this;
-                }
-                else
-                {
-                    return new DecoratorTypingResult(IsSuccessful, Type, updatedSubtypingAssertions, AssertionsIfTrue, AssertionsIfFalse);
-                }
-            }
-
-            public DecoratorTypingResult Update(bool isSuccessful, ExtendedTypeInfo type, ImmutableHashSet<SubtypingAssertion> updatedSubtypingAssertions)
-            {
-                if (IsSuccessful == isSuccessful
-                    && Type == type
-                    && UpdatedSubtypingAssertions == updatedSubtypingAssertions)
-                {
-                    return this;
-                }
-                else
-                {
-                    return new DecoratorTypingResult(isSuccessful, type, updatedSubtypingAssertions, AssertionsIfTrue, AssertionsIfFalse);
-                }
-            }
-        }
-
-        #endregion
     }
 }

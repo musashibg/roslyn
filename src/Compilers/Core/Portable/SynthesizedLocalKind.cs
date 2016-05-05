@@ -209,6 +209,11 @@ namespace Microsoft.CodeAnalysis
         DecoratorTempLocal = 50,
 
         /// <summary>
+        /// Local variable which substitutes a parameter of the decorated method in its rewritten body.
+        /// </summary>
+        DecoratedMethodParameter = 51,
+
+        /// <summary>
         /// All values have to be less than or equal to <see cref="MaxValidValueForLocalVariableSerializedToDebugInformation"/> 
         /// (<see cref="EditAndContinueMethodDebugInformation"/>)
         /// </summary>

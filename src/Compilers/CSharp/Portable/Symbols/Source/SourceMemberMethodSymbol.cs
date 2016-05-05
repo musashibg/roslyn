@@ -1,13 +1,14 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
-using System.Globalization;
-using System.Threading;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
+using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Roslyn.Utilities;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using System.Threading;
 
 namespace Microsoft.CodeAnalysis.CSharp.Symbols
 {
@@ -1113,6 +1114,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             }
         }
 
-        internal ImmutableDictionary<Symbol, DecoratorMethodTypeChecker.ExtendedTypeInfo> DecoratorMethodVariableTypes { get; set; }
+        internal ImmutableDictionary<Symbol, ExtendedTypeInfo> DecoratorMethodVariableTypes { get; set; }
     }
 }

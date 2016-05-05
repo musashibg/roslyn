@@ -4711,9 +4711,6 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_InvalidInvokeInDecorator" xml:space="preserve">
     <value>Only calls to MethodBase.Invoke on the target method with the target object and a variable containing a list of arguments are currently supported</value>
   </data>
-  <data name="ERR_MultipleInvokesInDecorator" xml:space="preserve">
-    <value>Multiple splice locations in a single decoration method are not currently supported</value>
-  </data>
   <data name="ERR_NonSourceDecoratorClass" xml:space="preserve">
     <value>Cannot apply decorator class '{0}' because it is not part of the same assembly</value>
   </data>
@@ -4785,5 +4782,17 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   </data>
   <data name="ERR_UnsafeValueReturnedByDecoratorMethod" xml:space="preserve">
     <value>The value returned by a decorator method must be guaranteed to be assignable to the decorated method's return type</value>
+  </data>
+  <data name="ERR_StaticNullReference" xml:space="preserve">
+    <value>A null reference exception was detected at compile time.</value>
+  </data>
+  <data name="ERR_StaticAmbiguousMatch" xml:space="preserve">
+    <value>An ambiguous match exception was detected at compile time.</value>
+  </data>
+  <data name="ERR_StaticMetaException" xml:space="preserve">
+    <value>A custom metaprogramming exception was detected at compile time: {0}</value>
+  </data>
+  <data name="ERR_StaticIndexOutOfBounds" xml:space="preserve">
+    <value>An index out of bounds exception was detected at compile time.</value>
   </data>
 </root>

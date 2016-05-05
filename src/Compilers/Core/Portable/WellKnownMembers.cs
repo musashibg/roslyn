@@ -46,6 +46,13 @@ namespace Microsoft.CodeAnalysis
                     (byte)SignatureTypeCode.SZArray,
                     (byte)SignatureTypeCode.GenericMethodParameter, 0,
 
+                // System_Array__Length
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Array,                                                                           // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+
                 // System_Convert__ToBooleanDecimal
                 (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
                 (byte)WellKnownType.System_Convert,                                                                         // DeclaringTypeId
@@ -333,6 +340,13 @@ namespace Microsoft.CodeAnalysis
                     (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
                     (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
+                // System_Type__FullName
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+
                 // System_Type__GetTypeFromCLSID
                 (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
                 (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
@@ -349,6 +363,20 @@ namespace Microsoft.CodeAnalysis
                     (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Type,
                     (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_RuntimeTypeHandle,
 
+                // System_Type__IsAbstract
+                (byte)(MemberFlags.Property),                                                                               // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsArray
+                (byte)(MemberFlags.Property),                                                                               // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
                 // System_Type__IsAssignableFrom
                 (byte)MemberFlags.Method,                                                                                   // Flags
                 (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
@@ -357,11 +385,144 @@ namespace Microsoft.CodeAnalysis
                     (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
                     (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Type,
 
+                // System_Type__IsByRef
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsClass
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsConstructedGenericType
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsEnum
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsInterface
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsGenericParameter
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsGenericType
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsGenericTypeDefinition
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsNested
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsNestedAssembly
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsNestedPrivate
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsNestedPublic
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsNotPublic
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsPublic
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsSealed
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsValueType
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Type__IsVisible
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
                 // System_Type__Missing
                 (byte)(MemberFlags.Field | MemberFlags.Static),                                                             // Flags
                 (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,                                    // Field Signature
+
+                // System_Type__Name
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+
+                // System_Type__Namespace
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
                 // System_Reflection_AssemblyKeyFileAttribute__ctor
                 (byte)MemberFlags.Constructor,                                                                              // Flags
@@ -377,6 +538,20 @@ namespace Microsoft.CodeAnalysis
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
                     (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+
+                // System_Reflection_MemberInfo__DeclaringType
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Reflection_MemberInfo,                                                           // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Type,
+
+                // System_Reflection_MemberInfo__Name
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Reflection_MemberInfo,                                                           // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
                     (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
                 // System_Reflection_MethodBase__GetMethodFromHandle
@@ -395,6 +570,13 @@ namespace Microsoft.CodeAnalysis
                     (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_MethodBase,
                     (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_RuntimeMethodHandle,
                     (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_RuntimeTypeHandle,
+
+                // System_Reflection_MethodBase__GetParameters
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)WellKnownType.System_Reflection_MethodBase,                                                           // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.SZArray, (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_ParameterInfo,
 
                 // System_Reflection_MethodBase__Invoke
                 (byte)MemberFlags.Method,                                                                                   // Flags
@@ -427,6 +609,41 @@ namespace Microsoft.CodeAnalysis
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
                     (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Type,
+
+                // System_Reflection_ParameterInfo__IsOut
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)WellKnownType.System_Reflection_ParameterInfo,                                                        // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+
+                // System_Reflection_ParameterInfo__Member
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Reflection_ParameterInfo,                                                        // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_MemberInfo,
+
+                // System_Reflection_ParameterInfo__Name
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Reflection_ParameterInfo,                                                        // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+
+                // System_Reflection_ParameterInfo__ParameterType
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Reflection_ParameterInfo,                                                        // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Type,
+
+                // System_Reflection_ParameterInfo__Position
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)WellKnownType.System_Reflection_ParameterInfo,                                                        // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_Delegate__CreateDelegate
                 (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
@@ -471,6 +688,22 @@ namespace Microsoft.CodeAnalysis
                 (byte)WellKnownType.System_Reflection_Missing,                                                              // DeclaringTypeId
                 0,                                                                                                          // Arity
                     (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_Missing,                      // Field Signature
+
+                // System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)WellKnownType.System_Reflection_CustomAttributeExtensions,                                            // DeclaringTypeId
+                1,                                                                                                          // Arity
+                    1,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.GenericMethodParameter, 0,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_MemberInfo,
+
+                // System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T2
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)WellKnownType.System_Reflection_CustomAttributeExtensions,                                            // DeclaringTypeId
+                1,                                                                                                          // Arity
+                    1,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.GenericMethodParameter, 0,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_ParameterInfo,
 
                 // System_IEquatable_T__Equals
                 (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
@@ -2600,6 +2833,7 @@ namespace Microsoft.CodeAnalysis
                 "Pow",                                      // System_Math__PowDoubleDouble
                 "get_Length",                               // System_Array__get_Length
                 "Empty",                                    // System_Array__Empty
+                "Length",                                   // System_Array__Length
                 "ToBoolean",                                // System_Convert__ToBooleanDecimal
                 "ToBoolean",                                // System_Convert__ToBooleanInt32
                 "ToBoolean",                                // System_Convert__ToBooleanUInt32
@@ -2636,23 +2870,55 @@ namespace Microsoft.CodeAnalysis
                 ".ctor",                                    // System_CLSCompliantAttribute__ctor
                 ".ctor",                                    // System_FlagsAttribute__ctor
                 ".ctor",                                    // System_Guid__ctor
+                "FullName",                                 // System_Type__FullName
                 "GetTypeFromCLSID",                         // System_Type__GetTypeFromCLSID
                 "GetTypeFromHandle",                        // System_Type__GetTypeFromHandle
+                "IsAbstract",                               // System_Type__IsAbstract
+                "IsArray",                                  // System_Type__IsArray
                 "IsAssignableFrom",                         // System_Type__IsAssignableFrom
+                "IsByRef",                                  // System_Type__IsByRef
+                "IsClass",                                  // System_Type__IsClass
+                "IsConstructedGenericType",                 // System_Type__IsConstructedGenericType
+                "IsEnum",                                   // System_Type__IsEnum
+                "IsGenericParameter",                       // System_Type__IsGenericParameter
+                "IsGenericType",                            // System_Type__IsGenericType
+                "IsGenericTypeDefinition",                  // System_Type__IsGenericTypeDefinition
+                "IsInterface",                              // System_Type__IsInterface
+                "IsNested",                                 // System_Type__IsNested
+                "IsNestedAssembly",                         // System_Type__IsNestedAssembly
+                "IsNestedPrivate",                          // System_Type__IsNestedPrivate
+                "IsNestedPublic",                           // System_Type__IsNestedPublic
+                "IsNotPublic",                              // System_Type__IsNotPublic
+                "IsPublic",                                 // System_Type__IsPublic
+                "IsSealed",                                 // System_Type__IsSealed
+                "IsValueType",                              // System_Type__IsValueType
+                "IsVisible",                                // System_Type__IsVisible
                 "Missing",                                  // System_Type__Missing
+                "Name",                                     // System_Type__Name
+                "Namespace",                                // System_Type__Namespace
                 ".ctor",                                    // System_Reflection_AssemblyKeyFileAttribute__ctor
                 ".ctor",                                    // System_Reflection_AssemblyKeyNameAttribute__ctor
+                "DeclaringType",                            // System_Reflection_MemberInfo__DeclaringType
+                "Name",                                     // System_Reflection_MemberInfo__Name
                 "GetMethodFromHandle",                      // System_Reflection_MethodBase__GetMethodFromHandle
                 "GetMethodFromHandle",                      // System_Reflection_MethodBase__GetMethodFromHandle2
+                "GetParameters",                            // System_Reflection_MethodBase__GetParameters
                 "Invoke",                                   // System_Reflection_MethodBase__Invoke
                 "IsStatic",                                 // System_Reflection_MethodBase__IsStatic
                 "CreateDelegate",                           // System_Reflection_MethodInfo__CreateDelegate
                 "ReturnType",                               // System_Reflection_MethodInfo__ReturnType
+                "IsOut",                                    // System_Reflection_ParameterInfo__IsOut
+                "Member",                                   // System_Reflection_ParameterInfo__Member
+                "Name",                                     // System_Reflection_ParameterInfo__Name
+                "ParameterType",                            // System_Reflection_ParameterInfo__ParameterType
+                "Position",                                 // System_Reflection_ParameterInfo__Position
                 "CreateDelegate",                           // System_Delegate__CreateDelegate
                 "CreateDelegate",                           // System_Delegate__CreateDelegate4
                 "GetFieldFromHandle",                       // System_Reflection_FieldInfo__GetFieldFromHandle
                 "GetFieldFromHandle",                       // System_Reflection_FieldInfo__GetFieldFromHandle2
                 "Value",                                    // System_Reflection_Missing__Value
+                "GetCustomAttribute",                       // System_Reflection_CustomAttributeExtensions__GetCustomAttribute
+                "GetCustomAttribute",                       // System_Reflection_CustomAttributeExtensions__GetCustomAttribute2
                 "Equals",                                   // System_IEquatable_T__Equals
                 "Equals",                                   // System_Collections_Generic_EqualityComparer_T__Equals
                 "GetHashCode",                              // System_Collections_Generic_EqualityComparer_T__GetHashCode
@@ -2897,7 +3163,7 @@ namespace Microsoft.CodeAnalysis
                 "CloneArguments",                           // CSharp_Meta_MetaPrimitives__CloneArguments
                 "CloneArgumentsToObjectArray",              // CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray
                 "ParameterType",                            // CSharp_Meta_MetaPrimitives__ParameterType
-                "ThisObjectType",                            // CSharp_Meta_MetaPrimitives__ThisObjectType
+                "ThisObjectType",                           // CSharp_Meta_MetaPrimitives__ThisObjectType
             };
 
             s_descriptors = MemberDescriptor.InitializeFromStream(new System.IO.MemoryStream(initializationBytes, writable: false), allNames);

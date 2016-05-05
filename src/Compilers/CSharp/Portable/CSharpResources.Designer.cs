@@ -6074,15 +6074,6 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Multiple splice locations in a single decoration method are not currently supported.
-        /// </summary>
-        internal static string ERR_MultipleInvokesInDecorator {
-            get {
-                return ResourceManager.GetString("ERR_MultipleInvokesInDecorator", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Cannot use more than one type in a for, using, fixed, or declaration statement.
         /// </summary>
         internal static string ERR_MultiTypeInDeclaration {
@@ -8090,6 +8081,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to An ambiguous match exception was detected at compile time..
+        /// </summary>
+        internal static string ERR_StaticAmbiguousMatch {
+            get {
+                return ResourceManager.GetString("ERR_StaticAmbiguousMatch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to &apos;{1}&apos;: cannot derive from static class &apos;{0}&apos;.
         /// </summary>
         internal static string ERR_StaticBaseClass {
@@ -8162,6 +8162,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to An index out of bounds exception was detected at compile time..
+        /// </summary>
+        internal static string ERR_StaticIndexOutOfBounds {
+            get {
+                return ResourceManager.GetString("ERR_StaticIndexOutOfBounds", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Static field or property &apos;{0}&apos; cannot be assigned in an object initializer.
         /// </summary>
         internal static string ERR_StaticMemberInObjectInitializer {
@@ -8171,11 +8180,29 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A custom metaprogramming exception was detected at compile time: {0}.
+        /// </summary>
+        internal static string ERR_StaticMetaException {
+            get {
+                return ResourceManager.GetString("ERR_StaticMetaException", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to A static member &apos;{0}&apos; cannot be marked as override, virtual, or abstract.
         /// </summary>
         internal static string ERR_StaticNotVirtual {
             get {
                 return ResourceManager.GetString("ERR_StaticNotVirtual", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A null reference exception was detected at compile time..
+        /// </summary>
+        internal static string ERR_StaticNullReference {
+            get {
+                return ResourceManager.GetString("ERR_StaticNullReference", resourceCulture);
             }
         }
         
