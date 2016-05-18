@@ -92,5 +92,10 @@ namespace CSharp.Meta
 
             return method.IsStatic ? typeof(void) : method.DeclaringType;
         }
+
+        public static void ApplyDecorator(MemberInfo member, Decorator decorator)
+        {
+            throw new InvalidOperationException("This method may only be used in metaclass code executed at compile-time.");
+        }
     }
 }

@@ -280,6 +280,11 @@ namespace Microsoft.CodeAnalysis.CSharp
             var memberNames = GetNonTypeMemberNames(((Syntax.InternalSyntax.TypeDeclarationSyntax)(node.Green)).Members,
                                                     ref declFlags);
 
+            if (node.Metaclasses.Count > 0)
+            {
+                declFlags |= SingleTypeDeclaration.TypeDeclarationFlags.HasMetaclasses;
+            }
+
             return new SingleTypeDeclaration(
                 kind: kind,
                 name: node.Identifier.ValueText,
@@ -346,6 +351,11 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
 
             string[] memberNames = GetEnumMemberNames(members, ref declFlags);
+
+            if (node.Metaclasses.Count > 0)
+            {
+                declFlags |= SingleTypeDeclaration.TypeDeclarationFlags.HasMetaclasses;
+            }
 
             return new SingleTypeDeclaration(
                 kind: DeclarationKind.Enum,

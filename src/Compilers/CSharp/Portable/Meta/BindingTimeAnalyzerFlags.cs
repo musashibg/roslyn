@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
-    internal enum DecorationBindingTimeAnalyzerFlags
+    internal enum BindingTimeAnalyzerFlags
     {
         None,
         InDynamicallyReachableCode = 1 << 0,

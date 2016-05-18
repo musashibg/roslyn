@@ -121,6 +121,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return AddCleanupAnnotationsTo(SyntaxFactory.EventDeclaration(
                 attributeLists: AttributeGenerator.GenerateAttributeLists(@event.GetAttributes(), options),
+                decorators: default(SyntaxList<MetaDecorationSyntax>),
                 modifiers: GenerateModifiers(@event, destination, options),
                 type: @event.Type.GenerateTypeSyntax(),
                 explicitInterfaceSpecifier: explicitInterfaceSpecifier,

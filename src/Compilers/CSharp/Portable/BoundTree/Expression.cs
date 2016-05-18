@@ -2060,6 +2060,21 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
     }
 
+    internal partial class BoundMetaclass
+    {
+        protected override OperationKind ExpressionKind => OperationKind.None;
+
+        public override void Accept(OperationVisitor visitor)
+        {
+            visitor.VisitNoneOperation(this);
+        }
+
+        public override TResult Accept<TArgument, TResult>(OperationVisitor<TArgument, TResult> visitor, TArgument argument)
+        {
+            return visitor.VisitNoneOperation(this, argument);
+        }
+    }
+
     internal class Expression
     {
         internal static BinaryOperationKind DeriveBinaryOperationKind(UnaryOperationKind incrementKind)

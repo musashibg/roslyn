@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Roslyn.Utilities;
+using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
 
 namespace Microsoft.CodeAnalysis.CSharp.Symbols
 {
@@ -46,6 +47,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private OverriddenOrHiddenMembersResult _lazyOverriddenOrHiddenMembers;
         private SynthesizedSealedPropertyAccessor _lazySynthesizedSealedAccessor;
         private CustomAttributesBag<CSharpAttributeData> _lazyCustomAttributesBag;
+
+        private ImmutableArray<DecoratorData> _lazyDecorators;
 
         // CONSIDER: if the parameters were computed lazily, ParameterCount could be overridden to fall back on the syntax (as in SourceMemberMethodSymbol).
 
@@ -1159,6 +1162,54 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         #endregion
 
+        internal sealed override ImmutableArray<DecoratorData> GetDecorators()
+        {
+            var decorators = _lazyDecorators;
+            if (!decorators.IsDefault)
+            {
+                return decorators;
+            }
+
+            return GetDecorators(ref _lazyDecorators);
+        }
+
+        private ImmutableArray<DecoratorData> GetDecorators(ref ImmutableArray<DecoratorData> decorators)
+        {
+            int decoratorCount = CSharpSyntaxNode.Decorators.Count;
+
+            if (decoratorCount == 0)
+            {
+                decorators = ImmutableArray<DecoratorData>.Empty;
+            }
+            else
+            {
+                var diagnostics = DiagnosticBag.GetInstance();
+
+                // Bind decorator types
+                Binder propertyBinder = DeclaringCompilation.GetBinderFactory(SyntaxTree).GetBinder(CSharpSyntaxNode);
+                var bindersBuilder = new Binder[decoratorCount];
+                var boundDecoratorTypes = new NamedTypeSymbol[decoratorCount];
+                for (int i = 0; i < decoratorCount; i++)
+                {
+                    bindersBuilder[i] = new ContextualDecoratorBinder(propertyBinder, this);
+                }
+                ImmutableArray<Binder> binders = bindersBuilder.ToImmutableArray();
+                ImmutableArray<MetaDecorationSyntax> decoratorsToBind = CSharpSyntaxNode.Decorators.ToImmutableArray();
+                Binder.BindMetaDecorationTypes(binders, decoratorsToBind, this, boundDecoratorTypes, diagnostics);
+
+                // Bind decorators
+                var decoratorsBuilder = new DecoratorData[decoratorCount];
+                Binder.GetDecorators(binders, decoratorsToBind, boundDecoratorTypes.ToImmutableArray(), decoratorsBuilder, diagnostics);
+
+                AddDeclarationDiagnostics(diagnostics);
+
+                decorators = decoratorsBuilder.ToImmutableArray();
+            }
+
+            _state.NotePartComplete(CompletionPart.Decorators);
+            return decorators;
+        }
+
         #region Completion
 
         internal sealed override bool RequiresCompletion
@@ -1232,6 +1283,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                                 }
                             }
                         }
+                        break;
+
+                    case CompletionPart.Decorators:
+                        GetDecorators();
                         break;
 
                     case CompletionPart.None:

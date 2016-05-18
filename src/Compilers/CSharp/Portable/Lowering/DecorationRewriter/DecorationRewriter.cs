@@ -88,8 +88,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
 
             // Perform binding-time analysis on the decorator method's body in order to identify variables, expressions and statements which can be statically evaluated
-            var bindingTimeAnalyzer = new DecorationBindingTimeAnalyzer(compilation, decoratorMethod);
-            bindingTimeAnalyzer.PerformAnalysis();
+            var bindingTimeAnalyzer = new DecorationBindingTimeAnalyzer(compilation, diagnostics, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorMethod);
+            if (!bindingTimeAnalyzer.PerformAnalysis())
+            {
+                return targetMethodBody;
+            }
             cancellationToken.ThrowIfCancellationRequested();
 
             // Create a synthetic node factory and perform the rewrite
@@ -97,6 +100,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             var factory = new SyntheticBoundNodeFactory(targetMethod, methodSyntax, compilationState, diagnostics);
             var decorationRewriter = new DecorationRewriter(compilation, targetMethod, targetMethodBody, decoratorMethod, decoratorOrdinal, factory, bindingTimeAnalyzer, diagnostics);
             return decorationRewriter.Rewrite(decoratorBody);
+        }
+
+        public override DecorationRewriteResult DefaultVisit(BoundNode node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
+        {
+            // Any nodes which are not specially handled should already have been rejected by the DecorationBindingTimeAnalyzer, or should not be traversed at all
+            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult Visit(BoundNode node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -146,12 +155,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        public override DecorationRewriteResult VisitAddressOfOperator(BoundAddressOfOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
         public override DecorationRewriteResult VisitAnonymousObjectCreationExpression(BoundAnonymousObjectCreationExpression node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             ImmutableArray<DecorationRewriteResult> argumentResults = VisitSequentialList(node.Arguments, ref variableValues);
@@ -173,18 +176,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         {
             // A lone anonymous property declaration should never be a stand-alone statement, so we return MustEmit = false
             return new DecorationRewriteResult(node, variableValues, false, CompileTimeValue.Dynamic);
-        }
-
-        public override DecorationRewriteResult VisitArgList(BoundArgList node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitArgListOperator(BoundArgListOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitArrayAccess(BoundArrayAccess node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -368,7 +359,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             DecorationRewriteResult rightResult;
 
-            BindingTimeAnalysisResult leftBindingTimeResult = _bindingTimeAnalyzer.Visit(node.Left, DecorationBindingTimeAnalyzerFlags.None);
+            BindingTimeAnalysisResult leftBindingTimeResult = _bindingTimeAnalyzer.Visit(node.Left, BindingTimeAnalyzerFlags.None);
             if (leftBindingTimeResult.BindingTime == BindingTime.Dynamic && leftBindingTimeResult.MainSymbol != null
                 && _decoratorMethod.DecoratorMethodVariableTypes[leftBindingTimeResult.MainSymbol].Kind == ExtendedTypeKind.ArgumentArray)
             {
@@ -428,18 +419,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         ConstantValue indexConstant = ((ConstantStaticValue)indicesResults[0].Value).Value;
                         Debug.Assert(indexConstant.IsIntegral);
 
-                        rewrittenNode = MetaUtils.ConvertIfNeeded(node.Type, (BoundExpression)rightResult.Node, _compilation);
-                        value = ((ArrayValue)arrayExpressionValue).SetItem(indexConstant.Int32Value, rightValue);
-
-                        BindingTimeAnalysisResult arrayExpressionBindingTimeResult = _bindingTimeAnalyzer.Visit(arrayExpression, DecorationBindingTimeAnalyzerFlags.None);
+                        BindingTimeAnalysisResult arrayExpressionBindingTimeResult = _bindingTimeAnalyzer.Visit(arrayExpression, BindingTimeAnalyzerFlags.None);
                         if (arrayExpressionBindingTimeResult.MainSymbol != null)
                         {
-                            variableValues = rightResult.UpdatedVariableValues.SetItem(arrayExpressionBindingTimeResult.MainSymbol, value);
+                            ArrayValue newArrayValue = ((ArrayValue)arrayExpressionValue).SetItem(indexConstant.Int32Value, rightValue);
+                            variableValues = rightResult.UpdatedVariableValues.SetItem(arrayExpressionBindingTimeResult.MainSymbol, newArrayValue);
                         }
-                        else
-                        {
-                            variableValues = rightResult.UpdatedVariableValues;
-                        }
+
+                        rewrittenNode = MetaUtils.ConvertIfNeeded(node.Type, (BoundExpression)rightResult.Node, _compilation);
+                        value = rightValue;
                         mustEmit = rightResult.MustEmit;
                     }
                     break;
@@ -460,12 +448,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return new DecorationRewriteResult(rewrittenNode, variableValues, mustEmit, value);
         }
 
-        public override DecorationRewriteResult VisitAttribute(BoundAttribute node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should not exist inside a method's body
-            throw ExceptionUtilities.Unreachable;
-        }
-
         public override DecorationRewriteResult VisitAwaitExpression(BoundAwaitExpression node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             DecorationRewriteResult expressionResult = Visit(node.Expression, variableValues);
@@ -476,24 +458,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 expressionResult.UpdatedVariableValues,
                 true,
                 CompileTimeValue.Dynamic);
-        }
-
-        public override DecorationRewriteResult VisitBadExpression(BoundBadExpression node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitBadStatement(BoundBadStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitBaseReference(BoundBaseReference node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitBinaryOperator(BoundBinaryOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -734,8 +698,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                              && rightValue.Kind == CompileTimeValueKind.Simple
                              && (rightValue is ConstantStaticValue || rightValue is EnumValue));
 
-                BinaryOperatorKind operatorKind = node.Operator.Kind;
-                value = StaticValueUtils.FoldBinaryOperator(node.Syntax, operatorKind, leftValue, rightValue, node.Type.SpecialType, _compilation, _diagnostics);
+                value = StaticValueUtils.FoldBinaryOperator(node.Syntax, node.Operator.Kind, leftValue, rightValue, node.Type.SpecialType, _compilation, _diagnostics);
                 rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
                 mustEmit = false;
 
@@ -765,10 +728,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         ConstantValue indexConstant = ((ConstantStaticValue)indicesResults[0].Value).Value;
                         Debug.Assert(indexConstant.IsIntegral);
 
-                        BindingTimeAnalysisResult arrayExpressionBindingTimeResult = _bindingTimeAnalyzer.Visit(arrayExpression, DecorationBindingTimeAnalyzerFlags.None);
+                        BindingTimeAnalysisResult arrayExpressionBindingTimeResult = _bindingTimeAnalyzer.Visit(arrayExpression, BindingTimeAnalyzerFlags.None);
                         if (arrayExpressionBindingTimeResult.MainSymbol != null)
                         {
-                            variableValues = rightResult.UpdatedVariableValues.SetItem(arrayExpressionBindingTimeResult.MainSymbol, value);
+                            ArrayValue newArrayValue = ((ArrayValue)arrayExpressionValue).SetItem(indexConstant.Int32Value, value);
+                            variableValues = rightResult.UpdatedVariableValues.SetItem(arrayExpressionBindingTimeResult.MainSymbol, newArrayValue);
                         }
                         break;
 
@@ -957,33 +921,28 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return new DecorationRewriteResult(rewrittenNode, variableValues, false, value);
         }
 
-        public override DecorationRewriteResult VisitDecorator(BoundDecorator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should not exist inside a method's body
-            throw ExceptionUtilities.Unreachable;
-        }
-
         public override DecorationRewriteResult VisitDefaultOperator(BoundDefaultOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            TypeSymbol type = node.Type;
             BoundExpression rewrittenNode;
             CompileTimeValue value;
-            if (MetaUtils.CheckIsSimpleStaticValueType(node.Type, _compilation))
+            if (type.IsClassType())
             {
-                if (node.Type.SpecialType != SpecialType.None)
+                value = new ConstantStaticValue(ConstantValue.Null);
+                rewrittenNode = MakeSimpleStaticValueExpression(value, type, node.Syntax);
+            }
+            else if (MetaUtils.CheckIsSimpleStaticValueType(type, _compilation))
+            {
+                if (type.SpecialType != SpecialType.None)
                 {
-                    value = new ConstantStaticValue(ConstantValue.Default(node.Type.SpecialType));
-                }
-                else if (node.Type.IsEnumType())
-                {
-                    value = new EnumValue(node.Type, ConstantValue.Default(node.Type.GetEnumUnderlyingType().SpecialType));
+                    value = new ConstantStaticValue(ConstantValue.Default(type.SpecialType));
                 }
                 else
                 {
-                    var type = _compilation.GetWellKnownType(WellKnownType.System_Type);
-                    Debug.Assert(node.Type == type);
-                    value = new ConstantStaticValue(ConstantValue.Null);
+                    Debug.Assert(type.IsEnumType());
+                    value = new EnumValue(type, ConstantValue.Default(type.GetEnumUnderlyingType().SpecialType));
                 }
-                rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
+                rewrittenNode = MakeSimpleStaticValueExpression(value, type, node.Syntax);
             }
             else
             {
@@ -1115,12 +1074,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         true,
                         possibleContinuations);
             }
-        }
-
-        public override DecorationRewriteResult VisitDup(BoundDup node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitDynamicCollectionElementInitializer(
@@ -1287,6 +1240,23 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 variableValues = receiverResult.UpdatedVariableValues;
             }
 
+            // Check if the field is an enum constant
+            FieldSymbol fieldSymbol = node.FieldSymbol;
+            TypeSymbol fieldType = fieldSymbol.Type;
+            if (fieldSymbol.IsStatic && fieldSymbol.HasConstantValue && fieldType.IsEnumType())
+            {
+                TypeSymbol underlyingType = fieldType.EnumUnderlyingType();
+                Debug.Assert(underlyingType.SpecialType != SpecialType.None);
+                var value = new EnumValue(fieldType, ConstantValue.Create(fieldSymbol.ConstantValue, underlyingType.SpecialType));
+
+                // A lone field access should never be a stand-alone statement, so we return MustEmit = false
+                return new DecorationRewriteResult(
+                    MakeSimpleStaticValueExpression(value, fieldType, node.Syntax),
+                    variableValues,
+                    false,
+                    value);
+            }
+
             // A lone field access should never be a stand-alone statement, so we return MustEmit = false
             return new DecorationRewriteResult(
                 node.Update((BoundExpression)receiverResult?.Node, node.FieldSymbol, node.ConstantValue, node.ResultKind, node.Type),
@@ -1305,18 +1275,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 valueResult.UpdatedVariableValues,
                 false,
                 valueResult.Value);
-        }
-
-        public override DecorationRewriteResult VisitFieldInfo(BoundFieldInfo node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitFieldInitializer(BoundFieldInitializer node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should not exist inside a method's body
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitFixedLocalCollectionInitializer(BoundFixedLocalCollectionInitializer node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -1645,27 +1603,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return new DecorationRewriteResult(rewrittenNode, variableValues, mustEmit, possibleContinuations);
         }
 
-        public override DecorationRewriteResult VisitGlobalStatementInitializer(BoundGlobalStatementInitializer node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should not exist inside a method's body
-            throw ExceptionUtilities.Unreachable;
-        }
-
         public override DecorationRewriteResult VisitGotoStatement(BoundGotoStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             return new DecorationRewriteResult(node, variableValues, true, new JumpContinuation(node.Label));
-        }
-
-        public override DecorationRewriteResult VisitHoistedFieldAccess(BoundHoistedFieldAccess node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitHostObjectMemberReference(BoundHostObjectMemberReference node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should not exist in non-script code
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitIfStatement(BoundIfStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -1801,7 +1741,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         ConstantValue indexConstant = ((ConstantStaticValue)indicesResults[0].Value).Value;
                         Debug.Assert(indexConstant.IsIntegral);
 
-                        BindingTimeAnalysisResult arrayExpressionBindingTimeResult = _bindingTimeAnalyzer.Visit(arrayExpression, DecorationBindingTimeAnalyzerFlags.None);
+                        BindingTimeAnalysisResult arrayExpressionBindingTimeResult = _bindingTimeAnalyzer.Visit(arrayExpression, BindingTimeAnalyzerFlags.None);
                         if (arrayExpressionBindingTimeResult.MainSymbol != null)
                         {
                             variableValues = variableValues.SetItem(arrayExpressionBindingTimeResult.MainSymbol, newOperandValue);
@@ -1880,69 +1820,72 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 value = new ConstantStaticValue(ConstantValue.Create(true));
             }
-            switch (operandValue.Kind)
+            else
             {
-                case CompileTimeValueKind.Simple:
-                    if (operandValue is ConstantStaticValue)
-                    {
-                        ConstantValue operandConstantValue = ((ConstantStaticValue)operandValue).Value;
-                        if (operandConstantValue.IsNull)
+                switch (operandValue.Kind)
+                {
+                    case CompileTimeValueKind.Simple:
+                        if (operandValue is ConstantStaticValue)
                         {
-                            bool acceptsNull = targetType.IsReferenceType || targetType.IsNullableTypeOrTypeParameter();
-                            value = new ConstantStaticValue(ConstantValue.Create(acceptsNull));
+                            ConstantValue operandConstantValue = ((ConstantStaticValue)operandValue).Value;
+                            if (operandConstantValue.IsNull)
+                            {
+                                bool acceptsNull = targetType.IsReferenceType || targetType.IsNullableTypeOrTypeParameter();
+                                value = new ConstantStaticValue(ConstantValue.Create(acceptsNull));
+                            }
+                            else
+                            {
+                                Debug.Assert(operandConstantValue.SpecialType != SpecialType.None);
+                                TypeSymbol constantType = _compilation.GetSpecialType(operandConstantValue.SpecialType);
+                                value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, constantType)));
+                            }
+                        }
+                        else if (operandValue is EnumValue)
+                        {
+                            TypeSymbol enumType = ((EnumValue)operandValue).EnumType;
+                            value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, enumType)));
                         }
                         else
                         {
-                            Debug.Assert(operandConstantValue.SpecialType != SpecialType.None);
-                            TypeSymbol constantType = _compilation.GetSpecialType(operandConstantValue.SpecialType);
-                            value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, constantType)));
+                            Debug.Assert(operandValue is TypeValue);
+                            TypeSymbol typeType = _compilation.GetWellKnownType(WellKnownType.System_Type);
+                            value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, typeType)));
                         }
-                    }
-                    else if (operandValue is EnumValue)
-                    {
-                        TypeSymbol enumType = ((EnumValue)operandValue).EnumType;
-                        value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, enumType)));
-                    }
-                    else
-                    {
-                        Debug.Assert(operandValue is TypeValue);
-                        TypeSymbol typeType = _compilation.GetWellKnownType(WellKnownType.System_Type);
-                        value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, typeType)));
-                    }
-                    break;
+                        break;
 
-                case CompileTimeValueKind.Complex:
-                    if (operandValue is ArrayValue)
-                    {
-                        TypeSymbol arrayType = ((ArrayValue)operandValue).ArrayType;
-                        value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, arrayType)));
-                    }
-                    else if (operandValue is MethodInfoValue)
-                    {
-                        TypeSymbol methodInfoType = _compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo);
-                        value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, methodInfoType)));
-                    }
-                    else if (operandValue is ParameterInfoValue)
-                    {
-                        TypeSymbol parameterInfoType = _compilation.GetWellKnownType(WellKnownType.System_Reflection_ParameterInfo);
-                        value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, parameterInfoType)));
-                    }
-                    else
-                    {
-                        Debug.Assert(operandValue is AttributeValue);
-                        TypeSymbol attributeType = ((AttributeValue)operandValue).Attribute.AttributeClass;
-                        value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, attributeType)));
-                    }
-                    break;
+                    case CompileTimeValueKind.Complex:
+                        if (operandValue is ArrayValue)
+                        {
+                            TypeSymbol arrayType = ((ArrayValue)operandValue).ArrayType;
+                            value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, arrayType)));
+                        }
+                        else if (operandValue is MethodInfoValue)
+                        {
+                            TypeSymbol methodInfoType = _compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo);
+                            value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, methodInfoType)));
+                        }
+                        else if (operandValue is ParameterInfoValue)
+                        {
+                            TypeSymbol parameterInfoType = _compilation.GetWellKnownType(WellKnownType.System_Reflection_ParameterInfo);
+                            value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, parameterInfoType)));
+                        }
+                        else
+                        {
+                            Debug.Assert(operandValue is AttributeValue);
+                            TypeSymbol attributeType = ((AttributeValue)operandValue).Attribute.AttributeClass;
+                            value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, attributeType)));
+                        }
+                        break;
 
-                case CompileTimeValueKind.ArgumentArray:
-                    value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, _compilation.CreateArrayTypeSymbol(_compilation.ObjectType))));
-                    break;
+                    case CompileTimeValueKind.ArgumentArray:
+                        value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, _compilation.CreateArrayTypeSymbol(_compilation.ObjectType))));
+                        break;
 
-                default:
-                    Debug.Assert(operandValue.Kind == CompileTimeValueKind.Dynamic);
-                    value = CompileTimeValue.Dynamic;
-                    break;
+                    default:
+                        Debug.Assert(operandValue.Kind == CompileTimeValueKind.Dynamic);
+                        value = CompileTimeValue.Dynamic;
+                        break;
+                }
             }
 
             // A lone is operator should never be a stand-alone statement, so we return MustEmit = false
@@ -2152,7 +2095,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     BoundExpression whenNullOpt = node.WhenNullOpt;
                     if (whenNullOpt != null)
                     {
-                        return Visit(node.WhenNullOpt, receiverResult.UpdatedVariableValues);
+                        return Visit(whenNullOpt, receiverResult.UpdatedVariableValues);
                     }
                     else
                     {
@@ -2197,12 +2140,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        public override DecorationRewriteResult VisitMakeRefOperator(BoundMakeRefOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
         public override DecorationRewriteResult VisitMethodGroup(BoundMethodGroup node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             DecorationRewriteResult receiverResult = Visit(node.ReceiverOpt, variableValues);
@@ -2224,12 +2161,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 variableValues,
                 true,
                 CompileTimeValue.Dynamic);
-        }
-
-        public override DecorationRewriteResult VisitMethodInfo(BoundMethodInfo node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitMultipleLocalDeclarations(BoundMultipleLocalDeclarations node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -2260,12 +2191,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 variableValues,
                 false,
                 new ConstantStaticValue(nameConstant));
-        }
-
-        public override DecorationRewriteResult VisitNamespaceExpression(BoundNamespaceExpression node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should not exist inside a method's body
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitNewT(BoundNewT node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -2455,24 +2380,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 valueResult.Value);
         }
 
-        public override DecorationRewriteResult VisitPointerElementAccess(BoundPointerElementAccess node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitPointerIndirectionOperator(BoundPointerIndirectionOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitPreviousSubmissionReference(BoundPreviousSubmissionReference node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should not exist in non-script code
-            throw ExceptionUtilities.Unreachable;
-        }
-
         public override DecorationRewriteResult VisitPropertyEqualsValue(BoundPropertyEqualsValue node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             DecorationRewriteResult valueResult = Visit(node.Value, variableValues);
@@ -2483,12 +2390,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 valueResult.UpdatedVariableValues,
                 false,
                 valueResult.Value);
-        }
-
-        public override DecorationRewriteResult VisitPseudoVariable(BoundPseudoVariable node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitQueryClause(BoundQueryClause node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -2511,18 +2412,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 valueResult.UpdatedVariableValues,
                 true,
                 CompileTimeValue.Dynamic);
-        }
-
-        public override DecorationRewriteResult VisitRefTypeOperator(BoundRefTypeOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitRefValueOperator(BoundRefValueOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitReturnStatement(BoundReturnStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -2566,18 +2455,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return new DecorationRewriteResult(rewrittenNode, expressionResult.UpdatedVariableValues, true, ExecutionContinuation.Return);
         }
 
-        public override DecorationRewriteResult VisitSequence(BoundSequence node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitSequencePoint(BoundSequencePoint node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
-        }
-
         public override DecorationRewriteResult VisitSequencePointExpression(BoundSequencePointExpression node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             DecorationRewriteResult expressionResult = Visit(node.Expression, variableValues);
@@ -2587,12 +2464,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 expressionResult.UpdatedVariableValues,
                 expressionResult.MustEmit,
                 expressionResult.Value);
-        }
-
-        public override DecorationRewriteResult VisitSequencePointWithSpan(BoundSequencePointWithSpan node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitSizeOfOperator(BoundSizeOfOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -2610,12 +2481,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 countResult.UpdatedVariableValues,
                 true,
                 CompileTimeValue.Dynamic);
-        }
-
-        public override DecorationRewriteResult VisitStateMachineScope(BoundStateMachineScope node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitStatementList(BoundStatementList node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -2826,12 +2691,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return new DecorationRewriteResult(rewrittenNode, variableValues, mustEmit, possibleContinuations);
         }
 
-        public override DecorationRewriteResult VisitThisReference(BoundThisReference node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
         public override DecorationRewriteResult VisitThrowStatement(BoundThrowStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             // TODO: Handle compile-time errors and their reporting
@@ -2947,12 +2806,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return new DecorationRewriteResult(node, variableValues, false, new TypeValue(node.SourceType.Type));
         }
 
-        public override DecorationRewriteResult VisitTypeOrInstanceInitializers(BoundTypeOrInstanceInitializers node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should only exist after lowering of the original source code
-            throw ExceptionUtilities.Unreachable;
-        }
-
         public override DecorationRewriteResult VisitTypeOrValueExpression(BoundTypeOrValueExpression node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             DecorationRewriteResult typeExpressionResult = Visit(node.Data.TypeExpression, variableValues);
@@ -3001,12 +2854,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             // A lone unary operator should never be a stand-alone statement, so we return MustEmit = false
             return new DecorationRewriteResult(rewrittenNode, variableValues, false, value);
-        }
-
-        public override DecorationRewriteResult VisitUnboundLambda(UnboundLambda node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // The decorator method's body should not contain unbound lambdas
-            throw ExceptionUtilities.Unreachable;
         }
 
         public override DecorationRewriteResult VisitUserDefinedConditionalLogicalOperator(
@@ -3177,18 +3024,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         true,
                         possibleContinuations);
             }
-        }
-
-        public override DecorationRewriteResult VisitYieldBreakStatement(BoundYieldBreakStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
-        }
-
-        public override DecorationRewriteResult VisitYieldReturnStatement(BoundYieldReturnStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
-        {
-            // Such nodes should already have been rejected by the DecoratorTypeChecker
-            throw ExceptionUtilities.Unreachable;
         }
 
         public BoundBlock Rewrite(BoundBlock decoratorBody)

@@ -60,7 +60,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.OperatorDeclaration(
                 attributeLists: AttributeGenerator.GenerateAttributeLists(method.GetAttributes(), options),
-                decorators: default(SyntaxList<DecoratorSyntax>),
+                decorators: default(SyntaxList<MetaDecorationSyntax>),
                 modifiers: GenerateModifiers(method),
                 returnType: method.ReturnType.GenerateTypeSyntax(),
                 operatorKeyword: SyntaxFactory.Token(SyntaxKind.OperatorKeyword),

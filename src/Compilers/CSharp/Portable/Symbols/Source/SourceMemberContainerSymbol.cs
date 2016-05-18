@@ -1,5 +1,11 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using Microsoft.CodeAnalysis.Collections;
+using Microsoft.CodeAnalysis.CSharp.Meta;
+using Microsoft.CodeAnalysis.CSharp.Symbols;
+using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Roslyn.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -7,11 +13,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Microsoft.CodeAnalysis.Collections;
-using Microsoft.CodeAnalysis.CSharp.Symbols;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Roslyn.Utilities;
-using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
 
 namespace Microsoft.CodeAnalysis.CSharp.Symbols
 {
@@ -164,6 +165,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         private ThreeState _lazyContainsExtensionMethods;
         private ThreeState _lazyAnyMemberHasAttributes;
+
+        private ImmutableArray<MetaclassData> _lazyMetaclasses;
 
         #region Construction
 
@@ -378,6 +381,69 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         #endregion
 
+        #region Metaclasses
+
+        internal ImmutableArray<MetaclassData> GetMetaclasses()
+        {
+            var metaclasses = _lazyMetaclasses;
+            if (!metaclasses.IsDefault)
+            {
+                return metaclasses;
+            }
+
+            return GetMetaclasses(ref _lazyMetaclasses);
+        }
+
+        private ImmutableArray<MetaclassData> GetMetaclasses(ref ImmutableArray<MetaclassData> metaclasses)
+        {
+            var diagnostics = DiagnosticBag.GetInstance();
+            CSharpSyntaxNode declaringSyntaxNode;
+            ImmutableArray<MetaDecorationSyntax> metaclassesToBind = declaration.GetMetaclasses(out declaringSyntaxNode, diagnostics);
+            int metaclassCount = metaclassesToBind.Length;
+
+            if (metaclassCount == 0)
+            {
+                metaclasses = ImmutableArray<MetaclassData>.Empty;
+            }
+            else
+            {
+                // Bind metaclass types
+                Binder typeBinder = DeclaringCompilation.GetBinderFactory(declaringSyntaxNode.SyntaxTree).GetBinder(declaringSyntaxNode);
+                var bindersBuilder = new Binder[metaclassCount];
+                var boundMetaclassTypes = new NamedTypeSymbol[metaclassCount];
+                for (int i = 0; i < metaclassCount; i++)
+                {
+                    bindersBuilder[i] = typeBinder;
+                }
+                ImmutableArray<Binder> binders = bindersBuilder.ToImmutableArray();
+                Binder.BindMetaDecorationTypes(binders, metaclassesToBind, this, boundMetaclassTypes, diagnostics);
+
+                // Bind metaclasses
+                var metaclassesBuilder = new MetaclassData[metaclassCount];
+                Binder.GetMetaclasses(binders, metaclassesToBind, boundMetaclassTypes.ToImmutableArray(), metaclassesBuilder, diagnostics);
+
+                metaclasses = metaclassesBuilder.ToImmutableArray();
+            }
+
+            AddDeclarationDiagnostics(diagnostics);
+
+            return metaclasses;
+        }
+
+        private void ApplyMetaclasses(CancellationToken cancellationToken)
+        {
+            DiagnosticBag diagnostics = DiagnosticBag.GetInstance();
+            var compilationState = new TypeCompilationState(this, DeclaringCompilation, null);
+            MetaclassApplicationPass.ApplyMetaclasses(this, compilationState, diagnostics, cancellationToken);
+
+            AddDeclarationDiagnostics(diagnostics);
+            diagnostics.Free();
+
+            state.NotePartComplete(CompletionPart.Metaclasses);
+        }
+
+        #endregion
+
         #region Completion
 
         internal sealed override bool RequiresCompletion
@@ -517,6 +583,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                             state.NotePartComplete(CompletionPart.MembersCompleted);
                             break;
                         }
+
+                    case CompletionPart.Metaclasses:
+                        ApplyMetaclasses(cancellationToken);
+                        break;
 
                     case CompletionPart.None:
                         return;

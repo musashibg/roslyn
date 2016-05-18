@@ -26,6 +26,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             HasBaseDeclarations = 1 << 3,
             AnyMemberHasAttributes = 1 << 4,
             HasAnyNontypeMembers = 1 << 5,
+            HasMetaclasses = 1 << 6,
         }
 
         internal SingleTypeDeclaration(
@@ -129,6 +130,14 @@ namespace Microsoft.CodeAnalysis.CSharp
             get
             {
                 return (_flags & TypeDeclarationFlags.HasAnyNontypeMembers) != 0;
+            }
+        }
+
+        public bool HasMetaclasses
+        {
+            get
+            {
+                return (_flags & TypeDeclarationFlags.HasMetaclasses) != 0;
             }
         }
 

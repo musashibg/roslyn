@@ -197,6 +197,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cannot apply metaclass &apos;{0}&apos; because it is abstract.
+        /// </summary>
+        internal static string ERR_AbstractMetaclass {
+            get {
+                return ResourceManager.GetString("ERR_AbstractMetaclass", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The abstract method &apos;{0}&apos; cannot be marked virtual.
         /// </summary>
         internal static string ERR_AbstractNotVirtual {
@@ -1277,24 +1286,6 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to A decorator argument must be of the same type as the corresponding decorator parameter.
-        /// </summary>
-        internal static string ERR_BadDecoratorArgument {
-            get {
-                return ResourceManager.GetString("ERR_BadDecoratorArgument", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Decorator constructor parameter &apos;{0}&apos; is optional, but no default parameter value was specified..
-        /// </summary>
-        internal static string ERR_BadDecoratorParamDefaultArgument {
-            get {
-                return ResourceManager.GetString("ERR_BadDecoratorParamDefaultArgument", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Delegate &apos;{0}&apos; does not take {1} arguments.
         /// </summary>
         internal static string ERR_BadDelArgCount {
@@ -1619,6 +1610,24 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A decorator/metaclass argument must be of the same type as the corresponding decorator/metaclass parameter.
+        /// </summary>
+        internal static string ERR_BadMetaDecorationArgument {
+            get {
+                return ResourceManager.GetString("ERR_BadMetaDecorationArgument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decorator/metaclass constructor parameter &apos;{0}&apos; is optional, but no default parameter value was specified..
+        /// </summary>
+        internal static string ERR_BadMetaDecorationParamDefaultArgument {
+            get {
+                return ResourceManager.GetString("ERR_BadMetaDecorationParamDefaultArgument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Member modifier &apos;{0}&apos; must precede the member type and name.
         /// </summary>
         internal static string ERR_BadModifierLocation {
@@ -1673,11 +1682,11 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &apos;{0}&apos; is not a valid named decorator argument. Named decorator arguments must be fields which are not readonly, static, or const, or read-write properties which are public and not static..
+        ///   Looks up a localized string similar to &apos;{0}&apos; is not a valid named decorator/metaclass argument. Named decorator/metaclass arguments must be fields which are not readonly, static, or const, or read-write properties which are public and not static..
         /// </summary>
-        internal static string ERR_BadNamedDecoratorArgument {
+        internal static string ERR_BadNamedMetaDecorationArgument {
             get {
-                return ResourceManager.GetString("ERR_BadNamedDecoratorArgument", resourceCulture);
+                return ResourceManager.GetString("ERR_BadNamedMetaDecorationArgument", resourceCulture);
             }
         }
         
@@ -3140,20 +3149,20 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Decorators are not allowed on classes, structs or interfaces.
-        /// </summary>
-        internal static string ERR_DecoratorOnType {
-            get {
-                return ResourceManager.GetString("ERR_DecoratorOnType", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Decorators are not valid in this context..
         /// </summary>
         internal static string ERR_DecoratorsNotAllowed {
             get {
                 return ResourceManager.GetString("ERR_DecoratorsNotAllowed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decorators with costructor or named arguments are not supported.
+        /// </summary>
+        internal static string ERR_DecoratorWithArguments {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorWithArguments", resourceCulture);
             }
         }
         
@@ -3536,11 +3545,11 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &apos;{0}&apos; duplicate named decorator argument.
+        ///   Looks up a localized string similar to &apos;{0}&apos; duplicate named decorator/metaclass argument.
         /// </summary>
-        internal static string ERR_DuplicateNamedDecoratorArgument {
+        internal static string ERR_DuplicateNamedMetaDecorationArgument {
             get {
-                return ResourceManager.GetString("ERR_DuplicateNamedDecoratorArgument", resourceCulture);
+                return ResourceManager.GetString("ERR_DuplicateNamedMetaDecorationArgument", resourceCulture);
             }
         }
         
@@ -3613,6 +3622,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_DynamicAttributeMissing {
             get {
                 return ResourceManager.GetString("ERR_DynamicAttributeMissing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This expression or statement cannot be statically evaluated at compile time.
+        /// </summary>
+        internal static string ERR_DynamicBindingTimeInCompileTimeOnlyCode {
+            get {
+                return ResourceManager.GetString("ERR_DynamicBindingTimeInCompileTimeOnlyCode", resourceCulture);
             }
         }
         
@@ -5588,11 +5606,11 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This language feature is not supported inside decorators.
+        ///   Looks up a localized string similar to This language feature is not supported inside decorators and metaclasses.
         /// </summary>
-        internal static string ERR_LanguageFeatureNotSupportedInDecorator {
+        internal static string ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass {
             get {
-                return ResourceManager.GetString("ERR_LanguageFeatureNotSupportedInDecorator", resourceCulture);
+                return ResourceManager.GetString("ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass", resourceCulture);
             }
         }
         
@@ -5827,6 +5845,33 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_MemGroupInExpressionTree {
             get {
                 return ResourceManager.GetString("ERR_MemGroupInExpressionTree", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The application method method of metaclass &apos;{0}&apos; has no body.
+        /// </summary>
+        internal static string ERR_MetaclassApplicationMethodWithoutBody {
+            get {
+                return ResourceManager.GetString("ERR_MetaclassApplicationMethodWithoutBody", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Metaclasses cannot be applied to multiple partial declarations of the same type.
+        /// </summary>
+        internal static string ERR_MetaclassesInMultiplePartialTypeDeclarations {
+            get {
+                return ResourceManager.GetString("ERR_MetaclassesInMultiplePartialTypeDeclarations", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A metaclass may only modify the target type it is applied to and its members.
+        /// </summary>
+        internal static string ERR_MetaclassModificationOnNonTargetType {
+            get {
+                return ResourceManager.GetString("ERR_MetaclassModificationOnNonTargetType", resourceCulture);
             }
         }
         
@@ -6587,6 +6632,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cannot apply metaclass &apos;{0}&apos; because it is not part of the same assembly.
+        /// </summary>
+        internal static string ERR_NonSourceMetaclass {
+            get {
+                return ResourceManager.GetString("ERR_NonSourceMetaclass", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cannot embed interop types from assembly &apos;{0}&apos; because it is missing the &apos;{1}&apos; attribute..
         /// </summary>
         internal static string ERR_NoPIAAssemblyMissingAttribute {
@@ -6664,6 +6718,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_NotADecoratorClass {
             get {
                 return ResourceManager.GetString("ERR_NotADecoratorClass", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; is not a metaclass.
+        /// </summary>
+        internal static string ERR_NotAMetaclass {
+            get {
+                return ResourceManager.GetString("ERR_NotAMetaclass", resourceCulture);
             }
         }
         
@@ -8378,11 +8441,11 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Decoration methods cannot access the decorator object or its members.
+        ///   Looks up a localized string similar to Decoration methods and metaclass application methods cannot access the decorator/metaclass object or its members.
         /// </summary>
-        internal static string ERR_ThisReferenceInDecorator {
+        internal static string ERR_ThisReferenceInDecoratorOrMetaclass {
             get {
-                return ResourceManager.GetString("ERR_ThisReferenceInDecorator", resourceCulture);
+                return ResourceManager.GetString("ERR_ThisReferenceInDecoratorOrMetaclass", resourceCulture);
             }
         }
         

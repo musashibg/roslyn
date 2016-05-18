@@ -14,7 +14,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Organizing.Organizers
             IndexerDeclarationSyntax syntax,
             CancellationToken cancellationToken)
         {
-            return syntax.Update(syntax.AttributeLists,
+            return syntax.Update(
+                syntax.AttributeLists,
+                syntax.Decorators,
                 ModifiersOrganizer.Organize(syntax.Modifiers),
                 syntax.Type,
                 syntax.ExplicitInterfaceSpecifier,

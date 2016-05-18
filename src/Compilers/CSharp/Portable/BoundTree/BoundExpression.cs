@@ -548,6 +548,14 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
     }
 
+    internal partial class BoundMetaclass
+    {
+        public override Symbol ExpressionSymbol
+        {
+            get { return this.Constructor; }
+        }
+    }
+
     // NOTE: this type exists in order to hide the presence of {Value,Type}Expression inside of a
     //       BoundTypeOrValueExpression from the bound tree generator, which would otherwise generate
     //       a constructor that may spuriously set hasErrors to true if either field had errors.

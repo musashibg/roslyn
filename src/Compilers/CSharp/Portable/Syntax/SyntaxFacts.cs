@@ -59,8 +59,44 @@ namespace Microsoft.CodeAnalysis.CSharp
                     return an.Name == node ? IsDecoratorName(parent) : false;
             }
 
-            var p = node.Parent as DecoratorSyntax;
-            return p != null && p.Name == node;
+            var p = node.Parent as MetaDecorationSyntax;
+            if (p == null || p.Name != node)
+            {
+                return false;
+            }
+
+            var memberDeclaration = p.Parent;
+            return memberDeclaration != null
+                   && (memberDeclaration is BaseMethodDeclarationSyntax || memberDeclaration is BasePropertyDeclarationSyntax);
+        }
+
+        public static bool IsMetaclassName(SyntaxNode node)
+        {
+            var parent = node.Parent;
+            if (parent == null || !IsName(node.Kind()))
+            {
+                return false;
+            }
+
+            switch (parent.Kind())
+            {
+                case QualifiedName:
+                    var qn = (QualifiedNameSyntax)parent;
+                    return qn.Right == node ? IsMetaclassName(parent) : false;
+
+                case AliasQualifiedName:
+                    var an = (AliasQualifiedNameSyntax)parent;
+                    return an.Name == node ? IsMetaclassName(parent) : false;
+            }
+
+            var p = node.Parent as MetaDecorationSyntax;
+            if (p == null || p.Name != node)
+            {
+                return false;
+            }
+
+            var memberDeclaration = p.Parent;
+            return memberDeclaration != null && memberDeclaration is BaseTypeDeclarationSyntax;
         }
 
         /// <summary>

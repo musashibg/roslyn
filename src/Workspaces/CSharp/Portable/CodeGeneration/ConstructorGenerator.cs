@@ -49,7 +49,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             var declaration = SyntaxFactory.ConstructorDeclaration(
                 attributeLists: AttributeGenerator.GenerateAttributeLists(constructor.GetAttributes(), options),
-                decorators: default(SyntaxList<DecoratorSyntax>),
+                decorators: default(SyntaxList<MetaDecorationSyntax>),
                 modifiers: GenerateModifiers(constructor, options),
                 identifier: CodeGenerationConstructorInfo.GetTypeName(constructor).ToIdentifierToken(),
                 parameterList: ParameterGenerator.GenerateParameterList(constructor.Parameters, isExplicit: false, options: options),

@@ -75,9 +75,13 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeRefactorings.ReplaceMethodWithProper
             var setAccessor = CreateSetAccessor(semanticModel, generator, getAndSetMethods);
 
             var property = SyntaxFactory.PropertyDeclaration(
-                getMethodDeclaration.AttributeLists, getMethodDeclaration.Modifiers,
-                getMethodDeclaration.ReturnType, getMethodDeclaration.ExplicitInterfaceSpecifier,
-                GetPropertyName(getMethodDeclaration.Identifier, propertyName, nameChanged), accessorList: null);
+                getMethodDeclaration.AttributeLists,
+                getMethodDeclaration.Decorators,
+                getMethodDeclaration.Modifiers,
+                getMethodDeclaration.ReturnType,
+                getMethodDeclaration.ExplicitInterfaceSpecifier,
+                GetPropertyName(getMethodDeclaration.Identifier, propertyName, nameChanged),
+                accessorList: null);
 
             IEnumerable<SyntaxTrivia> trivia = getMethodDeclaration.GetLeadingTrivia();
             var setMethodDeclaration = getAndSetMethods.SetMethodDeclaration;

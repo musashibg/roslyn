@@ -21,16 +21,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (_flags.HasFlag(DecorationRewriterFlags.ProhibitSpliceLocation))
                 {
                     _diagnostics.Add(ErrorCode.ERR_InvalidSpliceLocation, node.Syntax.Location);
-                    rewrittenNode = new BoundBadExpression(node.Syntax, LookupResultKind.Empty, ImmutableArray<Symbol>.Empty, ImmutableArray<BoundNode>.Empty, node.Type)
-                    {
-                        WasCompilerGenerated = true,
-                    };
+                    rewrittenNode = MakeBadExpression(node.Syntax, node.Type);
                     mustEmit = true;
                 }
                 else
                 {
                     // Prepare a temporary variable for the result (replace void with object to maintain the semantics of reflection method invocation)
-                    LocalSymbol resultLocal = method.ReturnsVoid
+                    LocalSymbol resultLocal = _targetMethod.ReturnsVoid
                                                 ? null
                                                 : _factory.SynthesizedLocal(_targetMethod.ReturnType, node.Syntax, kind: SynthesizedLocalKind.DecoratorTempResult);
 
@@ -60,10 +57,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 _diagnostics.Add(ErrorCode.ERR_BaseDecoratorMethodCallNotSupported, node.Syntax.Location);
                 return new DecorationRewriteResult(
-                    new BoundBadExpression(node.Syntax, LookupResultKind.Empty, ImmutableArray<Symbol>.Empty, ImmutableArray<BoundNode>.Empty, node.Type)
-                    {
-                        WasCompilerGenerated = true,
-                    },
+                    MakeBadExpression(node.Syntax, node.Type),
                     variableValues,
                     true,
                     CompileTimeValue.Dynamic);
@@ -79,7 +73,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
 
             // Handle well-known method invocations with static binding time
-            if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAssignableFrom))
+            if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods)
+                || method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods2))
+            {
+                return VisitGetMethods(node, receiverResult, argumentsResults, variableValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAssignableFrom))
             {
                 return VisitIsAssignableFromCall(node, receiverResult, argumentsResults, variableValues);
             }
@@ -325,6 +324,60 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             _spliceOrdinal++;
         }
 
+        private DecorationRewriteResult VisitGetMethods(
+            BoundCall node,
+            DecorationRewriteResult receiverResult,
+            ImmutableArray<DecorationRewriteResult> argumentsResults,
+            ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
+        {
+            Debug.Assert(receiverResult != null && argumentsResults.Length <= 1);
+            CompileTimeValue receiverValue = receiverResult.Value;
+            CSharpSyntaxNode syntax = node.Syntax;
+
+            if (receiverValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                return new DecorationRewriteResult(
+                    MakeBadExpression(syntax, node.Type),
+                    variableValues,
+                    true,
+                    CompileTimeValue.Dynamic);
+            }
+
+            CompileTimeValue value;
+            if (receiverValue.Kind == CompileTimeValueKind.Dynamic
+                || (!argumentsResults.IsEmpty && argumentsResults[0].Value.Kind == CompileTimeValueKind.Dynamic))
+            {
+                value = CompileTimeValue.Dynamic;
+            }
+            else
+            {
+                Debug.Assert(receiverValue is TypeValue && node.Type.IsArray());
+                TypeSymbol type = ((TypeValue)receiverValue).Type;
+
+                BindingFlags bindingFlags;
+                if (argumentsResults.IsEmpty)
+                {
+                    bindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
+                }
+                else
+                {
+                    var bindingFlagsValue = argumentsResults[0].Value as EnumValue;
+                    Debug.Assert(bindingFlagsValue != null && bindingFlagsValue.EnumType == _compilation.GetWellKnownType(WellKnownType.System_Reflection_BindingFlags));
+                    bindingFlags = (BindingFlags)bindingFlagsValue.UnderlyingValue.Int32Value;
+                }
+
+                value = StaticValueUtils.LookupMethods(((TypeValue)receiverValue).Type, bindingFlags, (ArrayTypeSymbol)node.Type);
+            }
+
+            return new DecorationRewriteResult(
+                node.Update((BoundExpression)receiverResult.Node, node.Method, argumentsResults.SelectAsArray(r => (BoundExpression)r.Node)),
+                variableValues,
+                value.Kind == CompileTimeValueKind.Dynamic,
+                value);
+        }
+
         private DecorationRewriteResult VisitIsAssignableFromCall(
             BoundCall node,
             DecorationRewriteResult receiverResult,
@@ -341,10 +394,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
                 _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
-                    new BoundBadExpression(node.Syntax, LookupResultKind.Empty, ImmutableArray<Symbol>.Empty, ImmutableArray<BoundNode>.Empty, node.Type)
-                    {
-                        WasCompilerGenerated = true,
-                    },
+                    MakeBadExpression(syntax, node.Type),
                     variableValues,
                     true,
                     CompileTimeValue.Dynamic);
@@ -355,10 +405,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 Debug.Assert(((ConstantStaticValue)otherTypeValue).Value.IsNull);
                 _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 return new DecorationRewriteResult(
-                    new BoundBadExpression(node.Syntax, LookupResultKind.Empty, ImmutableArray<Symbol>.Empty, ImmutableArray<BoundNode>.Empty, node.Type)
-                    {
-                        WasCompilerGenerated = true,
-                    },
+                    MakeBadExpression(syntax, node.Type),
                     variableValues,
                     true,
                     CompileTimeValue.Dynamic);
@@ -399,7 +446,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
                 _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
-                    MakeBadExpression(node.Syntax, node.Type),
+                    MakeBadExpression(syntax, node.Type),
                     variableValues,
                     true,
                     CompileTimeValue.Dynamic);
@@ -442,49 +489,69 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 Debug.Assert(((ConstantStaticValue)argumentValue).Value.IsNull);
                 _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
-                    new BoundBadExpression(node.Syntax, LookupResultKind.Empty, ImmutableArray<Symbol>.Empty, ImmutableArray<BoundNode>.Empty, node.Type)
-                    {
-                        WasCompilerGenerated = true,
-                    },
+                    MakeBadExpression(syntax, node.Type),
                     variableValues,
                     true,
                     CompileTimeValue.Dynamic);
             }
 
             CompileTimeValue value;
-            BoundExpression rewrittenNode;
+            BoundExpression rewrittenNode = null;
             MethodSymbol invokedMethod = node.Method;
             TypeSymbol requestedAttributeType = invokedMethod.TypeArguments[0];
+            CSharpAttributeData candidateAttribute = null;
             if (argumentValue.Kind == CompileTimeValueKind.Dynamic)
             {
                 value = CompileTimeValue.Dynamic;
                 rewrittenNode = node.Update((BoundExpression)receiverResult?.Node, node.Method, argumentsResults.SelectAsArray(r => (BoundExpression)r.Node));
             }
-            else if (argumentValue.Kind == CompileTimeValueKind.Simple)
-            {
-                Debug.Assert(argumentValue is TypeValue
-                             && invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
-                TypeSymbol type = ((TypeValue)argumentValue).Type;
-                LookupCustomAttributeValue(node.Syntax, requestedAttributeType, type.GetAttributes(), out value, out rewrittenNode);
-            }
             else
             {
-                Debug.Assert(argumentValue.Kind == CompileTimeValueKind.Complex);
-                if (argumentValue is MethodInfoValue)
+                try
                 {
-                    Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
-                    MethodSymbol method = ((MethodInfoValue)argumentValue).Method;
-                    LookupCustomAttributeValue(node.Syntax, requestedAttributeType, method.GetAttributes(), out value, out rewrittenNode);
+                    if (argumentValue.Kind == CompileTimeValueKind.Simple)
+                    {
+                        Debug.Assert(argumentValue is TypeValue
+                                     && invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
+                        TypeSymbol type = ((TypeValue)argumentValue).Type;
+                        value = StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, type.GetAttributes(), _diagnostics, out candidateAttribute);
+                    }
+                    else
+                    {
+                        Debug.Assert(argumentValue.Kind == CompileTimeValueKind.Complex);
+                        if (argumentValue is MethodInfoValue)
+                        {
+                            Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
+                            MethodSymbol method = ((MethodInfoValue)argumentValue).Method;
+                            value = StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, method.GetAttributes(), _diagnostics, out candidateAttribute);
+                        }
+                        else
+                        {
+                            Debug.Assert(argumentValue is ParameterInfoValue
+                                         && invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T2));
+                            ParameterSymbol parameter = ((ParameterInfoValue)argumentValue).Parameter;
+                            value = StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, parameter.GetAttributes(), _diagnostics, out candidateAttribute);
+                        }
+                    }
+
+
+                    if (value.Kind == CompileTimeValueKind.Simple)
+                    {
+                        rewrittenNode = MakeSimpleStaticValueExpression(value, requestedAttributeType, syntax);
+                    }
+                    else
+                    {
+                        Debug.Assert(value.Kind == CompileTimeValueKind.Complex);
+                        rewrittenNode = MakeAttributeCreationExpression(syntax, candidateAttribute, requestedAttributeType);
+                    }
                 }
-                else
+                catch (ExecutionInterruptionException)
                 {
-                    Debug.Assert(argumentValue is ParameterInfoValue
-                                 && invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T2));
-                    ParameterSymbol parameter = ((ParameterInfoValue)argumentValue).Parameter;
-                    LookupCustomAttributeValue(node.Syntax, requestedAttributeType, parameter.GetAttributes(), out value, out rewrittenNode);
+                    // Ambiguous match was encountered
+                    value = CompileTimeValue.Dynamic;
+                    rewrittenNode = MakeBadExpression(syntax, requestedAttributeType);
                 }
             }
-
             return new DecorationRewriteResult(rewrittenNode, variableValues, value.Kind == CompileTimeValueKind.Dynamic, value);
         }
 
@@ -625,7 +692,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 }
 
                 return new DecorationRewriteResult(
-                    new BoundBadExpression(node.Syntax, LookupResultKind.Empty, ImmutableArray<Symbol>.Empty, ImmutableArray<BoundNode>.Empty, node.Type),
+                    MakeBadExpression(syntax, node.Type),
                     variableValues,
                     false,
                     new ArgumentArrayValue(newArgumentLocals.ToImmutableArray<Symbol>()));
@@ -784,50 +851,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 variableValues,
                 true,
                 CompileTimeValue.Dynamic);
-        }
-
-        private void LookupCustomAttributeValue(
-            CSharpSyntaxNode syntax,
-            TypeSymbol attributeType,
-            ImmutableArray<CSharpAttributeData> attributes,
-            out CompileTimeValue value,
-            out BoundExpression rewrittenNode)
-        {
-            if (attributes.IsDefaultOrEmpty)
-            {
-                value = new ConstantStaticValue(ConstantValue.Null);
-                rewrittenNode = MakeSimpleStaticValueExpression(value, attributeType, syntax);
-                return;
-            }
-
-            var candidateAttributes = new List<CSharpAttributeData>();
-            HashSet<DiagnosticInfo> useSiteDiagnostics = null;
-            foreach (CSharpAttributeData attribute in attributes)
-            {
-                if (attribute.AttributeClass.IsEqualToOrDerivedFrom(attributeType, false, ref useSiteDiagnostics))
-                {
-                    candidateAttributes.Add(attribute);
-                }
-            }
-
-            switch (candidateAttributes.Count)
-            {
-                case 0:
-                    value = new ConstantStaticValue(ConstantValue.Null);
-                    rewrittenNode = MakeSimpleStaticValueExpression(value, attributeType, syntax);
-                    break;
-
-                case 1:
-                    value = new AttributeValue(candidateAttributes[0]);
-                    rewrittenNode = MakeAttributeCreationExpression(syntax, candidateAttributes[0], attributeType);
-                    break;
-
-                default:
-                    _diagnostics.Add(ErrorCode.ERR_StaticAmbiguousMatch, syntax.Location);
-                    value = CompileTimeValue.Dynamic;
-                    rewrittenNode = MakeBadExpression(syntax, attributeType);
-                    break;
-            }
         }
 
         private BoundExpression MakeAttributeCreationExpression(CSharpSyntaxNode syntax, CSharpAttributeData attribute, TypeSymbol type)

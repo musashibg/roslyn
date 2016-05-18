@@ -51,6 +51,8 @@ namespace Microsoft.CodeAnalysis
         System_Guid__ctor,
 
         System_Type__FullName,
+        System_Type__GetMethods,
+        System_Type__GetMethods2,
         System_Type__GetTypeFromCLSID,
         System_Type__GetTypeFromHandle,
         System_Type__IsAbstract,
@@ -394,7 +396,8 @@ namespace Microsoft.CodeAnalysis
 
         System_String__Format_IFormatProvider,
 
-        // Decorators
+        // Decorators and metaclasses
+        CSharp_Meta_MetaPrimitives__ApplyDecorator,
         CSharp_Meta_MetaPrimitives__CloneArguments,
         CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray,
         CSharp_Meta_MetaPrimitives__ParameterType,

@@ -4678,23 +4678,20 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_DecoratorOnIncompatibleMember" xml:space="preserve">
     <value>Decorators are not allowed on fields, events, properties or indexers</value>
   </data>
-  <data name="ERR_DecoratorOnType" xml:space="preserve">
-    <value>Decorators are not allowed on classes, structs or interfaces</value>
-  </data>
   <data name="ERR_DecoratorsNotAllowed" xml:space="preserve">
     <value>Decorators are not valid in this context.</value>
   </data>
   <data name="ERR_AbstractDecoratorClass" xml:space="preserve">
     <value>Cannot apply decorator class '{0}' because it is abstract</value>
   </data>
-  <data name="ERR_BadDecoratorArgument" xml:space="preserve">
-    <value>A decorator argument must be of the same type as the corresponding decorator parameter</value>
+  <data name="ERR_BadMetaDecorationArgument" xml:space="preserve">
+    <value>A decorator/metaclass argument must be of the same type as the corresponding decorator/metaclass parameter</value>
   </data>
-  <data name="ERR_BadDecoratorParamDefaultArgument" xml:space="preserve">
-    <value>Decorator constructor parameter '{0}' is optional, but no default parameter value was specified.</value>
+  <data name="ERR_BadMetaDecorationParamDefaultArgument" xml:space="preserve">
+    <value>Decorator/metaclass constructor parameter '{0}' is optional, but no default parameter value was specified.</value>
   </data>
-  <data name="ERR_BadNamedDecoratorArgument" xml:space="preserve">
-    <value>'{0}' is not a valid named decorator argument. Named decorator arguments must be fields which are not readonly, static, or const, or read-write properties which are public and not static.</value>
+  <data name="ERR_BadNamedMetaDecorationArgument" xml:space="preserve">
+    <value>'{0}' is not a valid named decorator/metaclass argument. Named decorator/metaclass arguments must be fields which are not readonly, static, or const, or read-write properties which are public and not static.</value>
   </data>
   <data name="ERR_DecoratedIteratorMethod" xml:space="preserve">
     <value>Decoration of iterator methods is not supported</value>
@@ -4705,8 +4702,8 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_DecoratorMethodWithoutBody" xml:space="preserve">
     <value>The decorator method of decorator class '{0}' has no body</value>
   </data>
-  <data name="ERR_DuplicateNamedDecoratorArgument" xml:space="preserve">
-    <value>'{0}' duplicate named decorator argument</value>
+  <data name="ERR_DuplicateNamedMetaDecorationArgument" xml:space="preserve">
+    <value>'{0}' duplicate named decorator/metaclass argument</value>
   </data>
   <data name="ERR_InvalidInvokeInDecorator" xml:space="preserve">
     <value>Only calls to MethodBase.Invoke on the target method with the target object and a variable containing a list of arguments are currently supported</value>
@@ -4717,8 +4714,8 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_NotADecoratorClass" xml:space="preserve">
     <value>'{0}' is not a decorator class</value>
   </data>
-  <data name="ERR_ThisReferenceInDecorator" xml:space="preserve">
-    <value>Decoration methods cannot access the decorator object or its members</value>
+  <data name="ERR_ThisReferenceInDecoratorOrMetaclass" xml:space="preserve">
+    <value>Decoration methods and metaclass application methods cannot access the decorator/metaclass object or its members</value>
   </data>
   <data name="ERR_BadDecoratedMethodArgumentArrayIndex" xml:space="preserve">
     <value>Decorated method argument arrays may only be indexed using a local variable</value>
@@ -4756,8 +4753,8 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_InvalidSpliceLocation" xml:space="preserve">
     <value>Splicing of target method body is not allowed inside loop conditions/initializations/increments and catch block exception source and filter expressions</value>
   </data>
-  <data name="ERR_LanguageFeatureNotSupportedInDecorator" xml:space="preserve">
-    <value>This language feature is not supported inside decorators</value>
+  <data name="ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass" xml:space="preserve">
+    <value>This language feature is not supported inside decorators and metaclasses</value>
   </data>
   <data name="ERR_OrdinaryArrayAssignedToDecoratedMethodArgumentArray" xml:space="preserve">
     <value>Ordinary arrays cannot be assigned to decorated method argument array variables</value>
@@ -4794,5 +4791,29 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   </data>
   <data name="ERR_StaticIndexOutOfBounds" xml:space="preserve">
     <value>An index out of bounds exception was detected at compile time.</value>
+  </data>
+  <data name="ERR_AbstractMetaclass" xml:space="preserve">
+    <value>Cannot apply metaclass '{0}' because it is abstract</value>
+  </data>
+  <data name="ERR_NonSourceMetaclass" xml:space="preserve">
+    <value>Cannot apply metaclass '{0}' because it is not part of the same assembly</value>
+  </data>
+  <data name="ERR_NotAMetaclass" xml:space="preserve">
+    <value>'{0}' is not a metaclass</value>
+  </data>
+  <data name="ERR_DecoratorWithArguments" xml:space="preserve">
+    <value>Decorators with costructor or named arguments are not supported</value>
+  </data>
+  <data name="ERR_DynamicBindingTimeInCompileTimeOnlyCode" xml:space="preserve">
+    <value>This expression or statement cannot be statically evaluated at compile time</value>
+  </data>
+  <data name="ERR_MetaclassesInMultiplePartialTypeDeclarations" xml:space="preserve">
+    <value>Metaclasses cannot be applied to multiple partial declarations of the same type</value>
+  </data>
+  <data name="ERR_MetaclassApplicationMethodWithoutBody" xml:space="preserve">
+    <value>The application method method of metaclass '{0}' has no body</value>
+  </data>
+  <data name="ERR_MetaclassModificationOnNonTargetType" xml:space="preserve">
+    <value>A metaclass may only modify the target type it is applied to and its members</value>
   </data>
 </root>

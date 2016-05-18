@@ -87,7 +87,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitAddressOfOperator(BoundAddressOfOperator node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -105,13 +105,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitArgList(BoundArgList node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
         public override DecoratorTypingResult VisitArgListOperator(BoundArgListOperator node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -278,7 +278,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         public override DecoratorTypingResult VisitBaseReference(BoundBaseReference node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
             // References to the decorator object would be meaningless in the target method's context
-            _diagnostics.Add(ErrorCode.ERR_ThisReferenceInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -1223,7 +1223,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitMakeRefOperator(BoundMakeRefOperator node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -1370,13 +1370,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitPointerElementAccess(BoundPointerElementAccess node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
         public override DecoratorTypingResult VisitPointerIndirectionOperator(BoundPointerIndirectionOperator node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -1475,13 +1475,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitRefTypeOperator(BoundRefTypeOperator node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
         public override DecoratorTypingResult VisitRefValueOperator(BoundRefValueOperator node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -1655,7 +1655,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         public override DecoratorTypingResult VisitThisReference(BoundThisReference node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
             // References to the decorator object would be meaningless in the target method's context
-            _diagnostics.Add(ErrorCode.ERR_ThisReferenceInDecorator, node.Syntax.Location);
+            _diagnostics.Add(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
             return new DecoratorTypingResult(false, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 

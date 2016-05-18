@@ -2,11 +2,11 @@
 {
     internal partial class LanguageParser
     {
-        private void ParseDecorators(SyntaxListBuilder list, bool allowDecorators = true)
+        private void ParseMetaDecorations(SyntaxListBuilder list, bool allowDecorators = true)
         {
-            while (this.IsPossibleDecorator())
+            while (this.IsPossibleMetaDecoration())
             {
-                var section = this.ParseDecorator();
+                var section = this.ParseMetaDecoration();
                 if (!allowDecorators)
                 {
                     section = this.AddError(section, ErrorCode.ERR_DecoratorsNotAllowed);
@@ -16,48 +16,48 @@
             }
         }
 
-        private bool IsPossibleDecorator()
+        private bool IsPossibleMetaDecoration()
         {
             return this.CurrentToken.Kind == SyntaxKind.PercentToken;
         }
 
-        private DecoratorSyntax ParseDecorator()
+        private MetaDecorationSyntax ParseMetaDecoration()
         {
-            if (this.IsIncrementalAndFactoryContextMatches && this.CurrentNodeKind == SyntaxKind.Decorator)
+            if (this.IsIncrementalAndFactoryContextMatches && this.CurrentNodeKind == SyntaxKind.MetaDecoration)
             {
-                return (DecoratorSyntax)this.EatNode();
+                return (MetaDecorationSyntax)this.EatNode();
             }
 
             var percentToken = this.EatToken(SyntaxKind.PercentToken);
 
             var name = this.ParseQualifiedName();
 
-            var argList = this.ParseDecoratorArgumentList();
-            return _syntaxFactory.Decorator(percentToken, name, argList);
+            var argList = this.ParseMetaDecorationArgumentList();
+            return _syntaxFactory.MetaDecoration(percentToken, name, argList);
         }
 
-        private DecoratorArgumentListSyntax ParseDecoratorArgumentList()
+        private MetaDecorationArgumentListSyntax ParseMetaDecorationArgumentList()
         {
-            if (this.IsIncrementalAndFactoryContextMatches && this.CurrentNodeKind == SyntaxKind.DecoratorArgumentList)
+            if (this.IsIncrementalAndFactoryContextMatches && this.CurrentNodeKind == SyntaxKind.MetaDecorationArgumentList)
             {
-                return (DecoratorArgumentListSyntax)this.EatNode();
+                return (MetaDecorationArgumentListSyntax)this.EatNode();
             }
 
-            DecoratorArgumentListSyntax argList = null;
+            MetaDecorationArgumentListSyntax argList = null;
             if (this.CurrentToken.Kind == SyntaxKind.OpenParenToken)
             {
                 var openParen = this.EatToken(SyntaxKind.OpenParenToken);
-                var argNodes = _pool.AllocateSeparated<DecoratorArgumentSyntax>();
+                var argNodes = _pool.AllocateSeparated<MetaDecorationArgumentSyntax>();
                 try
                 {
                     bool shouldHaveName = false;
-                tryAgain:
+                    tryAgain:
                     if (this.CurrentToken.Kind != SyntaxKind.CloseParenToken)
                     {
-                        if (this.IsPossibleDecoratorArgument() || this.CurrentToken.Kind == SyntaxKind.CommaToken)
+                        if (this.IsPossibleMetaDecorationArgument() || this.CurrentToken.Kind == SyntaxKind.CommaToken)
                         {
                             // first argument
-                            argNodes.Add(this.ParseDecoratorArgument(ref shouldHaveName));
+                            argNodes.Add(this.ParseMetaDecorationArgument(ref shouldHaveName));
 
                             // comma + argument or end?
                             while (true)
@@ -66,25 +66,25 @@
                                 {
                                     break;
                                 }
-                                else if (this.CurrentToken.Kind == SyntaxKind.CommaToken || this.IsPossibleDecoratorArgument())
+                                else if (this.CurrentToken.Kind == SyntaxKind.CommaToken || this.IsPossibleMetaDecorationArgument())
                                 {
                                     argNodes.AddSeparator(this.EatToken(SyntaxKind.CommaToken));
-                                    argNodes.Add(this.ParseDecoratorArgument(ref shouldHaveName));
+                                    argNodes.Add(this.ParseMetaDecorationArgument(ref shouldHaveName));
                                 }
-                                else if (this.SkipBadDecoratorArgumentTokens(ref openParen, argNodes, SyntaxKind.CommaToken) == PostSkipAction.Abort)
+                                else if (this.SkipBadMetaDecorationArgumentTokens(ref openParen, argNodes, SyntaxKind.CommaToken) == PostSkipAction.Abort)
                                 {
                                     break;
                                 }
                             }
                         }
-                        else if (this.SkipBadDecoratorArgumentTokens(ref openParen, argNodes, SyntaxKind.IdentifierToken) == PostSkipAction.Continue)
+                        else if (this.SkipBadMetaDecorationArgumentTokens(ref openParen, argNodes, SyntaxKind.IdentifierToken) == PostSkipAction.Continue)
                         {
                             goto tryAgain;
                         }
                     }
 
                     var closeParen = this.EatToken(SyntaxKind.CloseParenToken);
-                    argList = _syntaxFactory.DecoratorArgumentList(openParen, argNodes, closeParen);
+                    argList = _syntaxFactory.MetaDecorationArgumentList(openParen, argNodes, closeParen);
                 }
                 finally
                 {
@@ -95,20 +95,20 @@
             return argList;
         }
 
-        private PostSkipAction SkipBadDecoratorArgumentTokens(ref SyntaxToken openParen, SeparatedSyntaxListBuilder<DecoratorArgumentSyntax> list, SyntaxKind expected)
+        private PostSkipAction SkipBadMetaDecorationArgumentTokens(ref SyntaxToken openParen, SeparatedSyntaxListBuilder<MetaDecorationArgumentSyntax> list, SyntaxKind expected)
         {
             return this.SkipBadSeparatedListTokensWithExpectedKind(ref openParen, list,
-                p => p.CurrentToken.Kind != SyntaxKind.CommaToken && !p.IsPossibleDecoratorArgument(),
+                p => p.CurrentToken.Kind != SyntaxKind.CommaToken && !p.IsPossibleMetaDecorationArgument(),
                 p => p.CurrentToken.Kind == SyntaxKind.CloseParenToken || p.IsTerminator(),
                 expected);
         }
 
-        private bool IsPossibleDecoratorArgument()
+        private bool IsPossibleMetaDecorationArgument()
         {
             return this.IsPossibleExpression();
         }
 
-        private DecoratorArgumentSyntax ParseDecoratorArgument(ref bool shouldHaveName)
+        private MetaDecorationArgumentSyntax ParseMetaDecorationArgument(ref bool shouldHaveName)
         {
             // Need to parse both "real" named arguments and attribute-style named arguments.
             // We track attribute-style named arguments only with fShouldHaveName.
@@ -149,7 +149,7 @@
                 expr = this.AddError(expr, ErrorCode.ERR_NamedArgumentExpected);
             }
 
-            return _syntaxFactory.DecoratorArgument(nameEquals, nameColon, expr);
+            return _syntaxFactory.MetaDecorationArgument(nameEquals, nameColon, expr);
         }
     }
 }

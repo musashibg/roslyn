@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using Microsoft.CodeAnalysis.Collections;
+using Microsoft.CodeAnalysis.CSharp.Symbols;
+using Roslyn.Utilities;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.CodeAnalysis.Collections;
-using Microsoft.CodeAnalysis.CSharp.Symbols;
-using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -36,6 +36,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             else if (options.IsDecoratorTypeLookup())
             {
                 this.LookupDecoratorType(result, qualifierOpt, plainName, arity, basesBeingResolved, options, diagnose, ref useSiteDiagnostics);
+            }
+            else if (options.IsMetaclassTypeLookup())
+            {
+                this.LookupMetaclassType(result, qualifierOpt, plainName, arity, basesBeingResolved, options, diagnose, ref useSiteDiagnostics);
             }
             else
             {
@@ -851,6 +855,218 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         #endregion
 
+        #region "MetaclassTypeLookup"
+
+        /// <summary>
+        /// Lookup metaclass name in the given binder. By default two name lookups are performed:
+        ///     (1) With the provided name
+        ///     (2) With a Metaclass suffix added to the provided name
+        /// 
+        /// If either lookup is ambiguous, we return the corresponding result with ambiguous symbols.
+        /// Else if exactly one result is single viable metaclass type, we return that result.
+        /// Otherwise, we return a non-viable result with LookupResult.NotAMetaclassType or an empty result.
+        /// </summary>
+        private void LookupMetaclassType(
+            LookupResult result,
+            NamespaceOrTypeSymbol qualifierOpt,
+            string name,
+            int arity,
+            ConsList<Symbol> basesBeingResolved,
+            LookupOptions options,
+            bool diagnose,
+            ref HashSet<DiagnosticInfo> useSiteDiagnostics)
+        {
+            Debug.Assert(result.IsClear);
+            Debug.Assert(options.AreValid());
+            Debug.Assert(options.IsMetaclassTypeLookup());
+
+            // Lookup symbols without metaclass suffix.
+            LookupSymbolsOrMembersInternal(result, qualifierOpt, name, arity, basesBeingResolved, options, diagnose, ref useSiteDiagnostics);
+
+            // Result without 'Metaclass' suffix added.
+            Symbol symbolWithoutSuffix;
+            bool resultWithoutSuffixIsViable = IsSingleViableMetaclassType(result, out symbolWithoutSuffix);
+
+            // Generic types are not allowed.
+            Debug.Assert(arity == 0 || !result.IsMultiViable);
+
+            // Lookup symbols with metaclass suffix.
+            LookupResult resultWithSuffix = LookupResult.GetInstance();
+            this.LookupSymbolsOrMembersInternal(resultWithSuffix, qualifierOpt, name + "Metaclass", arity, basesBeingResolved, options, diagnose, ref useSiteDiagnostics);
+
+            // Result with 'Metaclass' suffix added.
+            Symbol symbolWithSuffix;
+            bool resultWithSuffixIsViable = IsSingleViableMetaclassType(resultWithSuffix, out symbolWithSuffix);
+
+            // Generic types are not allowed.
+            Debug.Assert(arity == 0 || !result.IsMultiViable);
+
+            if (resultWithoutSuffixIsViable && resultWithSuffixIsViable)
+            {
+                // Single viable lookup symbol found both with and without Metaclass suffix.
+                // We merge both results, ambiguity error will be reported later in ResultSymbol.
+                result.MergeEqual(resultWithSuffix);
+            }
+            else if (resultWithoutSuffixIsViable)
+            {
+                // single viable lookup symbol only found without Metaclass suffix, return result.
+            }
+            else if (resultWithSuffixIsViable)
+            {
+                Debug.Assert(resultWithSuffix != null);
+
+                // Single viable lookup symbol only found with Metaclass suffix, return resultWithSuffix.
+                result.SetFrom(resultWithSuffix);
+            }
+            else
+            {
+                // Both results are clear, non-viable or ambiguous.
+
+                if (!result.IsClear)
+                {
+                    if ((object)symbolWithoutSuffix != null) // was not ambiguous, but not viable
+                    {
+                        result.SetFrom(GenerateNonViableMetaclassTypeResult(symbolWithoutSuffix, result.Error, diagnose));
+                    }
+                }
+
+                if (resultWithSuffix != null)
+                {
+                    if (!resultWithSuffix.IsClear)
+                    {
+                        if ((object)symbolWithSuffix != null)
+                        {
+                            resultWithSuffix.SetFrom(GenerateNonViableMetaclassTypeResult(symbolWithSuffix, resultWithSuffix.Error, diagnose));
+                        }
+                    }
+
+                    result.MergePrioritized(resultWithSuffix);
+                }
+            }
+
+            resultWithSuffix?.Free();
+        }
+
+        private bool IsAmbiguousMetaclassTypeResult(LookupResult result, out Symbol resultSymbol)
+        {
+            resultSymbol = null;
+            var symbols = result.Symbols;
+
+            switch (symbols.Count)
+            {
+                case 0:
+                    return false;
+                case 1:
+                    resultSymbol = symbols[0];
+                    return false;
+                default:
+                    resultSymbol = ResolveMultipleSymbolsInMetaclassTypeLookup(symbols);
+                    return (object)resultSymbol == null;
+            }
+        }
+
+        private Symbol ResolveMultipleSymbolsInMetaclassTypeLookup(ArrayBuilder<Symbol> symbols)
+        {
+            Debug.Assert(symbols.Count >= 2);
+
+            var originalSymbols = symbols.ToImmutable();
+
+            for (int i = 0; i < symbols.Count; i++)
+            {
+                symbols[i] = UnwrapAliasNoDiagnostics(symbols[i]);
+            }
+
+            BestSymbolInfo secondBest;
+            BestSymbolInfo best = GetBestSymbolInfo(symbols, out secondBest);
+
+            Debug.Assert(!best.IsNone);
+            Debug.Assert(!secondBest.IsNone);
+
+            if (best.IsFromCompilation && !secondBest.IsFromCompilation)
+            {
+                var srcSymbol = symbols[best.Index];
+                var mdSymbol = symbols[secondBest.Index];
+
+                //if names match, arities match, and containing symbols match (recursively), ...
+                if (srcSymbol.ToDisplayString(SymbolDisplayFormat.QualifiedNameArityFormat) ==
+                    mdSymbol.ToDisplayString(SymbolDisplayFormat.QualifiedNameArityFormat))
+                {
+                    return originalSymbols[best.Index];
+                }
+            }
+
+            return null;
+        }
+
+        private bool IsSingleViableMetaclassType(LookupResult result, out Symbol symbol)
+        {
+            if (IsAmbiguousMetaclassTypeResult(result, out symbol))
+            {
+                return false;
+            }
+
+            if (result == null || result.Kind != LookupResultKind.Viable || (object)symbol == null)
+            {
+                return false;
+            }
+
+            DiagnosticInfo discarded = null;
+            return CheckMetaclassTypeViability(UnwrapAliasNoDiagnostics(symbol), diagnose: false, diagInfo: ref discarded);
+        }
+
+        private SingleLookupResult GenerateNonViableMetaclassTypeResult(Symbol symbol, DiagnosticInfo diagInfo, bool diagnose)
+        {
+            Debug.Assert((object)symbol != null);
+
+            symbol = UnwrapAliasNoDiagnostics(symbol);
+            CheckMetaclassTypeViability(symbol, diagnose, ref diagInfo);
+            return LookupResult.NotAMetaclassType(symbol, diagInfo);
+        }
+
+        private bool CheckMetaclassTypeViability(Symbol symbol, bool diagnose, ref DiagnosticInfo diagInfo)
+        {
+            Debug.Assert((object)symbol != null);
+
+            if (symbol.Kind == SymbolKind.NamedType)
+            {
+                var namedType = (NamedTypeSymbol)symbol;
+                if (namedType.IsAbstract)
+                {
+                    // Metaclass class cannot be abstract.
+                    diagInfo = diagnose ? new CSDiagnosticInfo(ErrorCode.ERR_AbstractMetaclass, symbol) : null;
+                    return false;
+                }
+                else
+                {
+                    HashSet<DiagnosticInfo> useSiteDiagnostics = null;
+
+                    NamedTypeSymbol metaclassBaseType = Compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Metaclass);
+                    if (namedType.IsDerivedFrom(metaclassBaseType, false, ref useSiteDiagnostics))
+                    {
+                        // Reuse existing diagnostic info.
+                        return true;
+                    }
+
+                    if (diagnose && !useSiteDiagnostics.IsNullOrEmpty())
+                    {
+                        foreach (var info in useSiteDiagnostics)
+                        {
+                            if (info.Severity == DiagnosticSeverity.Error)
+                            {
+                                diagInfo = info;
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            diagInfo = diagnose ? new CSDiagnosticInfo(ErrorCode.ERR_NotAMetaclass, symbol) : null;
+            return false;
+        }
+
+        #endregion
+
         internal virtual bool SupportsExtensionMethods
         {
             get { return false; }
@@ -1255,7 +1471,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                     }
 
                     hidingSymbols.Add(sym); // not hidden
-                symIsHidden:;
+                    symIsHidden:;
                 }
             }
             else

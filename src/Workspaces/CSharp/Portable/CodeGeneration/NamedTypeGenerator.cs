@@ -183,6 +183,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.EnumDeclaration(
                 GenerateAttributeDeclarations(namedType, options),
+                default(SyntaxList<MetaDecorationSyntax>),
                 GenerateModifiers(namedType, destination, options),
                 namedType.Name.ToIdentifierToken(),
                 baseList: baseList,

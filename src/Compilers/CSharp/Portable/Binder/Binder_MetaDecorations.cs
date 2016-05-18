@@ -10,36 +10,35 @@ namespace Microsoft.CodeAnalysis.CSharp
 {
     internal partial class Binder
     {
-        #region Bind All Decorators
-
-        internal static void BindDecoratorTypes(
+        internal static void BindMetaDecorationTypes(
             ImmutableArray<Binder> binders,
-            ImmutableArray<DecoratorSyntax> decoratorsToBind,
+            ImmutableArray<MetaDecorationSyntax> metaDecorationsToBind,
             Symbol ownerSymbol,
-            NamedTypeSymbol[] boundDecoratorTypes,
+            NamedTypeSymbol[] boundMetaDecorationTypes,
             DiagnosticBag diagnostics)
         {
             Debug.Assert(binders.Any());
-            Debug.Assert(decoratorsToBind.Any());
+            Debug.Assert(metaDecorationsToBind.Any());
             Debug.Assert((object)ownerSymbol != null);
-            Debug.Assert(binders.Length == decoratorsToBind.Length);
-            Debug.Assert(boundDecoratorTypes != null);
+            Debug.Assert(binders.Length == metaDecorationsToBind.Length);
+            Debug.Assert(boundMetaDecorationTypes != null);
 
-            for (int i = 0; i < decoratorsToBind.Length; i++)
+            for (int i = 0; i < metaDecorationsToBind.Length; i++)
             {
                 var binder = binders[i];
 
-                // BindType for DecoratorSyntax's name is handled specially during lookup, see Binder.LookupDecoratorType.
-                // When looking up a name in decorator type context, we generate a diagnostic + error type if it is not an decorator type, i.e. named type deriving from CSharp.Meta.Decorator.
+                // BindType for MetaDecorationSyntax's name is handled specially during lookup, see Binder.LookupDecoratorType and Binder.LookupMetaclassType.
+                // When looking up a name in decorator type context, we generate a diagnostic + error type if it is not a decorator/metaclass type,
+                // i.e. named type deriving from CSharp.Meta.Decorator or CSharp.Meta.Metaclass, respectively.
                 // Hence we can assume here that BindType returns a NamedTypeSymbol.
-                boundDecoratorTypes[i] = (NamedTypeSymbol)binder.BindType(decoratorsToBind[i].Name, diagnostics);
+                boundMetaDecorationTypes[i] = (NamedTypeSymbol)binder.BindType(metaDecorationsToBind[i].Name, diagnostics);
             }
         }
 
         // Method to bind all decorators (decorator arguments and constructor)
         internal static void GetDecorators(
             ImmutableArray<Binder> binders,
-            ImmutableArray<DecoratorSyntax> decoratorsToBind,
+            ImmutableArray<MetaDecorationSyntax> decoratorsToBind,
             ImmutableArray<NamedTypeSymbol> boundDecoratorTypes,
             DecoratorData[] decoratorsBuilder,
             DiagnosticBag diagnostics)
@@ -53,7 +52,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             for (int i = 0; i < decoratorsToBind.Length; i++)
             {
-                DecoratorSyntax decoratorSyntax = decoratorsToBind[i];
+                MetaDecorationSyntax decoratorSyntax = decoratorsToBind[i];
                 NamedTypeSymbol boundDecoratorType = boundDecoratorTypes[i];
                 Binder binder = binders[i];
 
@@ -61,18 +60,16 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
         }
 
-        #endregion
-
         #region Bind Single Decorator
 
-        internal DecoratorData GetDecorator(DecoratorSyntax node, NamedTypeSymbol boundDecoratorType, DiagnosticBag diagnostics)
+        internal DecoratorData GetDecorator(MetaDecorationSyntax node, NamedTypeSymbol boundDecoratorType, DiagnosticBag diagnostics)
         {
             var boundDecorator = BindDecorator(node, boundDecoratorType, diagnostics);
 
             return GetDecorator(boundDecorator, diagnostics);
         }
 
-        internal BoundDecorator BindDecorator(DecoratorSyntax node, NamedTypeSymbol decoratorType, DiagnosticBag diagnostics)
+        internal BoundDecorator BindDecorator(MetaDecorationSyntax node, NamedTypeSymbol decoratorType, DiagnosticBag diagnostics)
         {
             // If decorator name bound to an error type with a single named type
             // candidate symbol, we want to bind the decorator constructor
@@ -96,8 +93,8 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             // Bind constructor and named decorator arguments using the decorator binder
             var argumentListOpt = node.ArgumentList;
-            Binder decoratorArgumentBinder = this.WithAdditionalFlags(BinderFlags.DecoratorArgument);
-            AnalyzedDecoratorArguments analyzedArguments = decoratorArgumentBinder.BindDecoratorArguments(argumentListOpt, nonErrorDecoratorType, diagnostics);
+            Binder decoratorArgumentBinder = this.WithAdditionalFlags(BinderFlags.MetaDecorationArgument);
+            AnalyzedMetaDecorationArguments analyzedArguments = decoratorArgumentBinder.BindMetaDecorationArguments(argumentListOpt, nonErrorDecoratorType, diagnostics);
 
             MethodSymbol decoratorConstructor = null;
             if (nonErrorDecoratorType != null)
@@ -110,7 +107,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                 // Bind the decorator type's constructor based on the bound constructor arguments
                 HashSet<DiagnosticInfo> useSiteDiagnostics = null;
-                decoratorConstructor = BindDecoratorConstructor(
+                decoratorConstructor = BindMetaDecorationConstructor(
                     node,
                     decoratorTypeForBinding,
                     analyzedArguments.ConstructorArguments,
@@ -172,8 +169,14 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             else
             {
-                constructorArguments = GetRewrittenDecoratorConstructorArguments(out constructorArgumentsSourceIndices, decoratorConstructor,
-                    arguments, boundDecorator.ConstructorArgumentNamesOpt, (DecoratorSyntax)boundDecorator.Syntax, diagnostics, ref hasErrors);
+                constructorArguments = GetRewrittenMetaDecorationConstructorArguments(
+                    out constructorArgumentsSourceIndices,
+                    decoratorConstructor,
+                    arguments,
+                    boundDecorator.ConstructorArgumentNamesOpt,
+                    (MetaDecorationSyntax)boundDecorator.Syntax,
+                    diagnostics,
+                    ref hasErrors);
             }
 
             return new DecoratorData(
@@ -186,21 +189,184 @@ namespace Microsoft.CodeAnalysis.CSharp
                 hasErrors);
         }
 
-        private AnalyzedDecoratorArguments BindDecoratorArguments(DecoratorArgumentListSyntax decoratorArgumentList, NamedTypeSymbol decoratorType, DiagnosticBag diagnostics)
+        #endregion
+
+        // Method to bind all metaclasses (metaclass arguments and constructor)
+        internal static void GetMetaclasses(
+            ImmutableArray<Binder> binders,
+            ImmutableArray<MetaDecorationSyntax> metaclassesToBind,
+            ImmutableArray<NamedTypeSymbol> boundMetaclassTypes,
+            MetaclassData[] metaclassesBuilder,
+            DiagnosticBag diagnostics)
+        {
+            Debug.Assert(binders.Any());
+            Debug.Assert(metaclassesToBind.Any());
+            Debug.Assert(boundMetaclassTypes.Any());
+            Debug.Assert(binders.Length == metaclassesToBind.Length);
+            Debug.Assert(boundMetaclassTypes.Length == metaclassesToBind.Length);
+            Debug.Assert(metaclassesBuilder != null);
+
+            for (int i = 0; i < metaclassesToBind.Length; i++)
+            {
+                MetaDecorationSyntax metaclassSyntax = metaclassesToBind[i];
+                NamedTypeSymbol boundMetaclassType = boundMetaclassTypes[i];
+                Binder binder = binders[i];
+
+                metaclassesBuilder[i] = binder.GetMetaclass(metaclassSyntax, boundMetaclassType, diagnostics);
+            }
+        }
+
+        #region Bind Single Metaclass
+
+        internal MetaclassData GetMetaclass(MetaDecorationSyntax node, NamedTypeSymbol boundMetaclassType, DiagnosticBag diagnostics)
+        {
+            var boundMetaclass = BindMetaclass(node, boundMetaclassType, diagnostics);
+
+            return GetMetaclass(boundMetaclass, diagnostics);
+        }
+
+        internal BoundMetaclass BindMetaclass(MetaDecorationSyntax node, NamedTypeSymbol metaclassType, DiagnosticBag diagnostics)
+        {
+            // If metaclass name bound to an error type with a single named type
+            // candidate symbol, we want to bind the metaclass constructor
+            // and arguments with that named type to generate better semantic info.
+
+            NamedTypeSymbol nonErrorMetaclassType = null;
+            LookupResultKind resultKind = LookupResultKind.Viable;
+            if (metaclassType.IsErrorType())
+            {
+                var errorType = (ErrorTypeSymbol)metaclassType;
+                resultKind = errorType.ResultKind;
+                if (errorType.CandidateSymbols.Length == 1 && errorType.CandidateSymbols[0] is NamedTypeSymbol)
+                {
+                    nonErrorMetaclassType = errorType.CandidateSymbols[0] as SourceNamedTypeSymbol;
+                }
+            }
+            else
+            {
+                nonErrorMetaclassType = metaclassType;
+            }
+
+            // Bind constructor and named metaclass arguments using the metaclass binder
+            var argumentListOpt = node.ArgumentList;
+            Binder metaclassArgumentBinder = this.WithAdditionalFlags(BinderFlags.MetaDecorationArgument);
+            AnalyzedMetaDecorationArguments analyzedArguments = metaclassArgumentBinder.BindMetaDecorationArguments(argumentListOpt, nonErrorMetaclassType, diagnostics);
+
+            MethodSymbol metaclassConstructor = null;
+            if (nonErrorMetaclassType != null)
+            {
+                var metaclassTypeForBinding = nonErrorMetaclassType as SourceNamedTypeSymbol;
+                if (metaclassTypeForBinding == null)
+                {
+                    diagnostics.Add(ErrorCode.ERR_NonSourceMetaclass, node.Location, metaclassType);
+                }
+
+                // Bind the metaclass type's constructor based on the bound constructor arguments
+                HashSet<DiagnosticInfo> useSiteDiagnostics = null;
+                metaclassConstructor = BindMetaDecorationConstructor(
+                    node,
+                    metaclassTypeForBinding,
+                    analyzedArguments.ConstructorArguments,
+                    diagnostics,
+                    ref resultKind,
+                    suppressErrors: false,
+                    useSiteDiagnostics: ref useSiteDiagnostics);
+                diagnostics.Add(node, useSiteDiagnostics);
+            }
+
+            if ((object)metaclassConstructor != null)
+            {
+                ReportDiagnosticsIfObsolete(diagnostics, metaclassConstructor, node, hasBaseReceiver: false);
+            }
+
+            var constructorArguments = analyzedArguments.ConstructorArguments;
+            ImmutableArray<BoundExpression> boundConstructorArguments = constructorArguments.Arguments.ToImmutableAndFree();
+            ImmutableArray<string> boundConstructorArgumentNamesOpt = constructorArguments.GetNames();
+            ImmutableArray<BoundExpression> boundNamedArguments = analyzedArguments.NamedArguments;
+            constructorArguments.Free();
+
+            return new BoundMetaclass(
+                node,
+                metaclassConstructor,
+                boundConstructorArguments,
+                boundConstructorArgumentNamesOpt,
+                boundNamedArguments,
+                resultKind,
+                nonErrorMetaclassType ?? metaclassType,
+                hasErrors: resultKind != LookupResultKind.Viable);
+        }
+
+        private MetaclassData GetMetaclass(BoundMetaclass boundMetaclass, DiagnosticBag diagnostics)
+        {
+            var metaclassType = (NamedTypeSymbol)boundMetaclass.Type;
+            var metaclassConstructor = boundMetaclass.Constructor;
+
+            Debug.Assert((object)metaclassType != null);
+
+            bool hasErrors = boundMetaclass.HasAnyErrors;
+
+            if (metaclassType.IsErrorType() || metaclassType.IsAbstract || (object)metaclassConstructor == null)
+            {
+                // prevent cascading diagnostics
+                Debug.Assert(hasErrors);
+                return new MetaclassData(boundMetaclass.Syntax.GetReference(), metaclassType, metaclassConstructor, hasErrors);
+            }
+
+            // Validate the metaclass arguments and generate TypedConstant for argument's BoundExpression.
+            ImmutableArray<BoundExpression> arguments = boundMetaclass.ConstructorArguments;
+            ImmutableArray<KeyValuePair<string, BoundExpression>> namedArguments = UnpackNamedArguments(boundMetaclass.NamedArguments, diagnostics, ref hasErrors);
+
+            ImmutableArray<int> constructorArgumentsSourceIndices;
+            ImmutableArray<BoundExpression> constructorArguments;
+            if (hasErrors || metaclassConstructor.ParameterCount == 0)
+            {
+                constructorArgumentsSourceIndices = default(ImmutableArray<int>);
+                constructorArguments = arguments;
+            }
+            else
+            {
+                constructorArguments = GetRewrittenMetaDecorationConstructorArguments(
+                    out constructorArgumentsSourceIndices,
+                    metaclassConstructor,
+                    arguments,
+                    boundMetaclass.ConstructorArgumentNamesOpt,
+                    (MetaDecorationSyntax)boundMetaclass.Syntax,
+                    diagnostics,
+                    ref hasErrors);
+            }
+
+            return new MetaclassData(
+                boundMetaclass.Syntax.GetReference(),
+                metaclassType,
+                metaclassConstructor,
+                constructorArguments,
+                constructorArgumentsSourceIndices,
+                namedArguments,
+                hasErrors);
+        }
+
+        #endregion
+
+        #region Shared decorator and metaclass routines
+
+        private AnalyzedMetaDecorationArguments BindMetaDecorationArguments(
+            MetaDecorationArgumentListSyntax metaDecorationArgumentList,
+            NamedTypeSymbol metaDecorationType,
+            DiagnosticBag diagnostics)
         {
             var boundConstructorArguments = AnalyzedArguments.GetInstance();
             var boundNamedArguments = ImmutableArray<BoundExpression>.Empty;
-            if (decoratorArgumentList != null)
+            if (metaDecorationArgumentList != null)
             {
                 ArrayBuilder<BoundExpression> boundNamedArgumentsBuilder = null;
                 HashSet<string> boundNamedArgumentsSet = null;
 
                 // Avoid "cascading" errors for constructor arguments.
-                // We will still generate errors for each duplicate named decorator argument,
+                // We will still generate errors for each duplicate named decorator/metaclass argument,
                 // matching Dev10 compiler behavior.
                 bool hadError = false;
 
-                foreach (var argument in decoratorArgumentList.Arguments)
+                foreach (var argument in metaDecorationArgumentList.Arguments)
                 {
                     if (argument.NameEquals == null)
                     {
@@ -217,7 +383,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                         if (boundNamedArgumentsBuilder != null)
                         {
-                            // Error CS1016: Named decorator argument expected
+                            // Error CS1016: Named decorator/metaclass argument expected
                             // This has been reported by the parser.
                             hadError = true;
                         }
@@ -235,11 +401,11 @@ namespace Microsoft.CodeAnalysis.CSharp
                         else if (boundNamedArgumentsSet.Contains(argumentName))
                         {
                             // Duplicate named argument
-                            Error(diagnostics, ErrorCode.ERR_DuplicateNamedDecoratorArgument, argument, argumentName);
+                            Error(diagnostics, ErrorCode.ERR_DuplicateNamedMetaDecorationArgument, argument, argumentName);
                             hadError = true;
                         }
 
-                        BoundExpression boundNamedArgument = BindNamedDecoratorArgument(argument, decoratorType, diagnostics);
+                        BoundExpression boundNamedArgument = BindNamedMetaDecorationArgument(argument, metaDecorationType, diagnostics);
                         boundNamedArgumentsBuilder.Add(boundNamedArgument);
                         boundNamedArgumentsSet.Add(argumentName);
                     }
@@ -251,14 +417,14 @@ namespace Microsoft.CodeAnalysis.CSharp
                 }
             }
 
-            return new AnalyzedDecoratorArguments(boundConstructorArguments, boundNamedArguments);
+            return new AnalyzedMetaDecorationArguments(boundConstructorArguments, boundNamedArguments);
         }
 
-        private BoundExpression BindNamedDecoratorArgument(DecoratorArgumentSyntax namedArgument, NamedTypeSymbol decoratorType, DiagnosticBag diagnostics)
+        private BoundExpression BindNamedMetaDecorationArgument(MetaDecorationArgumentSyntax namedArgument, NamedTypeSymbol metaDecorationType, DiagnosticBag diagnostics)
         {
             bool wasError;
             LookupResultKind resultKind;
-            Symbol namedArgumentNameSymbol = BindNamedDecoratorArgumentName(namedArgument, decoratorType, diagnostics, out wasError, out resultKind);
+            Symbol namedArgumentNameSymbol = BindNamedMetaDecorationArgumentName(namedArgument, metaDecorationType, diagnostics, out wasError, out resultKind);
 
             ReportDiagnosticsIfObsolete(diagnostics, namedArgumentNameSymbol, namedArgument, hasBaseReceiver: false);
 
@@ -271,11 +437,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             else
             {
-                namedArgumentType = BindNamedDecoratorArgumentType(namedArgument, namedArgumentNameSymbol, decoratorType, diagnostics);
+                namedArgumentType = BindNamedMetaDecorationArgumentType(namedArgument, namedArgumentNameSymbol, metaDecorationType, diagnostics);
             }
 
-            // BindRValue just binds the expression without doing any validation (if its a valid expression for decorator argument).
-            // Validation is done later by DecoratorExpressionVisitor
+            // BindRValue just binds the expression without doing any validation (if its a valid expression for a decorator/metaclass argument).
             BoundExpression namedArgumentValue = this.BindValue(namedArgument.Expression, diagnostics, BindValueKind.RValue);
             namedArgumentValue = GenerateConversionForAssignment(namedArgumentType, namedArgumentValue, diagnostics);
 
@@ -308,13 +473,18 @@ namespace Microsoft.CodeAnalysis.CSharp
             return new BoundAssignmentOperator(namedArgument, lvalue, namedArgumentValue, namedArgumentType);
         }
 
-        private Symbol BindNamedDecoratorArgumentName(DecoratorArgumentSyntax namedArgument, NamedTypeSymbol decoratorType, DiagnosticBag diagnostics, out bool wasError, out LookupResultKind resultKind)
+        private Symbol BindNamedMetaDecorationArgumentName(
+            MetaDecorationArgumentSyntax namedArgument,
+            NamedTypeSymbol metaDecorationType,
+            DiagnosticBag diagnostics,
+            out bool wasError,
+            out LookupResultKind resultKind)
         {
             var identifierName = namedArgument.NameEquals.Name;
             var name = identifierName.Identifier.ValueText;
             LookupResult result = LookupResult.GetInstance();
             HashSet<DiagnosticInfo> useSiteDiagnostics = null;
-            this.LookupMembersWithFallback(result, decoratorType, name, 0, ref useSiteDiagnostics);
+            this.LookupMembersWithFallback(result, metaDecorationType, name, 0, ref useSiteDiagnostics);
             diagnostics.Add(identifierName, useSiteDiagnostics);
             Symbol resultSymbol = this.ResultSymbol(result, name, 0, identifierName, diagnostics, false, out wasError);
             resultKind = result.Kind;
@@ -322,7 +492,11 @@ namespace Microsoft.CodeAnalysis.CSharp
             return resultSymbol;
         }
 
-        private TypeSymbol BindNamedDecoratorArgumentType(DecoratorArgumentSyntax namedArgument, Symbol namedArgumentNameSymbol, NamedTypeSymbol decoratorType, DiagnosticBag diagnostics)
+        private TypeSymbol BindNamedMetaDecorationArgumentType(
+            MetaDecorationArgumentSyntax namedArgument,
+            Symbol namedArgumentNameSymbol,
+            NamedTypeSymbol metaDecorationType,
+            DiagnosticBag diagnostics)
         {
             if (namedArgumentNameSymbol.Kind == SymbolKind.ErrorType)
             {
@@ -332,7 +506,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             // SPEC:    For each named-argument Arg in named-argument-list N:
             // SPEC:        Let Name be the identifier of the named-argument Arg.
             // SPEC:        Name must identify a non-static read-write public field or property on 
-            // SPEC:            decorator class T. If T has no such field or property, then a compile-time error occurs.
+            // SPEC:            decorator/metaclass class T. If T has no such field or property, then a compile-time error occurs.
 
             bool invalidNamedArgument = false;
             TypeSymbol namedArgumentType = null;
@@ -373,10 +547,10 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             if (invalidNamedArgument)
             {
-                return new ExtendedErrorTypeSymbol(decoratorType,
+                return new ExtendedErrorTypeSymbol(metaDecorationType,
                     namedArgumentNameSymbol,
                     LookupResultKind.NotAVariable,
-                    diagnostics.Add(ErrorCode.ERR_BadNamedDecoratorArgument,
+                    diagnostics.Add(ErrorCode.ERR_BadNamedMetaDecorationArgument,
                         namedArgument.NameEquals.Name.Location,
                         namedArgumentNameSymbol.Name));
             }
@@ -384,9 +558,9 @@ namespace Microsoft.CodeAnalysis.CSharp
             return namedArgumentType;
         }
 
-        protected virtual MethodSymbol BindDecoratorConstructor(
-            DecoratorSyntax node,
-            NamedTypeSymbol decoratorType,
+        protected virtual MethodSymbol BindMetaDecorationConstructor(
+            MetaDecorationSyntax node,
+            NamedTypeSymbol metaDecorationType,
             AnalyzedArguments boundConstructorArguments,
             DiagnosticBag diagnostics,
             ref LookupResultKind resultKind,
@@ -396,9 +570,9 @@ namespace Microsoft.CodeAnalysis.CSharp
             MemberResolutionResult<MethodSymbol> memberResolutionResult;
             ImmutableArray<MethodSymbol> candidateConstructors;
             if (!TryPerformConstructorOverloadResolution(
-                decoratorType,
+                metaDecorationType,
                 boundConstructorArguments,
-                decoratorType.Name,
+                metaDecorationType.Name,
                 node.Location,
                 suppressErrors, //don't cascade in these cases
                 diagnostics,
@@ -416,7 +590,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
 
         /// <summary>
-        /// Gets the rewritten decorator constructor arguments, i.e. the arguments
+        /// Gets the rewritten decorator/metaclass constructor arguments, i.e. the arguments
         /// are in the order of parameters, which may differ from the source
         /// if named constructor arguments are used.
         /// 
@@ -427,20 +601,20 @@ namespace Microsoft.CodeAnalysis.CSharp
         ///     
         ///     Arguments returned: 0, 1, 2, 3
         /// </summary>
-        /// <returns>Rewritten decorator constructor arguments</returns>
+        /// <returns>Rewritten decorator/metaclass constructor arguments</returns>
         /// <remarks>
         /// CONSIDER: Can we share some code with call rewriting in the local rewriter?
         /// </remarks>
-        private ImmutableArray<BoundExpression> GetRewrittenDecoratorConstructorArguments(
+        private ImmutableArray<BoundExpression> GetRewrittenMetaDecorationConstructorArguments(
             out ImmutableArray<int> constructorArgumentsSourceIndices,
-            MethodSymbol decoratorConstructor,
+            MethodSymbol metaDecorationConstructor,
             ImmutableArray<BoundExpression> constructorArgsArray,
             ImmutableArray<string> constructorArgumentNamesOpt,
-            DecoratorSyntax syntax,
+            MetaDecorationSyntax syntax,
             DiagnosticBag diagnostics,
             ref bool hasErrors)
         {
-            Debug.Assert((object)decoratorConstructor != null);
+            Debug.Assert((object)metaDecorationConstructor != null);
             Debug.Assert(!constructorArgsArray.IsDefault);
             Debug.Assert(!hasErrors);
 
@@ -457,7 +631,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             // index of the first named constructor argument
             int firstNamedArgIndex = -1;
 
-            ImmutableArray<ParameterSymbol> parameters = decoratorConstructor.Parameters;
+            ImmutableArray<ParameterSymbol> parameters = metaDecorationConstructor.Parameters;
             int parameterCount = parameters.Length;
 
             var reorderedArguments = new BoundExpression[parameterCount];
@@ -525,7 +699,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                     {
                         // NOTE: As in dev11, we don't allow array covariance conversions (presumably, we don't have a way to
                         // represent the conversion in metadata).
-                        diagnostics.Add(ErrorCode.ERR_BadDecoratorArgument, syntax.Location);
+                        diagnostics.Add(ErrorCode.ERR_BadMetaDecorationArgument, syntax.Location);
                         hasErrors = true;
                     }
                 }
@@ -545,7 +719,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             int startIndex,
             int argumentsCount,
             ref int argsConsumedCount,
-            DecoratorSyntax syntax,
+            MetaDecorationSyntax syntax,
             DiagnosticBag diagnostics)
         {
             int index = GetMatchingNamedConstructorArgumentIndex(parameter.Name, constructorArgumentNamesOpt, startIndex, argumentsCount);
@@ -567,7 +741,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
         }
 
-        private BoundLiteral GetDefaultValueArgument(ParameterSymbol parameter, DecoratorSyntax syntax, DiagnosticBag diagnostics)
+        private BoundLiteral GetDefaultValueArgument(ParameterSymbol parameter, MetaDecorationSyntax syntax, DiagnosticBag diagnostics)
         {
             var parameterType = parameter.Type;
             ConstantValue defaultConstantValue = parameter.IsOptional ? parameter.ExplicitDefaultConstantValue : ConstantValue.NotAvailable;
@@ -593,7 +767,8 @@ namespace Microsoft.CodeAnalysis.CSharp
                 parameterType = Compilation.GetSpecialType(SpecialType.System_String);
                 defaultValue = ConstantValue.Create(syntax.SyntaxTree.GetDisplayPath(syntax.Name.Span, Compilation.Options.SourceReferenceResolver));
             }
-            else if (parameter.IsCallerMemberName && (object)((ContextualDecoratorBinder)this).DecoratedMember != null)
+            else if (parameter.IsCallerMemberName && this is ContextualDecoratorBinder
+                     && (object)((ContextualDecoratorBinder)this).DecoratedMember != null)
             {
                 parameterType = Compilation.GetSpecialType(SpecialType.System_String);
                 defaultValue = ConstantValue.Create(((ContextualDecoratorBinder)this).DecoratedMember.GetMemberCallerName());
@@ -606,7 +781,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 if (parameterType.SpecialType == SpecialType.System_Object)
                 {
                     // CS7359: Decorator constructor parameter '{0}' is optional, but no default parameter value was specified.
-                    diagnostics.Add(ErrorCode.ERR_BadDecoratorParamDefaultArgument, syntax.Name.Location, parameter.Name);
+                    diagnostics.Add(ErrorCode.ERR_BadMetaDecorationParamDefaultArgument, syntax.Name.Location, parameter.Name);
                     defaultValue = ConstantValue.Bad;
                 }
                 else
@@ -747,14 +922,14 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         #endregion
 
-        #region AnalyzedDecoratorArguments
+        #region AnalyzedMetaDecorationArguments
 
-        private struct AnalyzedDecoratorArguments
+        private struct AnalyzedMetaDecorationArguments
         {
             internal readonly AnalyzedArguments ConstructorArguments;
             internal readonly ImmutableArray<BoundExpression> NamedArguments;
 
-            internal AnalyzedDecoratorArguments(AnalyzedArguments constructorArguments, ImmutableArray<BoundExpression> namedArguments)
+            internal AnalyzedMetaDecorationArguments(AnalyzedArguments constructorArguments, ImmutableArray<BoundExpression> namedArguments)
             {
                 this.ConstructorArguments = constructorArguments;
                 this.NamedArguments = namedArguments;

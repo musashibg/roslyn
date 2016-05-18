@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using Roslyn.Utilities;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
@@ -33,6 +34,39 @@ namespace Microsoft.CodeAnalysis.CSharp
         internal static CSDiagnosticInfo Add(this DiagnosticBag diagnostics, ErrorCode code, Location location, params object[] args)
         {
             var info = new CSDiagnosticInfo(code, args);
+            var diag = new CSDiagnostic(info, location);
+            diagnostics.Add(diag);
+            return info;
+        }
+
+        /// <summary>
+        /// Add a diagnostic to the bag.
+        /// </summary>
+        /// <param name="diagnostics"></param>
+        /// <param name="code"></param>
+        /// <param name="location"></param>
+        /// <param name="additionalLocations"></param>
+        /// <returns></returns>
+        internal static CSDiagnosticInfo Add(this DiagnosticBag diagnostics, ErrorCode code, Location location, ImmutableArray<Location> additionalLocations)
+        {
+            var info = new CSDiagnosticInfo(code, SpecializedCollections.EmptyArray<object>(), ImmutableArray<Symbol>.Empty, additionalLocations);
+            var diag = new CSDiagnostic(info, location);
+            diagnostics.Add(diag);
+            return info;
+        }
+
+        /// <summary>
+        /// Add a diagnostic to the bag.
+        /// </summary>
+        /// <param name="diagnostics"></param>
+        /// <param name="code"></param>
+        /// <param name="location"></param>
+        /// <param name="additionalLocations"></param>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        internal static CSDiagnosticInfo Add(this DiagnosticBag diagnostics, ErrorCode code, Location location, ImmutableArray<Location> additionalLocations, params object[] args)
+        {
+            var info = new CSDiagnosticInfo(code, args, ImmutableArray<Symbol>.Empty, additionalLocations);
             var diag = new CSDiagnostic(info, location);
             diagnostics.Add(diag);
             return info;

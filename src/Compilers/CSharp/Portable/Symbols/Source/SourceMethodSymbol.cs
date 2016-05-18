@@ -166,6 +166,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private CustomAttributesBag<CSharpAttributeData> _lazyReturnTypeCustomAttributesBag;
 
         private ImmutableArray<DecoratorData> _lazyDecorators;
+        private readonly object _decoratorsLock = new object();
 
         private OverriddenOrHiddenMembersResult _lazyOverriddenOrHiddenMembers;
 
@@ -747,7 +748,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 state.SpinWaitComplete(incompletePart, cancellationToken);
             }
 
-        done:
+            done:
             // Don't return until we've seen all of the CompletionParts. This ensures all
             // diagnostics have been reported (not necessarily on this thread).
             CompletionPart allParts = CompletionPart.MethodSymbolAll;
@@ -1498,7 +1499,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         #endregion
 
-        public sealed override ImmutableArray<DecoratorData> GetDecorators()
+        internal sealed override ImmutableArray<DecoratorData> GetDecorators()
         {
             var decorators = _lazyDecorators;
             if (!decorators.IsDefault)
@@ -1506,7 +1507,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 return decorators;
             }
 
-            return GetDecorators(ref _lazyDecorators);
+            lock (_decoratorsLock)
+            {
+                return GetDecorators(ref _lazyDecorators);
+            }
         }
 
         private ImmutableArray<DecoratorData> GetDecorators(ref ImmutableArray<DecoratorData> decorators)
@@ -1531,8 +1535,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     bindersBuilder[i] = new ContextualDecoratorBinder(methodBinder, this);
                 }
                 ImmutableArray<Binder> binders = bindersBuilder.ToImmutableArray();
-                ImmutableArray<DecoratorSyntax> decoratorsToBind = methodSyntax.Decorators.ToImmutableArray();
-                Binder.BindDecoratorTypes(binders, decoratorsToBind, this, boundDecoratorTypes, diagnostics);
+                ImmutableArray<MetaDecorationSyntax> decoratorsToBind = methodSyntax.Decorators.ToImmutableArray();
+                Binder.BindMetaDecorationTypes(binders, decoratorsToBind, this, boundDecoratorTypes, diagnostics);
 
                 // Bind decorators
                 var decoratorsBuilder = new DecoratorData[decoratorCount];
@@ -1545,6 +1549,21 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
             state.NotePartComplete(CompletionPart.Decorators);
             return decorators;
+        }
+
+        internal void ApplyDecorator(DecoratorData decorator)
+        {
+            // Cannot use lock-free CompareExchange approach due to ImmutableArray<T> being a value type
+            lock (_decoratorsLock)
+            {
+                ImmutableArray<DecoratorData> decorators = GetDecorators();
+
+                // The newly applied decorator should be applied after all existing ones, and should therefore be prepended to the front of the list
+                ImmutableArray<DecoratorData>.Builder newDecoratorsBuilder = ImmutableArray.CreateBuilder<DecoratorData>(decorators.Length + 1);
+                newDecoratorsBuilder.Add(decorator);
+                newDecoratorsBuilder.AddRange(decorators);
+                _lazyDecorators = newDecoratorsBuilder.ToImmutable();
+            }
         }
 
         internal override void AddSynthesizedAttributes(ModuleCompilationState compilationState, ref ArrayBuilder<SynthesizedAttributeData> attributes)

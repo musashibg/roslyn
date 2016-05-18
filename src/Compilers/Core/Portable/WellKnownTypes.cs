@@ -36,6 +36,7 @@ namespace Microsoft.CodeAnalysis
         System_Type,
         System_Reflection_AssemblyKeyFileAttribute,
         System_Reflection_AssemblyKeyNameAttribute,
+        System_Reflection_BindingFlags,
         System_Reflection_MethodInfo,
         System_Reflection_ConstructorInfo,
         System_Reflection_MethodBase,
@@ -250,6 +251,7 @@ namespace Microsoft.CodeAnalysis
 
         // Decorators
         CSharp_Meta_Decorator,
+        CSharp_Meta_Metaclass,
         CSharp_Meta_MetaPrimitives,
 
         Available,
@@ -288,6 +290,7 @@ namespace Microsoft.CodeAnalysis
             "System.Type",
             "System.Reflection.AssemblyKeyFileAttribute",
             "System.Reflection.AssemblyKeyNameAttribute",
+            "System.Reflection.BindingFlags",
             "System.Reflection.MethodInfo",
             "System.Reflection.ConstructorInfo",
             "System.Reflection.MethodBase",
@@ -496,6 +499,7 @@ namespace Microsoft.CodeAnalysis
             "System.IFormatProvider",
 
             "CSharp.Meta.Decorator",
+            "CSharp.Meta.Metaclass",
             "CSharp.Meta.MetaPrimitives",
         };
 

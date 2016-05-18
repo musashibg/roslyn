@@ -14,7 +14,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Organizing.Organizers
             EventDeclarationSyntax syntax,
             CancellationToken cancellationToken)
         {
-            return syntax.Update(syntax.AttributeLists,
+            return syntax.Update(
+                syntax.AttributeLists,
+                syntax.Decorators,
                 ModifiersOrganizer.Organize(syntax.Modifiers),
                 syntax.EventKeyword,
                 syntax.Type,

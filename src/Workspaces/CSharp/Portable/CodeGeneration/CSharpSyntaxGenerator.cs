@@ -138,7 +138,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.MethodDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
-                default(SyntaxList<DecoratorSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 AsModifierList(accessibility, modifiers, SyntaxKind.MethodDeclaration),
                 returnType != null ? (TypeSyntax)returnType : SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)),
                 default(ExplicitInterfaceSpecifierSyntax),
@@ -159,7 +159,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
             var semicolon = !hasBody ? SyntaxFactory.Token(SyntaxKind.SemicolonToken) : default(SyntaxToken);
             var modifierList = AsModifierList(accessibility, modifiers, SyntaxKind.OperatorDeclaration);
             var attributes = default(SyntaxList<AttributeListSyntax>);
-            var decorators = default(SyntaxList<DecoratorSyntax>);
+            var decorators = default(SyntaxList<MetaDecorationSyntax>);
 
             if (kind == OperatorKind.ImplicitConversion || kind == OperatorKind.ExplicitConversion)
             {
@@ -230,7 +230,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
         {
             return SyntaxFactory.ConstructorDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
-                default(SyntaxList<DecoratorSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 AsModifierList(accessibility, modifiers, SyntaxKind.ConstructorDeclaration),
                 (name ?? "ctor").ToIdentifierToken(),
                 AsParameterList(parameters),
@@ -282,6 +282,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.PropertyDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 AsModifierList(accessibility, actualModifiers, SyntaxKind.PropertyDeclaration),
                 (TypeSyntax)type,
                 default(ExplicitInterfaceSpecifierSyntax),
@@ -333,6 +334,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.IndexerDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 AsModifierList(accessibility, actualModifiers, SyntaxKind.IndexerDeclaration),
                 (TypeSyntax)type,
                 default(ExplicitInterfaceSpecifierSyntax),
@@ -409,6 +411,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.EventDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 AsModifierList(accessibility, modifiers, SyntaxKind.EventDeclaration),
                 (TypeSyntax)type,
                 default(ExplicitInterfaceSpecifierSyntax),
@@ -618,6 +621,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.ClassDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 AsModifierList(accessibility, modifiers, SyntaxKind.ClassDeclaration),
                 name.ToIdentifierToken(),
                 AsTypeParameterList(typeParameters),
@@ -666,6 +670,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.StructDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 AsModifierList(accessibility, modifiers, SyntaxKind.StructDeclaration),
                 name.ToIdentifierToken(),
                 AsTypeParameterList(typeParameters),
@@ -689,6 +694,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
 
             return SyntaxFactory.InterfaceDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 AsModifierList(accessibility, DeclarationModifiers.None),
                 name.ToIdentifierToken(),
                 AsTypeParameterList(typeParameters),
@@ -765,6 +771,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
         {
             return SyntaxFactory.EnumDeclaration(
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 AsModifierList(accessibility, modifiers, SyntaxKind.EnumDeclaration),
                 name.ToIdentifierToken(),
                 default(BaseListSyntax),

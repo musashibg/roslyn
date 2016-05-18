@@ -2462,6 +2462,11 @@
         <summary>Gets the attribute declaration list.</summary>
       </PropertyComment>
     </Field>
+    <Field Name="Metaclasses" Type="SyntaxList&lt;MetaDecorationSyntax&gt;">
+      <PropertyComment>
+        <summary>Gets the metaclass list.</summary>
+      </PropertyComment>
+    </Field>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;">
       <PropertyComment>
         <summary>Gets the modifier list.</summary>
@@ -2524,6 +2529,7 @@
     </TypeComment>
     <Kind Name="ClassDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Metaclasses" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="Keyword" Type="SyntaxToken" Override="true">
       <PropertyComment>
@@ -2554,6 +2560,7 @@
     </TypeComment>
     <Kind Name="StructDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Metaclasses" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="Keyword" Type="SyntaxToken" Override="true">
       <PropertyComment>
@@ -2584,6 +2591,7 @@
     </TypeComment>
     <Kind Name="InterfaceDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Metaclasses" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="Keyword" Type="SyntaxToken" Override="true">
       <PropertyComment>
@@ -2614,6 +2622,7 @@
     </TypeComment>
     <Kind Name="EnumDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Metaclasses" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="EnumKeyword" Type="SyntaxToken">
       <PropertyComment>
@@ -2890,7 +2899,7 @@
         <summary>Gets the attribute declaration list.</summary>
       </PropertyComment>
     </Field>
-    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;">
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;">
       <PropertyComment>
         <summary>Gets the decorator list.</summary>
       </PropertyComment>
@@ -2919,7 +2928,7 @@
     </TypeComment>
     <Kind Name="MethodDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
-    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="ReturnType" Type="TypeSyntax">
       <PropertyComment>
@@ -2956,7 +2965,7 @@
     </TypeComment>
     <Kind Name="OperatorDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
-    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="ReturnType" Type="TypeSyntax">
       <PropertyComment>
@@ -3010,7 +3019,7 @@
     </TypeComment>
     <Kind Name="ConversionOperatorDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
-    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="ImplicitOrExplicitKeyword" Type="SyntaxToken">
       <PropertyComment>
@@ -3046,7 +3055,7 @@
     </TypeComment>
     <Kind Name="ConstructorDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
-    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="Identifier" Type="SyntaxToken">
       <PropertyComment>
@@ -3091,7 +3100,7 @@
     </TypeComment>
     <Kind Name="DestructorDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
-    <Field Name="Decorators" Type="SyntaxList&lt;DecoratorSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="TildeToken" Type="SyntaxToken">
       <PropertyComment>
@@ -3123,6 +3132,11 @@
         <summary>Gets the attribute declaration list.</summary>
       </PropertyComment>
     </Field>
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;">
+      <PropertyComment>
+        <summary>Gets the decorator list.</summary>
+      </PropertyComment>
+    </Field>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;">
       <PropertyComment>
         <summary>Gets the modifier list.</summary>
@@ -3143,6 +3157,7 @@
   <Node Name="PropertyDeclarationSyntax" Base="BasePropertyDeclarationSyntax">
     <Kind Name="PropertyDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="Type" Type="TypeSyntax" Override="true"/>
     <Field Name="ExplicitInterfaceSpecifier" Type="ExplicitInterfaceSpecifierSyntax" Optional="true" Override="true"/>
@@ -3172,6 +3187,7 @@
   <Node Name="EventDeclarationSyntax" Base="BasePropertyDeclarationSyntax">
     <Kind Name="EventDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="EventKeyword" Type="SyntaxToken">
       <Kind Name="EventKeyword"/>
@@ -3189,6 +3205,7 @@
   <Node Name="IndexerDeclarationSyntax" Base="BasePropertyDeclarationSyntax">
     <Kind Name="IndexerDeclaration"/>
     <Field Name="AttributeLists" Type="SyntaxList&lt;AttributeListSyntax&gt;" Override="true"/>
+    <Field Name="Decorators" Type="SyntaxList&lt;MetaDecorationSyntax&gt;" Override="true"/>
     <Field Name="Modifiers" Type="SyntaxList&lt;SyntaxToken&gt;" Override="true"/>
     <Field Name="Type" Type="TypeSyntax" Override="true"/>
     <Field Name="ExplicitInterfaceSpecifier" Type="ExplicitInterfaceSpecifierSyntax" Optional="true" Override="true"/>
@@ -4018,12 +4035,12 @@
     <Field Name="IsActive" Type="bool" Override="true"/>
   </Node>
   
-  <!-- Decorators -->
-  <Node Name="DecoratorSyntax" Base="CSharpSyntaxNode">
+  <!-- Decorators and metaclasses -->
+  <Node Name="MetaDecorationSyntax" Base="CSharpSyntaxNode">
     <TypeComment>
-      <summary>Class representing a decorator applied to a type member declaration.</summary>
+      <summary>Class representing a decorator/metaclass applied to a member/type declaration.</summary>
     </TypeComment>
-    <Kind Name="Decorator"/>
+    <Kind Name="MetaDecoration"/>
     <Field Name="PercentToken" Type="SyntaxToken">
       <Kind Name="PercentToken"/>
       <PropertyComment>
@@ -4035,20 +4052,20 @@
         <summary>Gets the name.</summary>
       </PropertyComment>
     </Field>
-    <Field Name="ArgumentList" Type="DecoratorArgumentListSyntax" Optional="true"/>
+    <Field Name="ArgumentList" Type="MetaDecorationArgumentListSyntax" Optional="true"/>
   </Node>
-  <Node Name="DecoratorArgumentListSyntax" Base="CSharpSyntaxNode">
+  <Node Name="MetaDecorationArgumentListSyntax" Base="CSharpSyntaxNode">
     <TypeComment>
-      <summary>Decorator argument list syntax.</summary>
+      <summary>Decorator or metaclass argument list syntax.</summary>
     </TypeComment>
-    <Kind Name="DecoratorArgumentList"/>
+    <Kind Name="MetaDecorationArgumentList"/>
     <Field Name="OpenParenToken" Type="SyntaxToken">
       <PropertyComment>
         <summary>Gets the open paren token.</summary>
       </PropertyComment>
       <Kind Name="OpenParenToken"/>
     </Field>
-    <Field Name="Arguments" Type="SeparatedSyntaxList&lt;DecoratorArgumentSyntax&gt;">
+    <Field Name="Arguments" Type="SeparatedSyntaxList&lt;MetaDecorationArgumentSyntax&gt;">
       <PropertyComment>
         <summary>Gets the arguments syntax list.</summary>
       </PropertyComment>
@@ -4060,11 +4077,11 @@
       <Kind Name="CloseParenToken"/>
     </Field>
   </Node>
-  <Node Name="DecoratorArgumentSyntax" Base="CSharpSyntaxNode">
+  <Node Name="MetaDecorationArgumentSyntax" Base="CSharpSyntaxNode">
     <TypeComment>
-      <summary>Decorator argument syntax.</summary>
+      <summary>Decorator or metaclass argument syntax.</summary>
     </TypeComment>
-    <Kind Name="DecoratorArgument"/>
+    <Kind Name="MetaDecorationArgument"/>
     <Field Name="NameEquals" Type="NameEqualsSyntax" Optional="true"/>
     <Field Name="NameColon" Type="NameColonSyntax" Optional="true"/>
     <Field Name="Expression" Type="ExpressionSyntax">

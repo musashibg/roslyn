@@ -6,6 +6,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Roslyn.Utilities;
+using System.Diagnostics;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -77,6 +78,36 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
 
             return attributeSyntaxListBuilder.ToImmutableAndFree();
+        }
+
+        public ImmutableArray<MetaDecorationSyntax> GetMetaclasses(out CSharpSyntaxNode declaringSyntaxNode, DiagnosticBag diagnostics)
+        {
+            declaringSyntaxNode = null;
+            var metaclassSyntaxListBuilder = ArrayBuilder<MetaDecorationSyntax>.GetInstance();
+
+            foreach (SingleTypeDeclaration decl in _declarations)
+            {
+                if (!decl.HasMetaclasses)
+                {
+                    continue;
+                }
+
+                var typeDecl = decl.SyntaxReference.GetSyntax() as BaseTypeDeclarationSyntax;
+                Debug.Assert(typeDecl != null);
+                SyntaxList<MetaDecorationSyntax> declMetaclasses = typeDecl.Metaclasses;
+                Debug.Assert(declMetaclasses.Count > 0);
+
+                if (metaclassSyntaxListBuilder.Count > 0)
+                {
+                    diagnostics.Add(ErrorCode.ERR_MetaclassesInMultiplePartialTypeDeclarations, declMetaclasses[0].Location);
+                    continue;
+                }
+
+                declaringSyntaxNode = typeDecl;
+                metaclassSyntaxListBuilder.AddRange(declMetaclasses);
+            }
+
+            return metaclassSyntaxListBuilder.ToImmutableAndFree();
         }
 
         public override DeclarationKind Kind

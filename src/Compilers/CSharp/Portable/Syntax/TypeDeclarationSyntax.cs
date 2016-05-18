@@ -60,6 +60,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             return TypeDeclaration(
                 kind,
                 default(SyntaxList<AttributeListSyntax>),
+                default(SyntaxList<MetaDecorationSyntax>),
                 default(SyntaxTokenList),
                 SyntaxFactory.Token(GetTypeDeclarationKeywordKind(kind)),
                 identifier,
@@ -77,16 +78,65 @@ namespace Microsoft.CodeAnalysis.CSharp
             return SyntaxFactory.TypeDeclaration(kind, SyntaxFactory.Identifier(identifier));
         }
 
-        public static TypeDeclarationSyntax TypeDeclaration(SyntaxKind kind, SyntaxList<AttributeListSyntax> attributes, SyntaxTokenList modifiers, SyntaxToken keyword, SyntaxToken identifier, TypeParameterListSyntax typeParameterList, BaseListSyntax baseList, SyntaxList<TypeParameterConstraintClauseSyntax> constraintClauses, SyntaxToken openBraceToken, SyntaxList<MemberDeclarationSyntax> members, SyntaxToken closeBraceToken, SyntaxToken semicolonToken)
+        public static TypeDeclarationSyntax TypeDeclaration(
+            SyntaxKind kind,
+            SyntaxList<AttributeListSyntax> attributes,
+            SyntaxList<MetaDecorationSyntax> metaclasses,
+            SyntaxTokenList modifiers,
+            SyntaxToken keyword,
+            SyntaxToken identifier,
+            TypeParameterListSyntax typeParameterList,
+            BaseListSyntax baseList,
+            SyntaxList<TypeParameterConstraintClauseSyntax> constraintClauses,
+            SyntaxToken openBraceToken,
+            SyntaxList<MemberDeclarationSyntax> members,
+            SyntaxToken closeBraceToken,
+            SyntaxToken semicolonToken)
         {
             switch (kind)
             {
                 case SyntaxKind.ClassDeclaration:
-                    return SyntaxFactory.ClassDeclaration(attributes, modifiers, keyword, identifier, typeParameterList, baseList, constraintClauses, openBraceToken, members, closeBraceToken, semicolonToken);
+                    return SyntaxFactory.ClassDeclaration(
+                        attributes,
+                        metaclasses,
+                        modifiers,
+                        keyword,
+                        identifier,
+                        typeParameterList,
+                        baseList,
+                        constraintClauses,
+                        openBraceToken,
+                        members,
+                        closeBraceToken,
+                        semicolonToken);
                 case SyntaxKind.StructDeclaration:
-                    return SyntaxFactory.StructDeclaration(attributes, modifiers, keyword, identifier, typeParameterList, baseList, constraintClauses, openBraceToken, members, closeBraceToken, semicolonToken);
+                    return SyntaxFactory.StructDeclaration(
+                        attributes,
+                        metaclasses,
+                        modifiers,
+                        keyword,
+                        identifier,
+                        typeParameterList,
+                        baseList,
+                        constraintClauses,
+                        openBraceToken,
+                        members,
+                        closeBraceToken,
+                        semicolonToken);
                 case SyntaxKind.InterfaceDeclaration:
-                    return SyntaxFactory.InterfaceDeclaration(attributes, modifiers, keyword, identifier, typeParameterList, baseList, constraintClauses, openBraceToken, members, closeBraceToken, semicolonToken);
+                    return SyntaxFactory.InterfaceDeclaration(
+                        attributes,
+                        metaclasses,
+                        modifiers,
+                        keyword,
+                        identifier,
+                        typeParameterList,
+                        baseList,
+                        constraintClauses,
+                        openBraceToken,
+                        members,
+                        closeBraceToken,
+                        semicolonToken);
                 default:
                     throw new ArgumentException("kind");
             }

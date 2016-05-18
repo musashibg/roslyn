@@ -1,14 +1,14 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using Microsoft.CodeAnalysis.CSharp.Symbols;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.RuntimeMembers;
+using Roslyn.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.CodeAnalysis.CSharp.Symbols;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.RuntimeMembers;
-using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -578,6 +578,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             else if (SyntaxFacts.IsDecoratorName(node))
             {
                 return LookupOptions.DecoratorTypeOnly;
+            }
+            else if (SyntaxFacts.IsMetaclassName(node))
+            {
+                return LookupOptions.MetaclassTypeOnly;
             }
             else
             {

@@ -1,9 +1,11 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Symbols;
+using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
+using System.Collections.Immutable;
 using System.Threading;
 
 namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
-    internal class DecorationPass
+    internal static class DecorationPass
     {
         /// <summary>
         /// The decoration pass.  This pass looks up any decorators applied to the method declaration and
@@ -23,11 +25,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CancellationToken cancellationToken)
         {
 #if DEBUG
-            var initialDiagnosticCount = diagnostics.ToReadOnly().Length;
+            int initialDiagnosticCount = diagnostics.ToReadOnly().Length;
 #endif
-            var compilation = method.DeclaringCompilation;
+            CSharpCompilation compilation = method.DeclaringCompilation;
 
-            var decorators = method.GetDecorators();
+            ImmutableArray<DecoratorData> decorators = method.GetDecorators();
             if (decorators.IsEmpty)
             {
                 // Nothing to decorate
@@ -39,7 +41,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var decorator = decorators[decoratorOrdinal];
+                DecoratorData decorator = decorators[decoratorOrdinal];
                 if (decorator.HasErrors)
                 {
                     // Do not apply decorators which contain errors

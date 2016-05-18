@@ -1,10 +1,7 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
-using System.Diagnostics;
-using Microsoft.CodeAnalysis.CSharp.Symbols;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 using Roslyn.Utilities;
+using System.Diagnostics;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -50,6 +47,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         OverloadResolutionFailure,
 
         NotADecoratorType,
+        NotAMetaclassType,
 
         // Note: within LookupResult, LookupResultKind.Ambiguous is currently not used (in C#). Instead
         // ambiguous results are determined later by examining multiple viable results to determine if
@@ -88,6 +86,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 case LookupResultKind.Ambiguous: return CandidateReason.Ambiguous;
                 case LookupResultKind.MemberGroup: return CandidateReason.MemberGroup;
                 case LookupResultKind.NotADecoratorType: return CandidateReason.NotADecoratorType;
+                case LookupResultKind.NotAMetaclassType: return CandidateReason.NotAMetaclassType;
 
                 case LookupResultKind.Viable:
                     Debug.Assert(false, "Should not call this on LookupResultKind.Viable");

@@ -123,5 +123,11 @@ namespace Microsoft.CodeAnalysis
         /// of the wrong kind.
         /// </summary>
         NotADecoratorType = 17,
+
+        /// <summary>
+        /// Only a metaclass type was valid in the given location, but the candidate symbol was
+        /// of the wrong kind.
+        /// </summary>
+        NotAMetaclassType = 18,
     }
 }

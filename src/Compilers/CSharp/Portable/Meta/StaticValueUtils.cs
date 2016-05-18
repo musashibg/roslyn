@@ -1,6 +1,8 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Roslyn.Utilities;
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace Microsoft.CodeAnalysis.CSharp.Meta
@@ -159,6 +161,113 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     diagnostics);
                 return new ConstantStaticValue(resultValue);
             }
+        }
+
+        public static CompileTimeValue LookupCustomAttributeValue(
+            CSharpSyntaxNode syntax,
+            TypeSymbol attributeType,
+            ImmutableArray<CSharpAttributeData> attributes,
+            DiagnosticBag diagnostics,
+            out CSharpAttributeData candidateAttribute)
+        {
+            if (attributes.IsDefaultOrEmpty)
+            {
+                candidateAttribute = null;
+                return new ConstantStaticValue(ConstantValue.Null);
+            }
+
+            var candidateAttributes = new List<CSharpAttributeData>();
+            HashSet<DiagnosticInfo> useSiteDiagnostics = null;
+            foreach (CSharpAttributeData attribute in attributes)
+            {
+                if (attribute.AttributeClass.IsEqualToOrDerivedFrom(attributeType, false, ref useSiteDiagnostics))
+                {
+                    candidateAttributes.Add(attribute);
+                }
+            }
+
+            if (useSiteDiagnostics != null)
+            {
+                foreach (DiagnosticInfo diagnosticInfo in useSiteDiagnostics)
+                {
+                    diagnostics.Add(diagnosticInfo, syntax.Location);
+                }
+            }
+
+            switch (candidateAttributes.Count)
+            {
+                case 0:
+                    candidateAttribute = null;
+                    return new ConstantStaticValue(ConstantValue.Null);
+
+                case 1:
+                    candidateAttribute = candidateAttributes[0];
+                    return new AttributeValue(candidateAttribute);
+
+                default:
+                    diagnostics.Add(ErrorCode.ERR_StaticAmbiguousMatch, syntax.Location);
+                    throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+        }
+
+        public static CompileTimeValue LookupMethods(TypeSymbol type, BindingFlags bindingFlags, ArrayTypeSymbol resultType)
+        {
+            ImmutableArray<CompileTimeValue>.Builder methodsBuilder = ImmutableArray.CreateBuilder<CompileTimeValue>();
+            foreach (Symbol member in type.GetMembers())
+            {
+                if (member.Kind != SymbolKind.Method)
+                {
+                    continue;
+                }
+
+                var method = (MethodSymbol)member;
+                if (method.MethodKind == MethodKind.Constructor || method.MethodKind == MethodKind.StaticConstructor)
+                {
+                    continue;
+                }
+
+                if (method.ContainingType != type && bindingFlags.HasFlag(BindingFlags.DeclaredOnly))
+                {
+                    continue;
+                }
+
+                if (method.DeclaredAccessibility == Accessibility.Public)
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.Public))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.NonPublic))
+                    {
+                        continue;
+                    }
+                }
+
+                if (method.IsStatic)
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.Static))
+                    {
+                        continue;
+                    }
+                    if (method.ContainingType != type && !bindingFlags.HasFlag(BindingFlags.FlattenHierarchy))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.Instance))
+                    {
+                        continue;
+                    }
+                }
+
+                methodsBuilder.Add(new MethodInfoValue(method));
+            }
+            return new ArrayValue(resultType, methodsBuilder.ToImmutable());
         }
 
         private static void Error(DiagnosticBag diagnostics, ErrorCode errorCode, CSharpSyntaxNode syntax, params object[] args)

@@ -2442,6 +2442,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public static PropertyDeclarationSyntax PropertyDeclaration(
             SyntaxList<AttributeListSyntax> attributeLists,
+            SyntaxList<MetaDecorationSyntax> decorators,
             SyntaxTokenList modifiers,
             TypeSyntax type,
             ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier,
@@ -2450,6 +2451,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             return SyntaxFactory.PropertyDeclaration(
                 attributeLists,
+                decorators,
                 modifiers,
                 type,
                 explicitInterfaceSpecifier,
@@ -2461,7 +2463,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public static MethodDeclarationSyntax MethodDeclaration(
             SyntaxList<AttributeListSyntax> attributeLists,
-            SyntaxList<DecoratorSyntax> decorators,
+            SyntaxList<MetaDecorationSyntax> decorators,
             SyntaxTokenList modifiers,
             TypeSyntax returnType,
             ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier,
@@ -2489,7 +2491,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public static ConversionOperatorDeclarationSyntax ConversionOperatorDeclaration(
             SyntaxList<AttributeListSyntax> attributeLists,
-            SyntaxList<DecoratorSyntax> decorators,
+            SyntaxList<MetaDecorationSyntax> decorators,
             SyntaxTokenList modifiers,
             SyntaxToken implicitOrExplicitKeyword,
             SyntaxToken operatorKeyword,
@@ -2513,7 +2515,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public static OperatorDeclarationSyntax OperatorDeclaration(
             SyntaxList<AttributeListSyntax> attributeLists,
-            SyntaxList<DecoratorSyntax> decorators,
+            SyntaxList<MetaDecorationSyntax> decorators,
             SyntaxTokenList modifiers,
             TypeSyntax returnType,
             SyntaxToken operatorKeyword,
@@ -2537,6 +2539,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public static IndexerDeclarationSyntax IndexerDeclaration(
             SyntaxList<AttributeListSyntax> attributeLists,
+            SyntaxList<MetaDecorationSyntax> decorators,
             SyntaxTokenList modifiers,
             TypeSyntax type,
             ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier,
@@ -2545,6 +2548,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             return SyntaxFactory.IndexerDeclaration(
                 attributeLists: attributeLists,
+                decorators: decorators,
                 modifiers: modifiers,
                 type: type,
                 explicitInterfaceSpecifier: explicitInterfaceSpecifier,

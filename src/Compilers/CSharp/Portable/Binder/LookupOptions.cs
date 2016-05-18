@@ -1,9 +1,6 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 using System;
-using Microsoft.CodeAnalysis.CSharp.Symbols;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -101,6 +98,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// Consider only decorator types.
         /// </summary>
         DecoratorTypeOnly = (1 << 15) | NamespacesOrTypesOnly,
+
+        /// <summary>
+        /// Consider only metaclass types.
+        /// </summary>
+        MetaclassTypeOnly = (1 << 16) | NamespacesOrTypesOnly,
     }
 
     internal static class LookupOptionExtensions
@@ -199,6 +201,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         internal static bool IsDecoratorTypeLookup(this LookupOptions options)
         {
             return (options & LookupOptions.DecoratorTypeOnly) == LookupOptions.DecoratorTypeOnly;
+        }
+
+        internal static bool IsMetaclassTypeLookup(this LookupOptions options)
+        {
+            return (options & LookupOptions.MetaclassTypeOnly) == LookupOptions.MetaclassTypeOnly;
         }
     }
 }

@@ -1367,7 +1367,7 @@
     <Field Name="Format" Type="BoundExpression" Null="allow"/>
   </Node>
 
-  <!-- Decorators -->
+  <!-- Decorators and metaclasses -->
   <Node Name="BoundDecorator" Base="BoundExpression">
     <!-- Type is required for this node type; may not be null -->
     <Field Name="Type" Type="TypeSymbol" Override="true" Null="disallow"/>
@@ -1378,5 +1378,15 @@
     <Field Name="NamedArguments" Type ="ImmutableArray&lt;BoundExpression&gt;"/>
     <Field Name="ResultKind" PropertyOverrides="true" Type="LookupResultKind"/>
   </Node>
-  
+
+  <Node Name="BoundMetaclass" Base="BoundExpression">
+    <!-- Type is required for this node type; may not be null -->
+    <Field Name="Type" Type="TypeSymbol" Override="true" Null="disallow"/>
+
+    <Field Name="Constructor" Type="MethodSymbol" Null="allow"/>
+    <Field Name="ConstructorArguments" Type="ImmutableArray&lt;BoundExpression&gt;"/>
+    <Field Name="ConstructorArgumentNamesOpt" Type="ImmutableArray&lt;string&gt;" Null="allow"/>
+    <Field Name="NamedArguments" Type ="ImmutableArray&lt;BoundExpression&gt;"/>
+    <Field Name="ResultKind" PropertyOverrides="true" Type="LookupResultKind"/>
+  </Node>
 </Tree>

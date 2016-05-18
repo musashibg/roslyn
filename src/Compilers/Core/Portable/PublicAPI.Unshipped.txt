@@ -1,4 +1,5 @@
 Microsoft.CodeAnalysis.CandidateReason.NotADecoratorType = 17 -> Microsoft.CodeAnalysis.CandidateReason
+Microsoft.CodeAnalysis.CandidateReason.NotAMetaclassType = 18 -> Microsoft.CodeAnalysis.CandidateReason
 Microsoft.CodeAnalysis.CompilationOptions.PublicSign.get -> bool
 Microsoft.CodeAnalysis.CompilationOptions.WithPublicSign(bool publicSign) -> Microsoft.CodeAnalysis.CompilationOptions
 Microsoft.CodeAnalysis.CompilationReference.Equals(Microsoft.CodeAnalysis.CompilationReference other) -> bool

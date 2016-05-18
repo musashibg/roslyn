@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
-using System.Diagnostics;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Roslyn.Utilities;
+using System.Diagnostics;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -203,6 +203,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         internal static SingleLookupResult NotADecoratorType(Symbol symbol, DiagnosticInfo error)
         {
             return new SingleLookupResult(LookupResultKind.NotADecoratorType, symbol, error);
+        }
+
+        internal static SingleLookupResult NotAMetaclassType(Symbol symbol, DiagnosticInfo error)
+        {
+            return new SingleLookupResult(LookupResultKind.NotAMetaclassType, symbol, error);
         }
 
         /// <summary>

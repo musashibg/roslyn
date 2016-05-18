@@ -294,7 +294,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         /// </summary>
         public abstract Symbol AssociatedSymbol { get; }
 
-        public virtual ImmutableArray<DecoratorData> GetDecorators()
+        /// <summary>
+        /// Gets the decorators applied to the method. Non-source methods should return an empty array.
+        /// </summary>
+        internal virtual ImmutableArray<DecoratorData> GetDecorators()
         {
             return ImmutableArray<DecoratorData>.Empty;
         }

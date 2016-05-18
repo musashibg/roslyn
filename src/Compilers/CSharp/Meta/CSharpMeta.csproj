@@ -37,6 +37,7 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Metaclass.cs" />
     <Compile Include="Decorator.cs" />
     <Compile Include="MetaException.cs" />
     <Compile Include="MetaPrimitives.cs" />

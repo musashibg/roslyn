@@ -85,6 +85,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
             return AddCleanupAnnotationsTo(
                 AddAnnotationsTo(property, SyntaxFactory.IndexerDeclaration(
                     attributeLists: AttributeGenerator.GenerateAttributeLists(property.GetAttributes(), options),
+                    decorators: default(SyntaxList<MetaDecorationSyntax>),
                     modifiers: GenerateModifiers(property, destination, options),
                     type: property.Type.GenerateTypeSyntax(),
                     explicitInterfaceSpecifier: explicitInterfaceSpecifier,
@@ -108,6 +109,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
             return AddCleanupAnnotationsTo(
                 AddAnnotationsTo(property, SyntaxFactory.PropertyDeclaration(
                     attributeLists: AttributeGenerator.GenerateAttributeLists(property.GetAttributes(), options),
+                    decorators: default(SyntaxList<MetaDecorationSyntax>),
                     modifiers: GenerateModifiers(property, destination, options),
                     type: property.Type.GenerateTypeSyntax(),
                     explicitInterfaceSpecifier: explicitInterfaceSpecifier,

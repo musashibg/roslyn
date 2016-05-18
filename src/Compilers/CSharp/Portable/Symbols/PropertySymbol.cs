@@ -1,11 +1,12 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using Microsoft.CodeAnalysis.CSharp.Symbols;
+using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
+using Roslyn.Utilities;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.CodeAnalysis.CSharp.Symbols;
-using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp.Symbols
 {
@@ -206,6 +207,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 // false is a reasonable default if there are no accessors (e.g. not done typing).
                 return (object)accessor != null && accessor.HidesBaseMethodsByName;
             }
+        }
+
+        /// <summary>
+        /// Gets the decorators applied to the propert. Non-source properties should return an empty array.
+        /// </summary>
+        internal virtual ImmutableArray<DecoratorData> GetDecorators()
+        {
+            return ImmutableArray<DecoratorData>.Empty;
         }
 
         internal PropertySymbol GetLeastOverriddenProperty(NamedTypeSymbol accessingTypeOpt)

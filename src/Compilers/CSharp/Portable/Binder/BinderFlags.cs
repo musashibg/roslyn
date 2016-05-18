@@ -101,7 +101,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// <summary>
         /// Decorator argument
         /// </summary>
-        DecoratorArgument = 1 << 29,
+        MetaDecorationArgument = 1 << 29,
 
         // Groups
 

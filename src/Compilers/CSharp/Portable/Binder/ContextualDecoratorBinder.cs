@@ -2,7 +2,6 @@
 {
     internal sealed class ContextualDecoratorBinder : Binder
     {
-        private readonly Symbol _decoratorTarget;
         private readonly Symbol _decoratedMember;
 
         /// <param name="enclosing">Next binder in the chain (enclosing).</param>
@@ -10,7 +9,6 @@
         public ContextualDecoratorBinder(Binder enclosing, Symbol symbol)
             : base(enclosing)
         {
-            _decoratorTarget = symbol;
             _decoratedMember = GetDecoratedMember(symbol);
         }
 
@@ -47,14 +45,6 @@
             }
 
             return symbol;
-        }
-
-        internal Symbol DecoratorTarget
-        {
-            get
-            {
-                return _decoratorTarget;
-            }
         }
     }
 }

@@ -60,6 +60,7 @@ class B
                 {
                     SyntaxFactory.ClassDeclaration(
                         default(SyntaxList<AttributeListSyntax>),
+                        default(SyntaxList<MetaDecorationSyntax>),
                         SyntaxFactory.TokenList(),
                         SyntaxFactory.Identifier("My"),
                         null,
@@ -75,6 +76,7 @@ class B
                                 SyntaxFactory.SingletonSeparatedList<AttributeSyntax>(
                                     SyntaxFactory.Attribute(
                                         SyntaxFactory.ParseName("My"))))),
+                        metaclasses: default(SyntaxList<MetaDecorationSyntax>),
                         modifiers: SyntaxFactory.TokenList(),
                         identifier: SyntaxFactory.Identifier("B"),
                         typeParameterList: null,
@@ -149,6 +151,7 @@ public class SomeAttribute : System.Attribute { }
 }";
             var property = SyntaxFactory.PropertyDeclaration(
                 attributeLists: default(SyntaxList<AttributeListSyntax>),
+                decorators: default(SyntaxList<MetaDecorationSyntax>),
                 modifiers: SyntaxFactory.TokenList(),
                 type: SyntaxFactory.PredefinedType(
                     SyntaxFactory.Token(
@@ -173,6 +176,7 @@ public class SomeAttribute : System.Attribute { }
                 {
                     SyntaxFactory.ClassDeclaration(
                         attributeLists: default(SyntaxList<AttributeListSyntax>),
+                        metaclasses: default(SyntaxList<MetaDecorationSyntax>),
                         modifiers: SyntaxFactory.TokenList(),
                         identifier: SyntaxFactory.Identifier("PropertyTest"),
                         typeParameterList: null,

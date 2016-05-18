@@ -347,6 +347,21 @@ namespace Microsoft.CodeAnalysis
                     0,                                                                                                      // Method Signature
                     (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
+                // System_Type__GetMethods
+                (byte)MemberFlags.Method,                                                                                   // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    0,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.SZArray, (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_MethodInfo,
+
+                // System_Type__GetMethods2
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    1,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.SZArray, (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_MethodInfo,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_BindingFlags,
+
                 // System_Type__GetTypeFromCLSID
                 (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
                 (byte)WellKnownType.System_Type,                                                                            // DeclaringTypeId
@@ -2793,6 +2808,15 @@ namespace Microsoft.CodeAnalysis
                     (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
                     (byte)SignatureTypeCode.SZArray, (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
+                // CSharp_Meta_MetaPrimitives__ApplyDecorator
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)WellKnownType.CSharp_Meta_MetaPrimitives,                                                             // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    2,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_MemberInfo,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.CSharp_Meta_Decorator,
+
                 // CSharp_Meta_MetaPrimitives__CloneArguments
                 (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
                 (byte)WellKnownType.CSharp_Meta_MetaPrimitives,                                                             // DeclaringTypeId
@@ -2871,6 +2895,8 @@ namespace Microsoft.CodeAnalysis
                 ".ctor",                                    // System_FlagsAttribute__ctor
                 ".ctor",                                    // System_Guid__ctor
                 "FullName",                                 // System_Type__FullName
+                "GetMethods",                               // System_Type__GetMethods
+                "GetMethods",                               // System_Type__GetMethods2
                 "GetTypeFromCLSID",                         // System_Type__GetTypeFromCLSID
                 "GetTypeFromHandle",                        // System_Type__GetTypeFromHandle
                 "IsAbstract",                               // System_Type__IsAbstract
@@ -3160,6 +3186,7 @@ namespace Microsoft.CodeAnalysis
                 ".ctor",                                    // System_ComponentModel_EditorBrowsableAttribute__ctor
                 "SustainedLowLatency",                      // System_Runtime_GCLatencyMode__SustainedLowLatency
                 "Format",                                   // System_String__Format_IFormatProvider
+                "ApplyDecorator",                           // CSharp_Meta_MetaPrimitives__ApplyDecorator
                 "CloneArguments",                           // CSharp_Meta_MetaPrimitives__CloneArguments
                 "CloneArgumentsToObjectArray",              // CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray
                 "ParameterType",                            // CSharp_Meta_MetaPrimitives__ParameterType

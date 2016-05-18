@@ -4187,6 +4187,7 @@ class innerClass
 
             var property = SyntaxFactory.PropertyDeclaration(
                 SyntaxFactory.List<AttributeListSyntax>(),
+                SyntaxFactory.List<MetaDecorationSyntax>(),
                 SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)),
                 SyntaxFactory.ParseTypeName("int"),
                 default(ExplicitInterfaceSpecifierSyntax),
