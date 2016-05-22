@@ -253,6 +253,7 @@ namespace Microsoft.CodeAnalysis
         CSharp_Meta_Decorator,
         CSharp_Meta_Metaclass,
         CSharp_Meta_MetaPrimitives,
+        CSharp_Meta_Trait,
 
         Available,
         Last = Available - 1,
@@ -501,6 +502,7 @@ namespace Microsoft.CodeAnalysis
             "CSharp.Meta.Decorator",
             "CSharp.Meta.Metaclass",
             "CSharp.Meta.MetaPrimitives",
+            "CSharp.Meta.Trait",
         };
 
         private readonly static Dictionary<string, WellKnownType> s_nameToTypeIdMap = new Dictionary<string, WellKnownType>((int)Count);
@@ -532,7 +534,7 @@ namespace Microsoft.CodeAnalysis
                 }
                 else if (typeId == WellKnownType.Last)
                 {
-                    typeIdName = "CSharp.Meta.MetaPrimitives";
+                    typeIdName = "CSharp.Meta.Trait";
                 }
                 else
                 {

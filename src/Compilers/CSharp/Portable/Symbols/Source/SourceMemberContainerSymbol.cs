@@ -381,7 +381,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         #endregion
 
-        #region Metaclasses
+        #region Metaclasses and traits
 
         internal ImmutableArray<MetaclassData> GetMetaclasses()
         {
@@ -403,6 +403,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
             if (metaclassCount == 0)
             {
+                metaclasses = ImmutableArray<MetaclassData>.Empty;
+            }
+            else if (IsInterface)
+            {
+                diagnostics.Add(ErrorCode.ERR_MetaclassOnInterface, metaclassesToBind[0].Location);
                 metaclasses = ImmutableArray<MetaclassData>.Empty;
             }
             else
@@ -440,6 +445,278 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             diagnostics.Free();
 
             state.NotePartComplete(CompletionPart.Metaclasses);
+        }
+
+        internal bool AddTrait(SourceMemberContainerTypeSymbol traitType, DiagnosticBag diagnostics, Location location, CancellationToken cancellationToken)
+        {
+            Debug.Assert(traitType.BaseType == DeclaringCompilation.GetWellKnownType(WellKnownType.CSharp_Meta_Trait));
+
+            if (!CheckTraitRequirements(traitType, diagnostics, location))
+            {
+                return false;
+            }
+
+            // Force the flattened list of members to be refreshed the next time it is obtained
+            _lazyMembersFlattened = default(ImmutableArray<Symbol>);
+
+            // Prepare a list of additional implemented interfaces
+            ImmutableArray<NamedTypeSymbol> existingInterfaces = GetAllInterfaces();
+            ArrayBuilder<NamedTypeSymbol> additionalInterfaces = ArrayBuilder<NamedTypeSymbol>.GetInstance();
+            foreach (NamedTypeSymbol @interface in traitType.GetAllInterfaces())
+            {
+                if (!existingInterfaces.Contains(@interface))
+                {
+                    additionalInterfaces.Add(@interface);
+                }
+            }
+
+            // Update the set of implemented interfaces
+            ResetInterfaceInfo();
+            AddAdditionalInterfaces(additionalInterfaces.ToImmutableAndFree());
+
+            // Store a reference to the old dictionary of members, to ensure it has not been replaced by another thread
+            Dictionary<string, ImmutableArray<Symbol>> lazyMembersDictionary = _lazyMembersDictionary;
+
+            // Prepare an updated dictionary of members
+            var newMembersDictionary = new Dictionary<string, ImmutableArray<Symbol>>(lazyMembersDictionary);
+            foreach (Symbol member in traitType.GetMembers())
+            {
+                if (member.IsImplicitlyDeclared)
+                {
+                    // Implicitly declared members are not added to the host type
+                    continue;
+                }
+
+                if (member.Kind != SymbolKind.Field && member.Kind != SymbolKind.Method && member.Kind != SymbolKind.Property && member.Kind != SymbolKind.Event)
+                {
+                    diagnostics.Add(ErrorCode.ERR_UnsupportedTraitMember, location, member.GetDebuggerDisplay(), traitType.GetDebuggerDisplay());
+                    return false;
+                }
+
+                if (member.IsAbstract)
+                {
+                    // Abstract members are trait requirements, we have already verified that they are present in the host type
+                    continue;
+                }
+
+                string name = member.Name;
+                ImmutableArray<Symbol> hostMembers = GetMembers(name);
+                if (hostMembers.Any(m => CheckMemberSignaturesMatch(member, m)))
+                {
+                    diagnostics.Add(ErrorCode.WRN_OverriddenTraitMember, location, member.GetDebuggerDisplay(), traitType.GetDebuggerDisplay());
+                    continue;
+                }
+
+                CSharpSyntaxNode memberDeclarationSyntax = member.GetNonNullSyntaxNode();
+                ArrayBuilder<Symbol> additionalHostMembers = ArrayBuilder<Symbol>.GetInstance();
+                VariableDeclaratorSyntax variableDeclaratorSyntax;
+                VariableDeclarationSyntax variableDeclarationSyntax;
+                Binder bodyBinder;
+                switch (member.Kind)
+                {
+                    case SymbolKind.Field:
+                        Debug.Assert(memberDeclarationSyntax != null && memberDeclarationSyntax is VariableDeclaratorSyntax);
+                        variableDeclaratorSyntax = (VariableDeclaratorSyntax)memberDeclarationSyntax;
+                        Debug.Assert(variableDeclaratorSyntax.Parent is VariableDeclarationSyntax);
+                        variableDeclarationSyntax = (VariableDeclarationSyntax)variableDeclaratorSyntax.Parent;
+                        Debug.Assert(variableDeclarationSyntax.Parent is FieldDeclarationSyntax);
+                        var fieldDeclarationSyntax = (FieldDeclarationSyntax)variableDeclarationSyntax.Parent;
+                        bool modifierErrors;
+                        DeclarationModifiers modifiers = SourceMemberFieldSymbol.MakeModifiers(
+                            this,
+                            variableDeclaratorSyntax.Identifier,
+                            fieldDeclarationSyntax.Modifiers,
+                            diagnostics,
+                            out modifierErrors);
+                        var hostField = new SourceMemberFieldSymbol(this, variableDeclaratorSyntax, modifiers, modifierErrors, diagnostics);
+                        additionalHostMembers.Add(hostField);
+                        break;
+
+                    case SymbolKind.Method:
+                        var method = (MethodSymbol)member;
+                        switch (method.MethodKind)
+                        {
+                            case MethodKind.Ordinary:
+                                Debug.Assert(memberDeclarationSyntax != null && memberDeclarationSyntax is MethodDeclarationSyntax);
+                                bodyBinder = method.DeclaringCompilation.GetBinder(memberDeclarationSyntax, this);
+                                var hostMethod = SourceMemberMethodSymbol.CreateMethodSymbol(this, bodyBinder, (MethodDeclarationSyntax)memberDeclarationSyntax, diagnostics, true);
+                                additionalHostMembers.Add(hostMethod);
+                                break;
+
+                            case MethodKind.EventAdd:
+                            case MethodKind.EventRemove:
+                            case MethodKind.PropertyGet:
+                            case MethodKind.PropertySet:
+                                // These compiler-generated method symbols will be automatically created when crating the associated event or property symbol
+                                break;
+
+                            default:
+                                diagnostics.Add(ErrorCode.ERR_UnsupportedTraitMember, location, member.GetDebuggerDisplay(), traitType.GetDebuggerDisplay());
+                                return false;
+                        }
+                        break;
+
+                    case SymbolKind.Property:
+                        Debug.Assert(memberDeclarationSyntax != null);
+                        bodyBinder = member.DeclaringCompilation.GetBinder(memberDeclarationSyntax, this);
+                        SourcePropertySymbol hostProperty;
+                        if (memberDeclarationSyntax is PropertyDeclarationSyntax)
+                        {
+                            hostProperty = SourcePropertySymbol.Create(this, bodyBinder, (PropertyDeclarationSyntax)memberDeclarationSyntax, diagnostics, true);
+                        }
+                        else
+                        {
+                            Debug.Assert(memberDeclarationSyntax is IndexerDeclarationSyntax);
+                            hostProperty = SourcePropertySymbol.Create(this, bodyBinder, (IndexerDeclarationSyntax)memberDeclarationSyntax, diagnostics, true);
+                        }
+                        additionalHostMembers.Add(hostProperty);
+                        AddAccessorIfAvailable(additionalHostMembers, hostProperty.GetMethod, diagnostics);
+                        AddAccessorIfAvailable(additionalHostMembers, hostProperty.SetMethod, diagnostics);
+                        break;
+
+                    case SymbolKind.Event:
+                        Debug.Assert(memberDeclarationSyntax != null);
+                        SourceEventSymbol hostEvent;
+                        if (memberDeclarationSyntax is VariableDeclaratorSyntax)
+                        {
+                            variableDeclaratorSyntax = (VariableDeclaratorSyntax)memberDeclarationSyntax;
+                            Debug.Assert(variableDeclaratorSyntax.Parent is VariableDeclarationSyntax);
+                            variableDeclarationSyntax = (VariableDeclarationSyntax)variableDeclaratorSyntax.Parent;
+                            Debug.Assert(variableDeclarationSyntax.Parent is EventFieldDeclarationSyntax);
+                            var eventDeclarationSyntax = (EventFieldDeclarationSyntax)variableDeclarationSyntax.Parent;
+                            bodyBinder = member.DeclaringCompilation.GetBinder(eventDeclarationSyntax, this);
+                            hostEvent = new SourceFieldLikeEventSymbol(this, bodyBinder, eventDeclarationSyntax.Modifiers, variableDeclaratorSyntax, diagnostics, true);
+                        }
+                        else
+                        {
+                            Debug.Assert(memberDeclarationSyntax is EventDeclarationSyntax);
+                            bodyBinder = member.DeclaringCompilation.GetBinder(memberDeclarationSyntax, this);
+                            hostEvent = new SourceCustomEventSymbol(this, bodyBinder, (EventDeclarationSyntax)memberDeclarationSyntax, diagnostics, true);
+                        }
+                        additionalHostMembers.Add(hostEvent);
+                        AddAccessorIfAvailable(additionalHostMembers, hostEvent.AddMethod, diagnostics);
+                        AddAccessorIfAvailable(additionalHostMembers, hostEvent.RemoveMethod, diagnostics);
+                        break;
+
+                    default:
+                        throw ExceptionUtilities.Unreachable;
+                }
+
+                foreach (Symbol hostMember in additionalHostMembers)
+                {
+                    ImmutableArray<Symbol> oldMembersList;
+                    if (newMembersDictionary.TryGetValue(name, out oldMembersList))
+                    {
+                        newMembersDictionary[name] = oldMembersList.Add(hostMember);
+                    }
+                    else
+                    {
+                        newMembersDictionary.Add(name, ImmutableArray.Create(hostMember));
+                    }
+                }
+            }
+
+            // Update the members dictionary
+            bool updatedSuccessfully = (Interlocked.CompareExchange(ref _lazyMembersDictionary, newMembersDictionary, lazyMembersDictionary) == lazyMembersDictionary);
+            Debug.Assert(updatedSuccessfully);
+
+            // Force synthesized interface implementation members to be recomputed
+            _lazySynthesizedExplicitImplementations = default(ImmutableArray<SynthesizedExplicitImplementationForwardingMethod>);
+            GetSynthesizedExplicitImplementations(cancellationToken);
+
+            return true;
+        }
+
+        protected virtual void AddAdditionalInterfaces(ImmutableArray<NamedTypeSymbol> additionalInterfaces)
+        {
+            // This should be overridden in classes which support decoration with metaclasses and thus integration fo traits
+            throw ExceptionUtilities.Unreachable;
+        }
+
+        private bool CheckTraitRequirements(SourceMemberContainerTypeSymbol traitType, DiagnosticBag diagnostics, Location location)
+        {
+            foreach (Symbol member in traitType.GetMembers())
+            {
+                if (!member.IsAbstract || (member.Kind != SymbolKind.Method && member.Kind != SymbolKind.Property && member.Kind != SymbolKind.Event))
+                {
+                    continue;
+                }
+
+                ImmutableArray<Symbol> hostMembers = GetMembers(member.Name);
+                if (!hostMembers.Any(m => CheckMemberSignaturesMatch(member, m)))
+                {
+                    diagnostics.Add(ErrorCode.ERR_TraitRequirementNotFound, location, member.GetDebuggerDisplay(), traitType.GetDebuggerDisplay());
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static bool CheckMemberSignaturesMatch(Symbol traitMember, Symbol hostMember)
+        {
+            if (traitMember.Kind != hostMember.Kind || traitMember.IsStatic != hostMember.IsStatic)
+            {
+                return false;
+            }
+
+            // TODO: Verify explicit interface implementations match
+
+            switch (traitMember.Kind)
+            {
+                case SymbolKind.Method:
+                    var traitMethod = (MethodSymbol)traitMember;
+                    var hostMethod = (MethodSymbol)hostMember;
+                    if (traitMethod.Kind != hostMethod.Kind || traitMethod.ParameterCount != hostMethod.ParameterCount
+                        || traitMethod.ReturnType == hostMethod.ReturnType
+                        || traitMethod.ParameterRefKinds.IsDefault != hostMethod.ParameterRefKinds.IsDefault)
+                    {
+                        return false;
+                    }
+
+                    for (int i = 0; i < traitMethod.ParameterCount; i++)
+                    {
+                        if (traitMethod.ParameterTypes[i] != hostMethod.ParameterTypes[i])
+                        {
+                            return false;
+                        }
+
+                        if (!traitMethod.ParameterRefKinds.IsDefault && traitMethod.ParameterRefKinds[i] != hostMethod.ParameterRefKinds[i])
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+
+                case SymbolKind.Property:
+                    var traitProperty = (PropertySymbol)traitMember;
+                    var hostProperty = (PropertySymbol)hostMember;
+                    if (traitProperty.Type == hostProperty.Type || traitProperty.ParameterRefKinds.IsDefault != hostProperty.ParameterRefKinds.IsDefault)
+                    {
+                        return false;
+                    }
+
+                    for (int i = 0; i < traitProperty.ParameterCount; i++)
+                    {
+                        if (traitProperty.ParameterTypes[i] != hostProperty.ParameterTypes[i])
+                        {
+                            return false;
+                        }
+
+                        if (!traitProperty.ParameterRefKinds.IsDefault && traitProperty.ParameterRefKinds[i] != hostProperty.ParameterRefKinds[i])
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+
+                case SymbolKind.Event:
+                    var traitEvent = (EventSymbol)traitMember;
+                    var hostEvent = (EventSymbol)hostMember;
+                    return traitEvent.Type != hostEvent.Type;
+
+                default:
+                    throw ExceptionUtilities.Unreachable;
+            }
         }
 
         #endregion

@@ -22,7 +22,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         private readonly string _name;
 
-        internal SynthesizedFieldLikeEventAccessorSymbol(SourceFieldLikeEventSymbol @event, bool isAdder)
+        internal SynthesizedFieldLikeEventAccessorSymbol(SourceFieldLikeEventSymbol @event, bool isAdder, bool isImportedFromTrait)
             : base(@event, null, null, @event.Locations)
         {
             this.MakeFlags(
@@ -30,7 +30,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 @event.Modifiers,
                 returnsVoid: false, // until we learn otherwise (in LazyMethodChecks).
                 isExtensionMethod: false,
-                isMetadataVirtualIgnoringModifiers: false);
+                isMetadataVirtualIgnoringModifiers: false,
+                isImportedFromTrait: isImportedFromTrait);
 
             _name = GetOverriddenAccessorName(@event, isAdder) ??
                 SourceEventSymbol.GetAccessorName(@event.Name, isAdder);

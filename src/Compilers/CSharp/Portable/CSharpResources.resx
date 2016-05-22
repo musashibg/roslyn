@@ -4676,7 +4676,7 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
     <value>Combined length of user strings used by the program exceeds allowed limit. Try to decrease use of string literals.</value>
   </data>
   <data name="ERR_DecoratorOnIncompatibleMember" xml:space="preserve">
-    <value>Decorators are not allowed on fields, events, properties or indexers</value>
+    <value>Decorators are not allowed on fields and events</value>
   </data>
   <data name="ERR_DecoratorsNotAllowed" xml:space="preserve">
     <value>Decorators are not valid in this context.</value>
@@ -4810,10 +4810,34 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_MetaclassesInMultiplePartialTypeDeclarations" xml:space="preserve">
     <value>Metaclasses cannot be applied to multiple partial declarations of the same type</value>
   </data>
+  <data name="ERR_GenericTraitTypesNotSupported" xml:space="preserve">
+    <value>Generic trait types are not currently supported</value>
+  </data>
   <data name="ERR_MetaclassApplicationMethodWithoutBody" xml:space="preserve">
     <value>The application method method of metaclass '{0}' has no body</value>
   </data>
   <data name="ERR_MetaclassModificationOnNonTargetType" xml:space="preserve">
     <value>A metaclass may only modify the target type it is applied to and its members</value>
+  </data>
+  <data name="ERR_MetaclassOnInterface" xml:space="preserve">
+    <value>Metaclasses are not allowed on interfaces</value>
+  </data>
+  <data name="ERR_MethodOnlySupportedInMetaclass" xml:space="preserve">
+    <value>This method may only be used in metaclass code executed at compile-time</value>
+  </data>
+  <data name="ERR_NonSourceTrait" xml:space="preserve">
+    <value>Cannot apply trait '{0}' because it is not part of the same assembly</value>
+  </data>
+  <data name="ERR_NotATrait" xml:space="preserve">
+    <value>'{0}' is not a trait. Trait types must be directly derived from the type 'CSharp.Meta.Trait'</value>
+  </data>
+  <data name="ERR_TraitRequirementNotFound" xml:space="preserve">
+    <value>The member requirement '{0}' of the trait '{1}' is not satisfied by the host type</value>
+  </data>
+  <data name="ERR_UnsupportedTraitMember" xml:space="preserve">
+    <value>The kind of the member '{0}' is unsupported in traits. Only fields, methods, properties and indexers are supported</value>
+  </data>
+  <data name="WRN_OverriddenTraitMember" xml:space="preserve">
+    <value>The member '{0}' of the trait '{1}' is overriden by a manually declared member with the same signature in the host type</value>
   </data>
 </root>

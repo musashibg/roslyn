@@ -271,10 +271,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitCall(BoundCall node, BindingTimeAnalyzerFlags flags)
         {
+            MethodSymbol method = node.Method;
+            if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__AddTrait)
+                || method.OriginalDefinition == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__AddTrait_T)
+                || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ApplyDecorator))
+            {
+                Error(ErrorCode.ERR_MethodOnlySupportedInMetaclass, node.Syntax.Location);
+                throw new BindingTimeAnalysisException();
+            }
+
             BindingTimeAnalysisResult receiverResult = Visit(node.ReceiverOpt, flags);
             Debug.Assert(receiverResult.BindingTime != BindingTime.StaticArgumentArray);
 
-            MethodSymbol method = node.Method;
             bool forceDynamic = true;
             if (receiverResult.BindingTime != BindingTime.Dynamic)
             {

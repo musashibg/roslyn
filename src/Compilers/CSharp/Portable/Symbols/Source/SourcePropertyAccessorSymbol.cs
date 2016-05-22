@@ -30,7 +30,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             PropertySymbol explicitlyImplementedPropertyOpt,
             string aliasQualifierOpt,
             bool isAutoPropertyAccessor,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait)
         {
             Debug.Assert(syntax.Kind() == SyntaxKind.GetAccessorDeclaration || syntax.Kind() == SyntaxKind.SetAccessorDeclaration);
 
@@ -57,7 +58,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 syntax,
                 methodKind,
                 isAutoPropertyAccessor,
-                diagnostics);
+                diagnostics,
+                isImportedFromTrait);
         }
 
         public static SourcePropertyAccessorSymbol CreateAccessorSymbol(
@@ -68,7 +70,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             ArrowExpressionClauseSyntax syntax,
             PropertySymbol explicitlyImplementedPropertyOpt,
             string aliasQualifierOpt,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait)
         {
             string name;
             ImmutableArray<MethodSymbol> explicitInterfaceImplementations;
@@ -90,7 +93,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 explicitInterfaceImplementations,
                 syntax.Expression.GetLocation(),
                 syntax,
-                diagnostics);
+                diagnostics,
+                isImportedFromTrait);
         }
 
         internal override bool IsExpressionBodied
@@ -141,7 +145,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             ImmutableArray<MethodSymbol> explicitInterfaceImplementations,
             Location location,
             ArrowExpressionClauseSyntax syntax,
-            DiagnosticBag diagnostics) :
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait) :
             base(containingType, syntax.GetReference(), syntax.GetReference(), location)
         {
             _property = property;
@@ -155,8 +160,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
             // ReturnsVoid property is overridden in this class so
             // returnsVoid argument to MakeFlags is ignored.
-            this.MakeFlags(MethodKind.PropertyGet, declarationModifiers, returnsVoid: false, isExtensionMethod: false,
-                isMetadataVirtualIgnoringModifiers: explicitInterfaceImplementations.Any());
+            this.MakeFlags(
+                MethodKind.PropertyGet,
+                declarationModifiers,
+                returnsVoid: false,
+                isExtensionMethod: false,
+                isMetadataVirtualIgnoringModifiers: explicitInterfaceImplementations.Any(),
+                isImportedFromTrait: isImportedFromTrait);
 
             CheckModifiersForBody(location, diagnostics);
 
@@ -191,7 +201,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             AccessorDeclarationSyntax syntax,
             MethodKind methodKind,
             bool isAutoPropertyAccessor,
-            DiagnosticBag diagnostics) :
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait) :
             base(containingType, syntax.GetReference(), syntax.Body?.GetReference(), location)
         {
             _property = property;
@@ -213,8 +224,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
             // ReturnsVoid property is overridden in this class so
             // returnsVoid argument to MakeFlags is ignored.
-            this.MakeFlags(methodKind, declarationModifiers, returnsVoid: false, isExtensionMethod: false,
-                isMetadataVirtualIgnoringModifiers: explicitInterfaceImplementations.Any());
+            this.MakeFlags(
+                methodKind,
+                declarationModifiers,
+                returnsVoid: false,
+                isExtensionMethod: false,
+                isMetadataVirtualIgnoringModifiers: explicitInterfaceImplementations.Any(),
+                isImportedFromTrait: isImportedFromTrait);
 
             var bodyOpt = syntax.Body;
             if (bodyOpt != null)

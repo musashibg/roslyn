@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Roslyn.Utilities;
+using Microsoft.CodeAnalysis.CSharp.Symbols;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -45,16 +46,18 @@ namespace Microsoft.CodeAnalysis.CSharp
         private readonly CSharpCompilation _compilation;
         private readonly SyntaxTree _syntaxTree;
         private readonly BuckStopsHereBinder _buckStopsHereBinder;
+        private readonly SourceMemberContainerTypeSymbol _traitHostType;
 
         // In a typing scenario, GetBinder is regularly called with a non-zero position.
         // This results in a lot of allocations of BinderFactoryVisitors. Pooling them
         // reduces this churn to almost nothing.
         private readonly ObjectPool<BinderFactoryVisitor> _binderFactoryVisitorPool;
 
-        internal BinderFactory(CSharpCompilation compilation, SyntaxTree syntaxTree)
+        internal BinderFactory(CSharpCompilation compilation, SyntaxTree syntaxTree, SourceMemberContainerTypeSymbol traitHostType = null)
         {
             _compilation = compilation;
             _syntaxTree = syntaxTree;
+            _traitHostType = traitHostType;
 
             _binderFactoryVisitorPool = new ObjectPool<BinderFactoryVisitor>(() => new BinderFactoryVisitor(this), 64);
 
@@ -76,6 +79,11 @@ namespace Microsoft.CodeAnalysis.CSharp
             {
                 return _syntaxTree;
             }
+        }
+
+        internal SourceMemberContainerTypeSymbol TraitHostType
+        {
+            get { return _traitHostType; }
         }
 
         private bool InScript

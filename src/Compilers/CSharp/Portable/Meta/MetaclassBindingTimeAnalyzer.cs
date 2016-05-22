@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
@@ -18,10 +19,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         public override BindingTimeAnalysisResult VisitCall(BoundCall node, BindingTimeAnalyzerFlags flags)
         {
             MethodSymbol method = node.Method;
-            if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ApplyDecorator))
+            if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__AddTrait)
+                || method.OriginalDefinition == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__AddTrait_T)
+                || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ApplyDecorator))
             {
                 ImmutableArray<BindingTimeAnalysisResult> argumentsResults = VisitArguments(node.Arguments, node.ArgumentRefKindsOpt, flags, false);
-                return (argumentsResults[0].BindingTime == BindingTime.Dynamic || argumentsResults[1].BindingTime == BindingTime.Dynamic)
+                return argumentsResults.Any(r => r.BindingTime == BindingTime.Dynamic)
                         ? new BindingTimeAnalysisResult(BindingTime.Dynamic)
                         : new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue);
             }

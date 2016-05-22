@@ -21,7 +21,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private readonly TypeSymbol _explicitInterfaceType;
         private readonly ImmutableArray<EventSymbol> _explicitInterfaceImplementations;
 
-        internal SourceCustomEventSymbol(SourceMemberContainerTypeSymbol containingType, Binder binder, EventDeclarationSyntax syntax, DiagnosticBag diagnostics) :
+        internal SourceCustomEventSymbol(
+            SourceMemberContainerTypeSymbol containingType,
+            Binder binder,
+            EventDeclarationSyntax syntax,
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait = false) :
             base(containingType, syntax, syntax.Modifiers, syntax.ExplicitInterfaceSpecifier, syntax.Identifier, diagnostics)
         {
             ExplicitInterfaceSpecifierSyntax interfaceSpecifier = syntax.ExplicitInterfaceSpecifier;
@@ -89,8 +94,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 }
             }
 
-            _addMethod = CreateAccessorSymbol(addSyntax, explicitlyImplementedEvent, aliasQualifierOpt, diagnostics);
-            _removeMethod = CreateAccessorSymbol(removeSyntax, explicitlyImplementedEvent, aliasQualifierOpt, diagnostics);
+            _addMethod = CreateAccessorSymbol(addSyntax, explicitlyImplementedEvent, aliasQualifierOpt, diagnostics, isImportedFromTrait);
+            _removeMethod = CreateAccessorSymbol(removeSyntax, explicitlyImplementedEvent, aliasQualifierOpt, diagnostics, isImportedFromTrait);
 
             if (containingType.IsInterfaceType())
             {
@@ -167,15 +172,19 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             }
         }
 
-        private SourceCustomEventAccessorSymbol CreateAccessorSymbol(AccessorDeclarationSyntax syntaxOpt,
-            EventSymbol explicitlyImplementedEventOpt, string aliasQualifierOpt, DiagnosticBag diagnostics)
+        private SourceCustomEventAccessorSymbol CreateAccessorSymbol(
+            AccessorDeclarationSyntax syntaxOpt,
+            EventSymbol explicitlyImplementedEventOpt,
+            string aliasQualifierOpt,
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait)
         {
             if (syntaxOpt == null)
             {
                 return null;
             }
 
-            return new SourceCustomEventAccessorSymbol(this, syntaxOpt, explicitlyImplementedEventOpt, aliasQualifierOpt, diagnostics);
+            return new SourceCustomEventAccessorSymbol(this, syntaxOpt, explicitlyImplementedEventOpt, aliasQualifierOpt, diagnostics, isImportedFromTrait);
         }
     }
 }

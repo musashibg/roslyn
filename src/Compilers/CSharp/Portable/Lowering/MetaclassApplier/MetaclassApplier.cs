@@ -15,6 +15,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly MetaclassBindingTimeAnalyzer _bindingTimeAnalyzer;
         private readonly SourceMemberMethodSymbol _applicationMethod;
         private readonly DiagnosticBag _diagnostics;
+        private readonly CancellationToken _cancellationToken;
         private readonly Dictionary<Symbol, CompileTimeValue> _variableValues;
 
         public MetaclassApplier(
@@ -22,13 +23,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             SourceMemberContainerTypeSymbol targetType,
             MetaclassBindingTimeAnalyzer bindingTimeAnalyzer,
             SourceMemberMethodSymbol applicationMethod,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            CancellationToken cancellationToken)
         {
             _compilation = compilation;
             _targetType = targetType;
             _bindingTimeAnalyzer = bindingTimeAnalyzer;
             _applicationMethod = applicationMethod;
             _diagnostics = diagnostics;
+            _cancellationToken = cancellationToken;
             _variableValues = new Dictionary<Symbol, CompileTimeValue>();
         }
 
@@ -71,7 +74,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             cancellationToken.ThrowIfCancellationRequested();
 
             // Create a synthetic node factory and perform the rewrite
-            var metaclassApplier = new MetaclassApplier(compilation, targetType, bindingTimeAnalyzer, applicationMethod, diagnostics);
+            var metaclassApplier = new MetaclassApplier(compilation, targetType, bindingTimeAnalyzer, applicationMethod, diagnostics, cancellationToken);
             metaclassApplier.PerformApplication(applicationMethodBody);
         }
 
@@ -79,6 +82,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         {
             // Any nodes which are not specially handled should already have been rejected by the MetaclassBindingTimeAnalyzer, or should not be traversed at all
             throw ExceptionUtilities.Unreachable;
+        }
+
+        public override CompileTimeValue Visit(BoundNode node, object arg)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+
+            return base.Visit(node, arg);
         }
 
         public override CompileTimeValue VisitArrayAccess(BoundArrayAccess node, object arg)

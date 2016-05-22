@@ -425,6 +425,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             }
         }
 
+        protected void ResetInterfaceInfo()
+        {
+            _lazyInterfaceInfo = null;
+        }
+
         // Note: Unlike MakeAllInterfaces, this doesn't need to be virtual. It depends on
         // AllInterfaces for its implementation, so it will pick up all changes to MakeAllInterfaces
         // indirectly.

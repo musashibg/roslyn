@@ -45,6 +45,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             private const int MethodKindMask = 0x1F;
             private const int DeclarationModifiersMask = 0x1FFFFF;
 
+            private const int IsImportedFromTraitBit = 1 << 25;
+
             private const int ReturnsVoidBit = 1 << 26;
             private const int IsExtensionMethodBit = 1 << 27;
             private const int IsMetadataVirtualIgnoringInterfaceChangesBit = 1 << 28;
@@ -72,6 +74,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             public bool IsMetadataVirtualLocked
             {
                 get { return (_flags & IsMetadataVirtualLockedBit) != 0; }
+            }
+
+            public bool IsImportedFromTrait
+            {
+                get { return (_flags & IsImportedFromTraitBit) != 0; }
             }
 
             public DeclarationModifiers DeclarationModifiers
@@ -109,7 +116,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 DeclarationModifiers declarationModifiers,
                 bool returnsVoid,
                 bool isExtensionMethod,
-                bool isMetadataVirtualIgnoringModifiers = false)
+                bool isMetadataVirtualIgnoringModifiers = false,
+                bool isImportedFromTrait = false)
             {
                 bool isMetadataVirtual = isMetadataVirtualIgnoringModifiers || ModifiersRequireMetadataVirtual(declarationModifiers);
 
@@ -119,8 +127,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 int isExtensionMethodInt = isExtensionMethod ? IsExtensionMethodBit : 0;
                 int isMetadataVirtualIgnoringInterfaceImplementationChangesInt = isMetadataVirtual ? IsMetadataVirtualIgnoringInterfaceChangesBit : 0;
                 int isMetadataVirtualInt = isMetadataVirtual ? IsMetadataVirtualBit : 0;
+                int isImportedFromTraitInt = isImportedFromTrait ? IsImportedFromTraitBit : 0;
 
-                _flags = methodKindInt | declarationModifiersInt | returnsVoidInt | isExtensionMethodInt | isMetadataVirtualIgnoringInterfaceImplementationChangesInt | isMetadataVirtualInt;
+                _flags = methodKindInt | declarationModifiersInt | returnsVoidInt | isExtensionMethodInt | isMetadataVirtualIgnoringInterfaceImplementationChangesInt | isMetadataVirtualInt
+                         | isImportedFromTraitInt;
             }
 
             public bool IsMetadataVirtual(bool ignoreInterfaceImplementationChanges = false)
@@ -250,9 +260,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             DeclarationModifiers declarationModifiers,
             bool returnsVoid,
             bool isExtensionMethod,
-            bool isMetadataVirtualIgnoringModifiers = false)
+            bool isMetadataVirtualIgnoringModifiers = false,
+            bool isImportedFromTrait = false)
         {
-            this.flags = new Flags(methodKind, declarationModifiers, returnsVoid, isExtensionMethod, isMetadataVirtualIgnoringModifiers);
+            this.flags = new Flags(methodKind, declarationModifiers, returnsVoid, isExtensionMethod, isMetadataVirtualIgnoringModifiers, isImportedFromTrait);
         }
 
         protected void SetReturnsVoid(bool returnsVoid)
@@ -535,6 +546,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
                 return cc;
             }
+        }
+
+        public bool IsImportedFromTrait
+        {
+            get { return flags.IsImportedFromTrait; }
         }
 
         #endregion

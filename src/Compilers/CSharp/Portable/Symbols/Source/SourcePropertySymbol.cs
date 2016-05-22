@@ -1,5 +1,8 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Roslyn.Utilities;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -8,9 +11,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Roslyn.Utilities;
-using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
 
 namespace Microsoft.CodeAnalysis.CSharp.Symbols
 {
@@ -58,7 +58,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             BasePropertyDeclarationSyntax syntax,
             string name,
             Location location,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait)
         {
             // This has the value that IsIndexer will ultimately have, once we've populated the fields of this object.
             bool isIndexer = syntax.Kind() == SyntaxKind.IndexerDeclaration;
@@ -261,7 +262,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                         arrowExpression,
                         explicitlyImplementedProperty,
                         aliasQualifierOpt,
-                        diagnostics);
+                        diagnostics,
+                        isImportedFromTrait);
                 }
                 else
                 {
@@ -271,8 +273,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             }
             else
             {
-                _getMethod = CreateAccessorSymbol(getSyntax, explicitlyImplementedProperty, aliasQualifierOpt, notRegularProperty, diagnostics);
-                _setMethod = CreateAccessorSymbol(setSyntax, explicitlyImplementedProperty, aliasQualifierOpt, notRegularProperty, diagnostics);
+                _getMethod = CreateAccessorSymbol(getSyntax, explicitlyImplementedProperty, aliasQualifierOpt, notRegularProperty, diagnostics, isImportedFromTrait);
+                _setMethod = CreateAccessorSymbol(setSyntax, explicitlyImplementedProperty, aliasQualifierOpt, notRegularProperty, diagnostics, isImportedFromTrait);
 
                 if ((getSyntax == null) || (setSyntax == null))
                 {
@@ -368,17 +370,27 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             }
         }
 
-        internal static SourcePropertySymbol Create(SourceMemberContainerTypeSymbol containingType, Binder bodyBinder, PropertyDeclarationSyntax syntax, DiagnosticBag diagnostics)
+        internal static SourcePropertySymbol Create(
+            SourceMemberContainerTypeSymbol containingType,
+            Binder bodyBinder,
+            PropertyDeclarationSyntax syntax,
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait = false)
         {
             var nameToken = syntax.Identifier;
             var location = nameToken.GetLocation();
-            return new SourcePropertySymbol(containingType, bodyBinder, syntax, nameToken.ValueText, location, diagnostics);
+            return new SourcePropertySymbol(containingType, bodyBinder, syntax, nameToken.ValueText, location, diagnostics, isImportedFromTrait);
         }
 
-        internal static SourcePropertySymbol Create(SourceMemberContainerTypeSymbol containingType, Binder bodyBinder, IndexerDeclarationSyntax syntax, DiagnosticBag diagnostics)
+        internal static SourcePropertySymbol Create(
+            SourceMemberContainerTypeSymbol containingType,
+            Binder bodyBinder,
+            IndexerDeclarationSyntax syntax,
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait = false)
         {
             var location = syntax.ThisKeyword.GetLocation();
-            return new SourcePropertySymbol(containingType, bodyBinder, syntax, DefaultIndexerName, location, diagnostics);
+            return new SourcePropertySymbol(containingType, bodyBinder, syntax, DefaultIndexerName, location, diagnostics, isImportedFromTrait);
         }
 
         public override TypeSymbol Type
@@ -801,15 +813,29 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         }
 
         // Create AccessorSymbol for AccessorDeclarationSyntax
-        private SourcePropertyAccessorSymbol CreateAccessorSymbol(AccessorDeclarationSyntax syntaxOpt,
-            PropertySymbol explicitlyImplementedPropertyOpt, string aliasQualifierOpt, bool isAutoPropertyAccessor, DiagnosticBag diagnostics)
+        private SourcePropertyAccessorSymbol CreateAccessorSymbol(
+            AccessorDeclarationSyntax syntaxOpt,
+            PropertySymbol explicitlyImplementedPropertyOpt,
+            string aliasQualifierOpt,
+            bool isAutoPropertyAccessor,
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait)
         {
             if (syntaxOpt == null)
             {
                 return null;
             }
-            return SourcePropertyAccessorSymbol.CreateAccessorSymbol(_containingType, this, _modifiers, _sourceName, syntaxOpt,
-                explicitlyImplementedPropertyOpt, aliasQualifierOpt, isAutoPropertyAccessor, diagnostics);
+            return SourcePropertyAccessorSymbol.CreateAccessorSymbol(
+                _containingType,
+                this,
+                _modifiers,
+                _sourceName,
+                syntaxOpt,
+                explicitlyImplementedPropertyOpt,
+                aliasQualifierOpt,
+                isAutoPropertyAccessor,
+                diagnostics,
+                isImportedFromTrait);
         }
 
         private void CheckAccessibilityMoreRestrictive(SourcePropertyAccessorSymbol accessor, DiagnosticBag diagnostics)

@@ -1465,7 +1465,12 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
 
         // NOTE: can return null if the method has no body.
-        private static BoundBlock BindMethodBody(MethodSymbol method, TypeCompilationState compilationState, DiagnosticBag diagnostics, out ImportChain importChain, out bool originalBodyNested)
+        private static BoundBlock BindMethodBody(
+            MethodSymbol method,
+            TypeCompilationState compilationState,
+            DiagnosticBag diagnostics,
+            out ImportChain importChain,
+            out bool originalBodyNested)
         {
             originalBodyNested = false;
             importChain = null;
@@ -1493,7 +1498,10 @@ namespace Microsoft.CodeAnalysis.CSharp
                 }
 
                 var compilation = method.DeclaringCompilation;
-                var factory = compilation.GetBinderFactory(sourceMethod.SyntaxTree);
+
+                var factory = compilation.GetBinderFactory(
+                    sourceMethod.SyntaxTree,
+                    sourceMethod.IsImportedFromTrait ? (SourceMemberContainerTypeSymbol)sourceMethod.ContainingType : null);
 
                 var blockSyntax = sourceMethod.BodySyntax as BlockSyntax;
 

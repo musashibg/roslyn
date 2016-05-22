@@ -397,6 +397,8 @@ namespace Microsoft.CodeAnalysis
         System_String__Format_IFormatProvider,
 
         // Decorators and metaclasses
+        CSharp_Meta_MetaPrimitives__AddTrait,
+        CSharp_Meta_MetaPrimitives__AddTrait_T,
         CSharp_Meta_MetaPrimitives__ApplyDecorator,
         CSharp_Meta_MetaPrimitives__CloneArguments,
         CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray,

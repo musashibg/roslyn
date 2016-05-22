@@ -97,5 +97,16 @@ namespace CSharp.Meta
         {
             throw new InvalidOperationException("This method may only be used in metaclass code executed at compile-time.");
         }
+
+        public static void AddTrait(Type hostType, Type traitType)
+        {
+            throw new InvalidOperationException("This method may only be used in metaclass code executed at compile-time.");
+        }
+
+        public static void AddTrait<T>(Type hostType)
+            where T : Trait
+        {
+            throw new InvalidOperationException("This method may only be used in metaclass code executed at compile-time.");
+        }
     }
 }

@@ -3140,7 +3140,7 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Decorators are not allowed on fields, events, properties or indexers.
+        ///   Looks up a localized string similar to Decorators are not allowed on fields and events.
         /// </summary>
         internal static string ERR_DecoratorOnIncompatibleMember {
             get {
@@ -4616,6 +4616,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Generic trait types are not currently supported.
+        /// </summary>
+        internal static string ERR_GenericTraitTypesNotSupported {
+            get {
+                return ResourceManager.GetString("ERR_GenericTraitTypesNotSupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to A get or set accessor expected.
         /// </summary>
         internal static string ERR_GetOrSetExpected {
@@ -5876,6 +5885,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Metaclasses are not allowed on interfaces.
+        /// </summary>
+        internal static string ERR_MetaclassOnInterface {
+            get {
+                return ResourceManager.GetString("ERR_MetaclassOnInterface", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Name &apos;{0}&apos; exceeds the maximum length allowed in metadata..
         /// </summary>
         internal static string ERR_MetadataNameTooLong {
@@ -5935,6 +5953,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_MethodNameExpected {
             get {
                 return ResourceManager.GetString("ERR_MethodNameExpected", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This method may only be used in metaclass code executed at compile-time.
+        /// </summary>
+        internal static string ERR_MethodOnlySupportedInMetaclass {
+            get {
+                return ResourceManager.GetString("ERR_MethodOnlySupportedInMetaclass", resourceCulture);
             }
         }
         
@@ -6641,6 +6668,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cannot apply trait &apos;{0}&apos; because it is not part of the same assembly.
+        /// </summary>
+        internal static string ERR_NonSourceTrait {
+            get {
+                return ResourceManager.GetString("ERR_NonSourceTrait", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cannot embed interop types from assembly &apos;{0}&apos; because it is missing the &apos;{1}&apos; attribute..
         /// </summary>
         internal static string ERR_NoPIAAssemblyMissingAttribute {
@@ -6736,6 +6772,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_NotAnAttributeClass {
             get {
                 return ResourceManager.GetString("ERR_NotAnAttributeClass", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; is not a trait. Trait types must be directly derived from the type &apos;CSharp.Meta.Trait&apos;.
+        /// </summary>
+        internal static string ERR_NotATrait {
+            get {
+                return ResourceManager.GetString("ERR_NotATrait", resourceCulture);
             }
         }
         
@@ -8504,6 +8549,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The member requirement &apos;{0}&apos; of the trait &apos;{1}&apos; is not satisfied by the host type.
+        /// </summary>
+        internal static string ERR_TraitRequirementNotFound {
+            get {
+                return ResourceManager.GetString("ERR_TraitRequirementNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The {1} &apos;{0}&apos; cannot be used with type arguments.
         /// </summary>
         internal static string ERR_TypeArgsNotAllowed {
@@ -8842,6 +8896,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_UnsafeValueReturnedByDecoratorMethod {
             get {
                 return ResourceManager.GetString("ERR_UnsafeValueReturnedByDecoratorMethod", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The kind of the member &apos;{0}&apos; is unsupported in traits. Only fields, methods, properties and indexers are supported.
+        /// </summary>
+        internal static string ERR_UnsupportedTraitMember {
+            get {
+                return ResourceManager.GetString("ERR_UnsupportedTraitMember", resourceCulture);
             }
         }
         
@@ -12755,6 +12818,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string WRN_ObsoleteOverridingNonObsolete_Title {
             get {
                 return ResourceManager.GetString("WRN_ObsoleteOverridingNonObsolete_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The member &apos;{0}&apos; of the trait &apos;{1}&apos; is overriden by a manually declared member with the same signature in the host type.
+        /// </summary>
+        internal static string WRN_OverriddenTraitMember {
+            get {
+                return ResourceManager.GetString("WRN_OverriddenTraitMember", resourceCulture);
             }
         }
         

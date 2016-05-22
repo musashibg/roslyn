@@ -295,6 +295,20 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
         }
 
+        internal bool IsContextType(NamedTypeSymbol type)
+        {
+            NamedTypeSymbol type2 = ContainingType;
+            while (type2 != null)
+            {
+                if (type == type2)
+                {
+                    return true;
+                }
+                type2 = type.ContainingType;
+            }
+            return false;
+        }
+
 
         /// <summary>
         /// Returns true if the binder is binding top-level script code.

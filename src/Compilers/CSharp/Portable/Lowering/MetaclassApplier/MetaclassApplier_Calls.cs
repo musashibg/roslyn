@@ -32,6 +32,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 return VisitGetCustomAttributesCall(node, argumentValues);
             }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__AddTrait)
+                     || method.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__AddTrait_T))
+            {
+                return VisitAddTraitCall(node, argumentValues);
+            }
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ApplyDecorator))
             {
                 return VisitApplyDecoratorCall(node, argumentValues);
@@ -157,6 +162,76 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     return StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, parameter.GetAttributes(), _diagnostics, out candidateAttribute);
                 }
             }
+        }
+
+        private CompileTimeValue VisitAddTraitCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
+        {
+            Debug.Assert(argumentValues.Length >= 1);
+
+            CompileTimeValue hostTypeValue = argumentValues[0];
+
+            if (hostTypeValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)hostTypeValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            Debug.Assert(hostTypeValue is TypeValue);
+            TypeSymbol hostType = ((TypeValue)hostTypeValue).Type;
+
+            if (hostType != _targetType)
+            {
+                _diagnostics.Add(ErrorCode.ERR_MetaclassModificationOnNonTargetType, node.Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            MethodSymbol method = node.Method;
+            TypeSymbol traitType;
+            if (method.Arity == 0)
+            {
+                Debug.Assert(argumentValues.Length == 2);
+                CompileTimeValue traitTypeValue = argumentValues[1];
+
+                if (traitTypeValue is ConstantStaticValue)
+                {
+                    Debug.Assert(((ConstantStaticValue)traitTypeValue).Value.IsNull);
+                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[1].Syntax.Location);
+                    throw new ExecutionInterruptionException(InterruptionKind.Throw);
+                }
+
+                Debug.Assert(traitTypeValue is TypeValue);
+                traitType = ((TypeValue)hostTypeValue).Type;
+            }
+            else
+            {
+                Debug.Assert(method.Arity == 1 && argumentValues.Length == 1 && !method.TypeArguments.IsDefaultOrEmpty);
+                traitType = method.TypeArguments[0];
+            }
+
+            if (traitType.BaseType != _compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Trait))
+            {
+                _diagnostics.Add(ErrorCode.ERR_NotATrait, node.Syntax.Location, traitType.Name);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            var hostSourceType = hostType as SourceMemberContainerTypeSymbol;
+            Debug.Assert(hostSourceType != null);
+
+            var traitSourceType = traitType as SourceMemberContainerTypeSymbol;
+            if (traitSourceType == null)
+            {
+                _diagnostics.Add(ErrorCode.ERR_NonSourceTrait, node.Syntax.Location, traitType.Name);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+            else if (traitSourceType.IsGenericType)
+            {
+                _diagnostics.Add(ErrorCode.ERR_GenericTraitTypesNotSupported, node.Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            hostSourceType.AddTrait(traitSourceType, _diagnostics, node.Syntax.Location, _cancellationToken);
+            return new ConstantStaticValue(ConstantValue.Null);
         }
 
         private CompileTimeValue VisitApplyDecoratorCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)

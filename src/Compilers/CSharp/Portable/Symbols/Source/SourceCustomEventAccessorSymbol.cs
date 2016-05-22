@@ -26,7 +26,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             AccessorDeclarationSyntax syntax,
             EventSymbol explicitlyImplementedEventOpt,
             string aliasQualifierOpt,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait)
             : base(@event,
                    syntax.GetReference(),
                    syntax.Body?.GetReference(),
@@ -60,7 +61,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 @event.Modifiers,
                 returnsVoid: false, // until we learn otherwise (in LazyMethodChecks).
                 isExtensionMethod: false,
-                isMetadataVirtualIgnoringModifiers: explicitInterfaceImplementations.Any());
+                isMetadataVirtualIgnoringModifiers: explicitInterfaceImplementations.Any(),
+                isImportedFromTrait: isImportedFromTrait);
 
             if (@event.ContainingType.IsInterface)
             {

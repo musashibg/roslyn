@@ -1632,8 +1632,13 @@ namespace Microsoft.CodeAnalysis.CSharp
         // to be recycled.
         private WeakReference<BinderFactory>[] _binderFactories;
 
-        internal BinderFactory GetBinderFactory(SyntaxTree syntaxTree)
+        internal BinderFactory GetBinderFactory(SyntaxTree syntaxTree, SourceMemberContainerTypeSymbol traitHostType = null)
         {
+            if (traitHostType != null)
+            {
+                return new BinderFactory(this, syntaxTree, traitHostType);
+            }
+
             var treeNum = GetSyntaxTreeOrdinal(syntaxTree);
             var binderFactories = _binderFactories;
             if (binderFactories == null)
@@ -1673,14 +1678,14 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
         }
 
-        internal Binder GetBinder(SyntaxReference reference)
+        internal Binder GetBinder(SyntaxReference reference, SourceMemberContainerTypeSymbol traitHostType = null)
         {
-            return GetBinderFactory(reference.SyntaxTree).GetBinder((CSharpSyntaxNode)reference.GetSyntax());
+            return GetBinderFactory(reference.SyntaxTree, traitHostType).GetBinder((CSharpSyntaxNode)reference.GetSyntax());
         }
 
-        internal Binder GetBinder(CSharpSyntaxNode syntax)
+        internal Binder GetBinder(CSharpSyntaxNode syntax, SourceMemberContainerTypeSymbol traitHostType = null)
         {
-            return GetBinderFactory(syntax.SyntaxTree).GetBinder(syntax);
+            return GetBinderFactory(syntax.SyntaxTree, traitHostType).GetBinder(syntax);
         }
 
         /// <summary>

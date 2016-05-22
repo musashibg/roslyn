@@ -1280,12 +1280,20 @@ namespace Microsoft.CodeAnalysis.CSharp
         ERR_NonSourceMetaclass = 7394,
         ERR_MetaclassApplicationMethodWithoutBody = 7395,
         ERR_MetaclassModificationOnNonTargetType = 7396,
+        ERR_MethodOnlySupportedInMetaclass = 7397,
+        ERR_NotATrait = 7398,
+        ERR_NonSourceTrait = 7399,
+        ERR_UnsupportedTraitMember = 7400,
+        ERR_TraitRequirementNotFound = 7401,
+        WRN_OverriddenTraitMember = 7402,
+        ERR_MetaclassOnInterface = 7403,
 
-        ERR_InvalidInvokeInDecorator = 7400,
-        ERR_DecoratorWithArguments = 7401,
-        ERR_BaseDecoratorMethodCallNotSupported = 7402,
+        ERR_InvalidInvokeInDecorator = 7420,
+        ERR_DecoratorWithArguments = 7421,
+        ERR_BaseDecoratorMethodCallNotSupported = 7422,
+        ERR_GenericTraitTypesNotSupported = 7423,
 
-        // available 7403-8000
+        // available 7423-8000
 
         WRN_UnimplementedCommandLineSwitch = 8001,
         WRN_ReferencedAssemblyDoesNotHaveStrongName = 8002,

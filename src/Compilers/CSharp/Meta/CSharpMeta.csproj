@@ -41,6 +41,7 @@
     <Compile Include="Decorator.cs" />
     <Compile Include="MetaException.cs" />
     <Compile Include="MetaPrimitives.cs" />
+    <Compile Include="Trait.cs" />
   </ItemGroup>
   <ImportGroup Label="Targets">
     <Import Project="..\..\..\..\build\Targets\VSL.Imports.targets" />

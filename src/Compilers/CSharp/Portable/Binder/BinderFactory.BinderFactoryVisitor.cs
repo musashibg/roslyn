@@ -1,13 +1,13 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using Roslyn.Utilities;
+using System;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Linq;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -124,6 +124,10 @@ namespace Microsoft.CodeAnalysis.CSharp
                     if (parentType != null)
                     {
                         resultBinder = VisitTypeDeclarationCore(parentType, NodeUsage.NamedTypeBodyOrTypeParameters);
+                        if (_factory.TraitHostType != null)
+                        {
+                            resultBinder = new InTraitHostTypeBinder(_factory.TraitHostType, resultBinder);
+                        }
                     }
                     else
                     {
@@ -320,12 +324,22 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             public override Binder VisitFieldDeclaration(FieldDeclarationSyntax parent)
             {
-                return VisitCore(parent.Parent).WithUnsafeRegionIfNecessary(parent.Modifiers);
+                Binder resultBinder = VisitCore(parent.Parent);
+                if (_factory.TraitHostType != null)
+                {
+                    resultBinder = new InTraitHostTypeBinder(_factory.TraitHostType, resultBinder);
+                }
+                return resultBinder.WithUnsafeRegionIfNecessary(parent.Modifiers);
             }
 
             public override Binder VisitEventDeclaration(EventDeclarationSyntax parent)
             {
-                return VisitCore(parent.Parent).WithUnsafeRegionIfNecessary(parent.Modifiers);
+                Binder resultBinder = VisitCore(parent.Parent);
+                if (_factory.TraitHostType != null)
+                {
+                    resultBinder = new InTraitHostTypeBinder(_factory.TraitHostType, resultBinder);
+                }
+                return resultBinder.WithUnsafeRegionIfNecessary(parent.Modifiers);
             }
 
             public override Binder VisitEventFieldDeclaration(EventFieldDeclarationSyntax parent)
@@ -337,7 +351,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             {
                 if (!LookupPosition.IsInBody(_position, parent))
                 {
-                    return VisitCore(parent.Parent).WithUnsafeRegionIfNecessary(parent.Modifiers);
+                    Binder resultBinder = VisitCore(parent.Parent);
+                    if (_factory.TraitHostType != null)
+                    {
+                        resultBinder = new InTraitHostTypeBinder(_factory.TraitHostType, resultBinder);
+                    }
+                    return resultBinder.WithUnsafeRegionIfNecessary(parent.Modifiers);
                 }
 
                 return VisitPropertyOrIndexerExpressionBody(parent);
@@ -360,7 +379,12 @@ namespace Microsoft.CodeAnalysis.CSharp
                 Binder resultBinder;
                 if (!binderCache.TryGetValue(key, out resultBinder))
                 {
-                    resultBinder = VisitCore(parent.Parent).WithUnsafeRegionIfNecessary(parent.Modifiers);
+                    resultBinder = VisitCore(parent.Parent);
+                    if (_factory.TraitHostType != null)
+                    {
+                        resultBinder = new InTraitHostTypeBinder(_factory.TraitHostType, resultBinder);
+                    }
+                    resultBinder = resultBinder.WithUnsafeRegionIfNecessary(parent.Modifiers);
 
                     var propertySymbol = GetPropertySymbol(parent, resultBinder);
                     var accessor = propertySymbol.GetMethod;

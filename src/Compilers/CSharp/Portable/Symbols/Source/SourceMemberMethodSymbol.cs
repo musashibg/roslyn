@@ -52,7 +52,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             NamedTypeSymbol containingType,
             Binder bodyBinder,
             MethodDeclarationSyntax syntax,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait = false)
         {
             var interfaceSpecifier = syntax.ExplicitInterfaceSpecifier;
             var nameToken = syntax.Identifier;
@@ -66,7 +67,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 ? MethodKind.Ordinary
                 : MethodKind.ExplicitInterfaceImplementation;
 
-            return new SourceMemberMethodSymbol(containingType, explicitInterfaceType, name, location, bodyBinder, syntax, methodKind, diagnostics);
+            return new SourceMemberMethodSymbol(containingType, explicitInterfaceType, name, location, bodyBinder, syntax, methodKind, diagnostics, isImportedFromTrait);
         }
 
         private SourceMemberMethodSymbol(
@@ -77,7 +78,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             Binder bodyBinder,
             MethodDeclarationSyntax syntax,
             MethodKind methodKind,
-            DiagnosticBag diagnostics) :
+            DiagnosticBag diagnostics,
+            bool isImportedFromTrait) :
             base(containingType,
                  syntax.GetReference(),
                  // Prefer a block body if both exist
@@ -104,7 +106,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
             var isMetadataVirtualIgnoringModifiers = (object)explicitInterfaceType != null; //explicit impls must be marked metadata virtual
 
-            this.MakeFlags(methodKind, declarationModifiers, returnsVoid, isExtensionMethod, isMetadataVirtualIgnoringModifiers);
+            this.MakeFlags(methodKind, declarationModifiers, returnsVoid, isExtensionMethod, isMetadataVirtualIgnoringModifiers, isImportedFromTrait);
 
             // NOTE: by creating a WithMethodTypeParametersBinder, we are effectively duplicating the
             // functionality of the BinderFactory.  Unfortunately, we cannot use the BinderFactory

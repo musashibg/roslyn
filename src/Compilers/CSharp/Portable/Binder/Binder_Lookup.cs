@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -1509,6 +1510,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             else
             {
+                if (nsOrType is SourceMemberContainerTypeSymbol && !originalBinder.IsContextType((SourceMemberContainerTypeSymbol)nsOrType))
+                {
+                    nsOrType.ForceComplete(null, CancellationToken.None);
+                }
                 return nsOrType.GetMembers(name);
             }
         }
@@ -1529,6 +1534,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             else
             {
+                if (nsOrType is SourceMemberContainerTypeSymbol && !originalBinder.IsContextType((SourceMemberContainerTypeSymbol)nsOrType))
+                {
+                    nsOrType.ForceComplete(null, CancellationToken.None);
+                }
                 return nsOrType.GetMembersUnordered();
             }
         }

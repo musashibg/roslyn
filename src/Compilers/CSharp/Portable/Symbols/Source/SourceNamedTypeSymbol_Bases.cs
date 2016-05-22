@@ -78,6 +78,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return _lazyInterfaces;
         }
 
+        protected sealed override void AddAdditionalInterfaces(ImmutableArray<NamedTypeSymbol> additionalInterfaces)
+        {
+            ImmutableArray<NamedTypeSymbol> currentInterfaces = _lazyInterfaces;
+            Debug.Assert(!currentInterfaces.IsDefault && !currentInterfaces.Any(nts => additionalInterfaces.Contains(nts)));
+
+            ImmutableArray<NamedTypeSymbol> newInterfaces = currentInterfaces.AddRange(additionalInterfaces);
+            bool updatedSuccessfully = (ImmutableInterlocked.InterlockedCompareExchange(ref _lazyInterfaces, newInterfaces, currentInterfaces) == currentInterfaces);
+            Debug.Assert(updatedSuccessfully);
+        }
+
         protected override void CheckBase(DiagnosticBag diagnostics)
         {
             var localBase = this.BaseTypeNoUseSiteDiagnostics;
