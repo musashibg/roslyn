@@ -7,6 +7,26 @@ namespace CSharp.Meta
     /// </summary>
     public abstract class Decorator
     {
+        public virtual void DecorateConstructor(ConstructorInfo constructor, object thisObject, object[] arguments)
+        {
+            throw new MetaException($"Cannot apply decorator class '{GetType()}' to constructor '{constructor}' because it does not support decoration of constructors.");
+        }
+
+        public virtual void DecorateDestructor(MethodInfo destructor, object thisObject)
+        {
+            throw new MetaException($"Cannot apply decorator class '{GetType()}' to destructor '{destructor}' because it does not support decoration of destructors.");
+        }
+
+        public virtual object DecorateIndexerGet(PropertyInfo indexer, object thisObject, object[] arguments)
+        {
+            throw new MetaException($"Cannot apply decorator class '{GetType()}' to indexer '{indexer}' because it does not support decoration of indexers.");
+        }
+
+        public virtual void DecorateIndexerSet(PropertyInfo indexer, object thisObject, object[] arguments, object value)
+        {
+            throw new MetaException($"Cannot apply decorator class '{GetType()}' to indexer '{indexer}' because it does not support decoration of indexers.");
+        }
+
         /// <summary>
         /// When overridden in a derived class, this decorator method's body is used to weave aspects around method declarations.
         /// </summary>
@@ -16,7 +36,17 @@ namespace CSharp.Meta
         /// <returns>The value which should be returned by the decorated method at the end of its execution.</returns>
         public virtual object DecorateMethod(MethodInfo method, object thisObject, object[] arguments)
         {
-            return method.Invoke(thisObject, arguments);
+            throw new MetaException($"Cannot apply decorator class '{GetType()}' to method '{method}' because it does not support decoration of methods.");
+        }
+
+        public virtual object DecoratePropertyGet(PropertyInfo property, object thisObject)
+        {
+            throw new MetaException($"Cannot apply decorator class '{GetType()}' to property '{property}' because it does not support decoration of properties.");
+        }
+
+        public virtual void DecoratePropertySet(PropertyInfo property, object thisObject, object value)
+        {
+            throw new MetaException($"Cannot apply decorator class '{GetType()}' to property '{property}' because it does not support decoration of properties.");
         }
     }
 }

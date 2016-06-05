@@ -85,6 +85,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             return new ExtendedTypeInfo(ExtendedTypeKind.ReturnValue, objectType, isAmbiguous, rootSymbol: rootSymbol);
         }
 
+        public static ExtendedTypeInfo CreateMemberValueType(CSharpCompilation compilation, bool isAmbiguous, Symbol rootSymbol = null)
+        {
+            TypeSymbol objectType = compilation.ObjectType;
+            return new ExtendedTypeInfo(ExtendedTypeKind.MemberValue, objectType, isAmbiguous, rootSymbol: rootSymbol);
+        }
+
         public bool MatchesSpecialType(ExtendedTypeInfo other)
         {
             return Kind == other.Kind && ParameterIndexLocal == other.ParameterIndexLocal;

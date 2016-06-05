@@ -51,8 +51,13 @@ namespace Microsoft.CodeAnalysis
         System_Guid__ctor,
 
         System_Type__FullName,
+        System_Type__GetConstructors,
+        System_Type__GetConstructors2,
         System_Type__GetMethods,
         System_Type__GetMethods2,
+        System_Type__GetProperties,
+        System_Type__GetProperties2,
+        System_Type__GetProperty,
         System_Type__GetTypeFromCLSID,
         System_Type__GetTypeFromHandle,
         System_Type__IsAbstract,
@@ -76,7 +81,6 @@ namespace Microsoft.CodeAnalysis
         System_Type__IsValueType,
         System_Type__IsVisible,
         System_Type__Missing,
-        System_Type__Name,
         System_Type__Namespace,
 
         System_Reflection_AssemblyKeyFileAttribute__ctor,
@@ -96,6 +100,12 @@ namespace Microsoft.CodeAnalysis
         System_Reflection_ParameterInfo__Name,
         System_Reflection_ParameterInfo__ParameterType,
         System_Reflection_ParameterInfo__Position,
+        System_Reflection_PropertyInfo__GetAccessors,
+        System_Reflection_PropertyInfo__GetValue,
+        System_Reflection_PropertyInfo__GetValue2,
+        System_Reflection_PropertyInfo__PropertyType,
+        System_Reflection_PropertyInfo__SetValue,
+        System_Reflection_PropertyInfo__SetValue2,
         System_Delegate__CreateDelegate,
         System_Delegate__CreateDelegate4,
         System_Reflection_FieldInfo__GetFieldFromHandle,
@@ -403,7 +413,9 @@ namespace Microsoft.CodeAnalysis
         CSharp_Meta_MetaPrimitives__CloneArguments,
         CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray,
         CSharp_Meta_MetaPrimitives__ParameterType,
+        CSharp_Meta_MetaPrimitives__ParameterType2,
         CSharp_Meta_MetaPrimitives__ThisObjectType,
+        CSharp_Meta_MetaPrimitives__ThisObjectType2,
 
         Count
     }

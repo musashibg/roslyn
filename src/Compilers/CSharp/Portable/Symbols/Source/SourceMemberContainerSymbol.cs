@@ -2206,15 +2206,32 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             CheckForEqualityAndGetHashCode(diagnostics);
         }
 
+        internal bool HasDecoratorMethodErrors { get; private set; }
+
         private void CheckDecoratorTypeSafety(DiagnosticBag diagnostics)
         {
-            SourceMemberMethodSymbol decoratorMethod = ((SourceNamedTypeSymbol)this).FindDecoratorMethod();
-            if (decoratorMethod != null)
+            var decoratorMethods = new Dictionary<DecoratedMemberKind, SourceMemberMethodSymbol>();
+            foreach (DecoratedMemberKind targetMemberKind in Enum.GetValues(typeof(DecoratedMemberKind)))
             {
-                DecoratorMethodTypeChecker.PerformTypeCheck(DeclaringCompilation, decoratorMethod, diagnostics);
+                SourceMemberMethodSymbol decoratorMethod = ((SourceNamedTypeSymbol)this).FindDecoratorMethod(targetMemberKind);
+                if (decoratorMethod != null)
+                {
+                    DecoratorMethodTypeChecker.PerformTypeCheck(DeclaringCompilation, decoratorMethod, targetMemberKind, diagnostics);
+                    decoratorMethods.Add(targetMemberKind, decoratorMethod);
+                }
             }
 
-            // TODO: Handle other decoration methods
+            if (decoratorMethods.ContainsKey(DecoratedMemberKind.IndexerGet) != decoratorMethods.ContainsKey(DecoratedMemberKind.IndexerSet))
+            {
+                diagnostics.Add(ErrorCode.ERR_IncompleteIndexerDecoratorMethodPair, this.GetNonNullSyntaxNode().Location);
+            }
+
+            if (decoratorMethods.ContainsKey(DecoratedMemberKind.PropertyGet) != decoratorMethods.ContainsKey(DecoratedMemberKind.PropertySet))
+            {
+                diagnostics.Add(ErrorCode.ERR_IncompletePropertyDecoratorMethodPair, this.GetNonNullSyntaxNode().Location);
+            }
+
+            HasDecoratorMethodErrors = !diagnostics.IsEmptyWithoutResolution;
         }
 
         private void CheckForUnmatchedOperator(DiagnosticBag diagnostics, string operatorName1, string operatorName2)

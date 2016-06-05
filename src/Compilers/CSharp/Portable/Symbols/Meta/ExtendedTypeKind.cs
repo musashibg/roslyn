@@ -7,5 +7,6 @@
         ArgumentArray,
         Parameter,
         ReturnValue,
+        MemberValue,
     }
 }

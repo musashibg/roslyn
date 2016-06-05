@@ -22,7 +22,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// Returns true if signature matches signature of the field.
         /// Signature should be in format described in MemberDescriptor.
         /// </summary>
-        public bool MatchFieldSignature(FieldSymbol field, ImmutableArray<byte> signature)
+        public bool MatchFieldSignature(FieldSymbol field, ImmutableArray<ushort> signature)
         {
             int position = 0;
 
@@ -37,7 +37,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// Returns true if signature matches signature of the property.
         /// Signature should be in format described in MemberDescriptor.
         /// </summary>
-        public bool MatchPropertySignature(PropertySymbol property, ImmutableArray<byte> signature)
+        public bool MatchPropertySignature(PropertySymbol property, ImmutableArray<ushort> signature)
         {
             int position = 0;
 
@@ -75,7 +75,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// Returns true if signature matches signature of the method.
         /// Signature should be in format described in MemberDescriptor.
         /// </summary>
-        public bool MatchMethodSignature(MethodSymbol method, ImmutableArray<byte> signature)
+        public bool MatchMethodSignature(MethodSymbol method, ImmutableArray<ushort> signature)
         {
             int position = 0;
 
@@ -109,7 +109,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
             return true;
         }
 
-        private bool MatchParameter(ParameterSymbol parameter, ImmutableArray<byte> signature, ref int position)
+        private bool MatchParameter(ParameterSymbol parameter, ImmutableArray<ushort> signature, ref int position)
         {
             SignatureTypeCode typeCode = (SignatureTypeCode)signature[position];
             bool isByRef;
@@ -139,7 +139,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// 
         /// Signature should be in format described in MemberDescriptor.
         /// </summary>
-        private bool MatchType(TypeSymbol type, ImmutableArray<byte> signature, ref int position)
+        private bool MatchType(TypeSymbol type, ImmutableArray<ushort> signature, ref int position)
         {
             if (type == null)
             {

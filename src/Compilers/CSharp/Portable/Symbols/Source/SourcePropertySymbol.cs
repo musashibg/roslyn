@@ -1236,6 +1236,20 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return decorators;
         }
 
+        internal void ApplyDecorator(DecoratorData decorator)
+        {
+            ImmutableArray<DecoratorData> decorators = GetDecorators();
+
+            // The newly applied decorator should be applied after all existing ones, and should therefore be prepended to the front of the list
+            ImmutableArray<DecoratorData>.Builder newDecoratorsBuilder = ImmutableArray.CreateBuilder<DecoratorData>(decorators.Length + 1);
+            newDecoratorsBuilder.Add(decorator);
+            newDecoratorsBuilder.AddRange(decorators);
+
+            ImmutableArray<DecoratorData> newDecorators = newDecoratorsBuilder.ToImmutable();
+            bool updatedSuccessfully = (ImmutableInterlocked.InterlockedCompareExchange(ref _lazyDecorators, newDecorators, decorators) == decorators);
+            Debug.Assert(updatedSuccessfully);
+        }
+
         #region Completion
 
         internal sealed override bool RequiresCompletion

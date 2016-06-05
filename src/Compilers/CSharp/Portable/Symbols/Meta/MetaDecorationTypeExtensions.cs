@@ -1,43 +1,155 @@
-﻿namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
+﻿using Microsoft.CodeAnalysis.CSharp.Meta;
+using Roslyn.Utilities;
+using System.Collections.Immutable;
+
+namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 {
     internal static class MetaDecorationTypeExtensions
     {
-        public static SourceMemberMethodSymbol FindDecoratorMethod(this SourceNamedTypeSymbol decoratorType)
+        public static SourceMemberMethodSymbol FindDecoratorMethod(this SourceNamedTypeSymbol decoratorType, DecoratedMemberKind targetMemberKind)
         {
-            var candidateMethods = decoratorType.GetMembers("DecorateMethod");
-            if (candidateMethods.Length == 0)
-            {
-                return null;
-            }
-
             CSharpCompilation compilation = decoratorType.DeclaringCompilation;
-            foreach (SourceMemberMethodSymbol method in candidateMethods)
+            ImmutableArray<Symbol> candidateMethods;
+            switch (targetMemberKind)
             {
-                if (method.Arity == 0
-                    && method.IsOverride
-                    && method.ParameterCount == 3
-                    && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo)
-                    && method.Parameters[1].Type.IsObjectType()
-                    && method.Parameters[2].Type.IsArray()
-                    && ((ArrayTypeSymbol)method.Parameters[2].Type).ElementType.IsObjectType()
-                    && method.GetConstructedLeastOverriddenMethod(decoratorType).ContainingType == compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator))
-                {
-                    return method;
-                }
-            }
+                case DecoratedMemberKind.Constructor:
+                    candidateMethods = decoratorType.GetMembers("DecorateConstructor");
+                    foreach (SourceMemberMethodSymbol method in candidateMethods)
+                    {
+                        if (method.ContainingType == decoratorType
+                            && method.Arity == 0
+                            && method.IsOverride
+                            && method.ParameterCount == 3
+                            && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_ConstructorInfo)
+                            && method.Parameters[1].Type.IsObjectType()
+                            && method.Parameters[2].Type.IsArray()
+                            && ((ArrayTypeSymbol)method.Parameters[2].Type).ElementType.IsObjectType()
+                            && method.GetConstructedLeastOverriddenMethod(decoratorType).ContainingType == compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator))
+                        {
+                            return method;
+                        }
+                    }
+                    return null;
 
-            return null;
+                case DecoratedMemberKind.Destructor:
+                    candidateMethods = decoratorType.GetMembers("DecorateDestructor");
+                    foreach (SourceMemberMethodSymbol method in candidateMethods)
+                    {
+                        if (method.ContainingType == decoratorType
+                            && method.Arity == 0
+                            && method.IsOverride
+                            && method.ParameterCount == 2
+                            && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo)
+                            && method.Parameters[1].Type.IsObjectType()
+                            && method.GetConstructedLeastOverriddenMethod(decoratorType).ContainingType == compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator))
+                        {
+                            return method;
+                        }
+                    }
+                    return null;
+
+                case DecoratedMemberKind.IndexerGet:
+                    candidateMethods = decoratorType.GetMembers("DecorateIndexerGet");
+                    foreach (SourceMemberMethodSymbol method in candidateMethods)
+                    {
+                        if (method.ContainingType == decoratorType
+                            && method.Arity == 0
+                            && method.IsOverride
+                            && method.ParameterCount == 3
+                            && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo)
+                            && method.Parameters[1].Type.IsObjectType()
+                            && method.Parameters[2].Type.IsArray()
+                            && ((ArrayTypeSymbol)method.Parameters[2].Type).ElementType.IsObjectType()
+                            && method.GetConstructedLeastOverriddenMethod(decoratorType).ContainingType == compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator))
+                        {
+                            return method;
+                        }
+                    }
+                    return null;
+
+                case DecoratedMemberKind.IndexerSet:
+                    candidateMethods = decoratorType.GetMembers("DecorateIndexerSet");
+                    foreach (SourceMemberMethodSymbol method in candidateMethods)
+                    {
+                        if (method.ContainingType == decoratorType
+                            && method.Arity == 0
+                            && method.IsOverride
+                            && method.ParameterCount == 4
+                            && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo)
+                            && method.Parameters[1].Type.IsObjectType()
+                            && method.Parameters[2].Type.IsObjectType()
+                            && method.Parameters[3].Type.IsArray()
+                            && ((ArrayTypeSymbol)method.Parameters[3].Type).ElementType.IsObjectType()
+                            && method.GetConstructedLeastOverriddenMethod(decoratorType).ContainingType == compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator))
+                        {
+                            return method;
+                        }
+                    }
+                    return null;
+
+                case DecoratedMemberKind.Method:
+                    candidateMethods = decoratorType.GetMembers("DecorateMethod");
+                    foreach (SourceMemberMethodSymbol method in candidateMethods)
+                    {
+                        if (method.ContainingType == decoratorType
+                            && method.Arity == 0
+                            && method.IsOverride
+                            && method.ParameterCount == 3
+                            && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo)
+                            && method.Parameters[1].Type.IsObjectType()
+                            && method.Parameters[2].Type.IsArray()
+                            && ((ArrayTypeSymbol)method.Parameters[2].Type).ElementType.IsObjectType()
+                            && method.GetConstructedLeastOverriddenMethod(decoratorType).ContainingType == compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator))
+                        {
+                            return method;
+                        }
+                    }
+                    return null;
+
+                case DecoratedMemberKind.PropertyGet:
+                    candidateMethods = decoratorType.GetMembers("DecoratePropertyGet");
+                    foreach (SourceMemberMethodSymbol method in candidateMethods)
+                    {
+                        if (method.ContainingType == decoratorType
+                            && method.Arity == 0
+                            && method.IsOverride
+                            && method.ParameterCount == 2
+                            && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo)
+                            && method.Parameters[1].Type.IsObjectType()
+                            && method.GetConstructedLeastOverriddenMethod(decoratorType).ContainingType == compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator))
+                        {
+                            return method;
+                        }
+                    }
+                    return null;
+
+                case DecoratedMemberKind.PropertySet:
+                    candidateMethods = decoratorType.GetMembers("DecoratePropertySet");
+                    foreach (SourceMemberMethodSymbol method in candidateMethods)
+                    {
+                        if (method.ContainingType == decoratorType
+                            && method.Arity == 0
+                            && method.IsOverride
+                            && method.ParameterCount == 3
+                            && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo)
+                            && method.Parameters[1].Type.IsObjectType()
+                            && method.Parameters[2].Type.IsObjectType()
+                            && method.GetConstructedLeastOverriddenMethod(decoratorType).ContainingType == compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator))
+                        {
+                            return method;
+                        }
+                    }
+                    return null;
+
+                default:
+                    throw ExceptionUtilities.Unreachable;
+            }
         }
 
         public static SourceMemberMethodSymbol FindMetaclassApplicationMethod(this SourceNamedTypeSymbol metaclassType)
         {
-            var candidateMethods = metaclassType.GetMembers("ApplyToType");
-            if (candidateMethods.Length == 0)
-            {
-                return null;
-            }
-
             CSharpCompilation compilation = metaclassType.DeclaringCompilation;
+            ImmutableArray<Symbol> candidateMethods = metaclassType.GetMembers("ApplyToType");
             foreach (SourceMemberMethodSymbol method in candidateMethods)
             {
                 if (method.Arity == 0

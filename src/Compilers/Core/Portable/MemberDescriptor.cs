@@ -42,7 +42,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// (either for the VB runtime classes, or types like System.Task etc.) will need 
         /// to use IDs that are all mutually disjoint. 
         /// </summary>
-        public readonly byte DeclaringTypeId;
+        public readonly ushort DeclaringTypeId;
 
         public string DeclaringTypeMetadataName
         {
@@ -68,13 +68,13 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         ///    5) modifiers are not included.
         ///    6) (CLASS | VALUETYPE) are omitted after GENERICINST
         /// </summary>
-        public readonly ImmutableArray<byte> Signature;
+        public readonly ImmutableArray<ushort> Signature;
 
         public MemberDescriptor(
             MemberFlags Flags,
-            byte DeclaringTypeId,
+            ushort DeclaringTypeId,
             string Name,
-            ImmutableArray<byte> Signature,
+            ImmutableArray<ushort> Signature,
             ushort Arity = 0)
         {
             this.Flags = Flags;
@@ -89,22 +89,26 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
             int count = nameTable.Length;
 
             var builder = ImmutableArray.CreateBuilder<MemberDescriptor>(count);
-            var signatureBuilder = ImmutableArray.CreateBuilder<byte>();
+            var signatureBuilder = ImmutableArray.CreateBuilder<ushort>();
 
+            var buffer = new byte[2];
             for (int i = 0; i < count; i++)
             {
-                MemberFlags flags = (MemberFlags)stream.ReadByte();
-                byte declaringTypeId = (byte)stream.ReadByte();
-                ushort arity = (ushort)stream.ReadByte();
+                stream.Read(buffer, 0, 2);
+                MemberFlags flags = (MemberFlags)BitConverter.ToUInt16(buffer, 0);
+                stream.Read(buffer, 0, 2);
+                ushort declaringTypeId = BitConverter.ToUInt16(buffer, 0);
+                stream.Read(buffer, 0, 2);
+                ushort arity = BitConverter.ToUInt16(buffer, 0);
 
                 if ((flags & MemberFlags.Field) != 0)
                 {
-                    ParseType(signatureBuilder, stream);
+                    ParseType(signatureBuilder, stream, buffer);
                 }
                 else
                 {
                     // Property, PropertyGet, Method or Constructor
-                    ParseMethodOrPropertySignature(signatureBuilder, stream);
+                    ParseMethodOrPropertySignature(signatureBuilder, stream, buffer);
                 }
 
                 builder.Add(new MemberDescriptor(flags, declaringTypeId, nameTable[i], signatureBuilder.ToImmutable(), arity));
@@ -114,27 +118,29 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
             return builder.ToImmutable();
         }
 
-        private static void ParseMethodOrPropertySignature(ImmutableArray<byte>.Builder builder, Stream stream)
+        private static void ParseMethodOrPropertySignature(ImmutableArray<ushort>.Builder builder, Stream stream, byte[] buffer)
         {
-            int paramCount = stream.ReadByte();
-            builder.Add((byte)paramCount);
+            stream.Read(buffer, 0, 2);
+            ushort paramCount = BitConverter.ToUInt16(buffer, 0);
+            builder.Add(paramCount);
 
             // Return type
-            ParseType(builder, stream);
+            ParseType(builder, stream, buffer);
 
             // Parameters
             for (int i = 0; i < paramCount; i++)
             {
-                ParseType(builder, stream, allowByRef: true);
+                ParseType(builder, stream, buffer, allowByRef: true);
             }
         }
 
-        private static void ParseType(ImmutableArray<byte>.Builder builder, Stream stream, bool allowByRef = false)
+        private static void ParseType(ImmutableArray<ushort>.Builder builder, Stream stream, byte[] buffer, bool allowByRef = false)
         {
             while (true)
             {
-                var typeCode = (SignatureTypeCode)stream.ReadByte();
-                builder.Add((byte)typeCode);
+                stream.Read(buffer, 0, 2);
+                var typeCode = (SignatureTypeCode)BitConverter.ToUInt16(buffer, 0);
+                builder.Add((ushort)typeCode);
 
                 switch (typeCode)
                 {
@@ -144,7 +150,8 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
                     case SignatureTypeCode.TypeHandle:
                     case SignatureTypeCode.GenericTypeParameter:
                     case SignatureTypeCode.GenericMethodParameter:
-                        builder.Add((byte)stream.ReadByte());
+                        stream.Read(buffer, 0, 2);
+                        builder.Add(BitConverter.ToUInt16(buffer, 0));
                         return;
 
                     case SignatureTypeCode.ByReference:
@@ -158,7 +165,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
                         break;
 
                     case SignatureTypeCode.GenericTypeInstance:
-                        ParseGenericTypeInstance(builder, stream);
+                        ParseGenericTypeInstance(builder, stream, buffer);
                         return;
                 }
 
@@ -166,16 +173,17 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
             }
         }
 
-        private static void ParseGenericTypeInstance(ImmutableArray<byte>.Builder builder, Stream stream)
+        private static void ParseGenericTypeInstance(ImmutableArray<ushort>.Builder builder, Stream stream, byte[] buffer)
         {
-            ParseType(builder, stream);
+            ParseType(builder, stream, buffer);
 
             // Generic type parameters
-            int argumentCount = stream.ReadByte();
-            builder.Add((byte)argumentCount);
+            stream.Read(buffer, 0, 2);
+            ushort argumentCount = BitConverter.ToUInt16(buffer, 0);
+            builder.Add(argumentCount);
             for (int i = 0; i < argumentCount; i++)
             {
-                ParseType(builder, stream);
+                ParseType(builder, stream, buffer);
             }
         }
     }

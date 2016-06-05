@@ -685,6 +685,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     TypeSymbol methodInfoType = _compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo);
                     return new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, methodInfoType)));
                 }
+                else if (operandValue is ConstructorInfoValue)
+                {
+                    TypeSymbol constructorInfoType = _compilation.GetWellKnownType(WellKnownType.System_Reflection_ConstructorInfo);
+                    return new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, constructorInfoType)));
+                }
+                else if (operandValue is PropertyInfoValue)
+                {
+                    TypeSymbol propertyInfoType = _compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo);
+                    return new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsAssignableFrom(targetType, propertyInfoType)));
+                }
                 else if (operandValue is ParameterInfoValue)
                 {
                     TypeSymbol parameterInfoType = _compilation.GetWellKnownType(WellKnownType.System_Reflection_ParameterInfo);

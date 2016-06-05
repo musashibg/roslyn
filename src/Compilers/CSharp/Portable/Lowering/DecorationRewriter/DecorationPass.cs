@@ -29,7 +29,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 #endif
             CSharpCompilation compilation = method.DeclaringCompilation;
 
-            ImmutableArray<DecoratorData> decorators = method.GetDecorators();
+            ImmutableArray<DecoratorData> decorators;
+            if (method is SourcePropertyAccessorSymbol)
+            {
+                var associatedProperty = (PropertySymbol)method.AssociatedSymbol;
+                decorators = associatedProperty.GetDecorators();
+            }
+            else
+            {
+                decorators = method.GetDecorators();
+            }
+
             if (decorators.IsEmpty)
             {
                 // Nothing to decorate
@@ -42,7 +52,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 cancellationToken.ThrowIfCancellationRequested();
 
                 DecoratorData decorator = decorators[decoratorOrdinal];
-                if (decorator.HasErrors)
+                if (decorator.HasErrors || ((SourceMemberContainerTypeSymbol)decorator.DecoratorClass).HasDecoratorMethodErrors)
                 {
                     // Do not apply decorators which contain errors
                     continue;

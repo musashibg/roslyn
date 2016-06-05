@@ -396,6 +396,8 @@
     <Compile Include="Meta\BindingTime.cs" />
     <Compile Include="Meta\BindingTimeAnalysisException.cs" />
     <Compile Include="Meta\BindingTimeAnalysisResult.cs" />
+    <Compile Include="Meta\ConstructorInfoValue.cs" />
+    <Compile Include="Meta\DecoratedMemberKind.cs" />
     <Compile Include="Meta\DecorationBindingTimeAnalyzer.cs" />
     <Compile Include="Meta\DecoratorValue.cs" />
     <Compile Include="Meta\ExecutionInterruptionException.cs" />
@@ -408,6 +410,7 @@
     <Compile Include="Meta\MetaclassBindingTimeAnalyzer.cs" />
     <Compile Include="Meta\ParameterInfoValue.cs" />
     <Compile Include="Meta\ParametersAndVariablesWalker.cs" />
+    <Compile Include="Meta\PropertyInfoValue.cs" />
     <Compile Include="Meta\StaticOnlyBindingTimeAnalyzer.cs" />
     <Compile Include="Meta\StaticValueUtils.cs" />
     <Compile Include="Meta\BaseBindingTimeAnalyzer.cs" />

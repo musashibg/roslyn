@@ -210,6 +210,62 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
+        public static CompileTimeValue LookupConstructors(TypeSymbol type, BindingFlags bindingFlags, ArrayTypeSymbol resultType)
+        {
+            ImmutableArray<CompileTimeValue>.Builder constructorsBuilder = ImmutableArray.CreateBuilder<CompileTimeValue>();
+            foreach (Symbol member in type.GetMembers())
+            {
+                if (member.Kind != SymbolKind.Method)
+                {
+                    continue;
+                }
+
+                var method = (MethodSymbol)member;
+                if (method.MethodKind != MethodKind.Constructor && method.MethodKind != MethodKind.StaticConstructor)
+                {
+                    continue;
+                }
+
+                if (method.ContainingType != type)
+                {
+                    continue;
+                }
+
+                if (method.DeclaredAccessibility == Accessibility.Public)
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.Public))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.NonPublic))
+                    {
+                        continue;
+                    }
+                }
+
+                if (method.IsStatic)
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.Static))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.Instance))
+                    {
+                        continue;
+                    }
+                }
+
+                constructorsBuilder.Add(new ConstructorInfoValue(method));
+            }
+            return new ArrayValue(resultType, constructorsBuilder.ToImmutable());
+        }
+
         public static CompileTimeValue LookupMethods(TypeSymbol type, BindingFlags bindingFlags, ArrayTypeSymbol resultType)
         {
             ImmutableArray<CompileTimeValue>.Builder methodsBuilder = ImmutableArray.CreateBuilder<CompileTimeValue>();
@@ -268,6 +324,61 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 methodsBuilder.Add(new MethodInfoValue(method));
             }
             return new ArrayValue(resultType, methodsBuilder.ToImmutable());
+        }
+
+        public static CompileTimeValue LookupProperties(TypeSymbol type, BindingFlags bindingFlags, ArrayTypeSymbol resultType)
+        {
+            ImmutableArray<CompileTimeValue>.Builder propertiesBuilder = ImmutableArray.CreateBuilder<CompileTimeValue>();
+            foreach (Symbol member in type.GetMembers())
+            {
+                if (member.Kind != SymbolKind.Property)
+                {
+                    continue;
+                }
+
+                var property = (PropertySymbol)member;
+                if (property.ContainingType != type && bindingFlags.HasFlag(BindingFlags.DeclaredOnly))
+                {
+                    continue;
+                }
+
+                if (property.DeclaredAccessibility == Accessibility.Public)
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.Public))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.NonPublic))
+                    {
+                        continue;
+                    }
+                }
+
+                if (property.IsStatic)
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.Static))
+                    {
+                        continue;
+                    }
+                    if (property.ContainingType != type && !bindingFlags.HasFlag(BindingFlags.FlattenHierarchy))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (!bindingFlags.HasFlag(BindingFlags.Instance))
+                    {
+                        continue;
+                    }
+                }
+
+                propertiesBuilder.Add(new PropertyInfoValue(property));
+            }
+            return new ArrayValue(resultType, propertiesBuilder.ToImmutable());
         }
 
         private static void Error(DiagnosticBag diagnostics, ErrorCode errorCode, CSharpSyntaxNode syntax, params object[] args)

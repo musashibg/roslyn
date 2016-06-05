@@ -1279,9 +1279,9 @@ namespace Microsoft.CodeAnalysis.CSharp {
         /// <summary>
         ///   Looks up a localized string similar to Decorated method argument arrays may only be indexed using a local variable.
         /// </summary>
-        internal static string ERR_BadDecoratedMethodArgumentArrayIndex {
+        internal static string ERR_BadDecoratedMemberArgumentArrayIndex {
             get {
-                return ResourceManager.GetString("ERR_BadDecoratedMethodArgumentArrayIndex", resourceCulture);
+                return ResourceManager.GetString("ERR_BadDecoratedMemberArgumentArrayIndex", resourceCulture);
             }
         }
         
@@ -3079,36 +3079,81 @@ namespace Microsoft.CodeAnalysis.CSharp {
         /// <summary>
         ///   Looks up a localized string similar to Decorated method argument arrays cannot be assigned to ordinary array variables.
         /// </summary>
-        internal static string ERR_DecoratedMethodArgumentArrayAssignedToOrdinaryArray {
+        internal static string ERR_DecoratedMemberArgumentArrayAssignedToOrdinaryArray {
             get {
-                return ResourceManager.GetString("ERR_DecoratedMethodArgumentArrayAssignedToOrdinaryArray", resourceCulture);
+                return ResourceManager.GetString("ERR_DecoratedMemberArgumentArrayAssignedToOrdinaryArray", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Only an expression representing a decorator method argument array may be used here.
+        ///   Looks up a localized string similar to Only an expression representing a decorated member argument array may be used here.
         /// </summary>
-        internal static string ERR_DecoratedMethodArgumentArrayRequired {
+        internal static string ERR_DecoratedMemberArgumentArrayRequired {
             get {
-                return ResourceManager.GetString("ERR_DecoratedMethodArgumentArrayRequired", resourceCulture);
+                return ResourceManager.GetString("ERR_DecoratedMemberArgumentArrayRequired", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Only a parameter or local variable containing a decorated method argument array may be passed here.
+        ///   Looks up a localized string similar to Only a parameter or local variable containing a decorated member argument array may be passed here.
         /// </summary>
-        internal static string ERR_DecoratedMethodArgumentArrayVariableRequired {
+        internal static string ERR_DecoratedMemberArgumentArrayVariableRequired {
             get {
-                return ResourceManager.GetString("ERR_DecoratedMethodArgumentArrayVariableRequired", resourceCulture);
+                return ResourceManager.GetString("ERR_DecoratedMemberArgumentArrayVariableRequired", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Decorated method argument arrays, arguments and return values are only allowed in the branches of conditional expressions when typecasting to the expression&apos;s type is guaranteed to be safe.
         /// </summary>
-        internal static string ERR_DecoratedMethodSpecialTypeInConditionalOperator {
+        internal static string ERR_DecoratedMemberSpecialTypeInConditionalOperator {
             get {
-                return ResourceManager.GetString("ERR_DecoratedMethodSpecialTypeInConditionalOperator", resourceCulture);
+                return ResourceManager.GetString("ERR_DecoratedMemberSpecialTypeInConditionalOperator", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only an expression assignable to the decorated member&apos;s value may be used here.
+        /// </summary>
+        internal static string ERR_DecoratedMemberValueRequired {
+            get {
+                return ResourceManager.GetString("ERR_DecoratedMemberValueRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The property accessor method &apos;{0}&apos; may not be decorated directly. Decorate its associated property instead.
+        /// </summary>
+        internal static string ERR_DecoratedPropertyAccessor {
+            get {
+                return ResourceManager.GetString("ERR_DecoratedPropertyAccessor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot apply decorator class &apos;{0}&apos; to constructor &apos;{1}&apos; because it does not support decoration of constructors.
+        /// </summary>
+        internal static string ERR_DecoratorDoesNotSupportConstructors {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorDoesNotSupportConstructors", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot apply decorator class &apos;{0}&apos; to destructor &apos;{1}&apos; because it does not support decoration of destructors.
+        /// </summary>
+        internal static string ERR_DecoratorDoesNotSupportDestructors {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorDoesNotSupportDestructors", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot apply decorator class &apos;{0}&apos; to indexer &apos;{1}&apos; because it does not support decoration of indexers.
+        /// </summary>
+        internal static string ERR_DecoratorDoesNotSupportIndexers {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorDoesNotSupportIndexers", resourceCulture);
             }
         }
         
@@ -3118,6 +3163,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_DecoratorDoesNotSupportMethods {
             get {
                 return ResourceManager.GetString("ERR_DecoratorDoesNotSupportMethods", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot apply decorator class &apos;{0}&apos; to property &apos;{1}&apos; because it does not support decoration of properties.
+        /// </summary>
+        internal static string ERR_DecoratorDoesNotSupportProperties {
+            get {
+                return ResourceManager.GetString("ERR_DecoratorDoesNotSupportProperties", resourceCulture);
             }
         }
         
@@ -4949,6 +5003,24 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Both the DecorateIndexerGet and DecorateIndexerSet methods must be overriden in order to support the decoration of indexers.
+        /// </summary>
+        internal static string ERR_IncompleteIndexerDecoratorMethodPair {
+            get {
+                return ResourceManager.GetString("ERR_IncompleteIndexerDecoratorMethodPair", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Both the DecoratePropertyGet and DecoratePropertySet methods must be overriden in order to support the decoration of properties.
+        /// </summary>
+        internal static string ERR_IncompletePropertyDecoratorMethodPair {
+            get {
+                return ResourceManager.GetString("ERR_IncompletePropertyDecoratorMethodPair", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Two indexers have different names; the IndexerName attribute must be used with the same name on every indexer within a type.
         /// </summary>
         internal static string ERR_InconsistentIndexerNames {
@@ -5327,20 +5399,20 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Typecasting of a decorated method argument array is not allowed.
+        ///   Looks up a localized string similar to Typecasting of a decorated member argument array is not allowed.
         /// </summary>
-        internal static string ERR_InvalidDecoratedMethodArgumentArrayCast {
+        internal static string ERR_InvalidDecoratedMemberArgumentArrayCast {
             get {
-                return ResourceManager.GetString("ERR_InvalidDecoratedMethodArgumentArrayCast", resourceCulture);
+                return ResourceManager.GetString("ERR_InvalidDecoratedMemberArgumentArrayCast", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Decorated method argument arrays are not allowed in this location.
         /// </summary>
-        internal static string ERR_InvalidDecoratedMethodArgumentArrayUse {
+        internal static string ERR_InvalidDecoratedMemberArgumentArrayUse {
             get {
-                return ResourceManager.GetString("ERR_InvalidDecoratedMethodArgumentArrayUse", resourceCulture);
+                return ResourceManager.GetString("ERR_InvalidDecoratedMemberArgumentArrayUse", resourceCulture);
             }
         }
         
@@ -5422,15 +5494,6 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_InvalidInitializerElementInitializer {
             get {
                 return ResourceManager.GetString("ERR_InvalidInitializerElementInitializer", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Only calls to MethodBase.Invoke on the target method with the target object and a variable containing a list of arguments are currently supported.
-        /// </summary>
-        internal static string ERR_InvalidInvokeInDecorator {
-            get {
-                return ResourceManager.GetString("ERR_InvalidInvokeInDecorator", resourceCulture);
             }
         }
         
@@ -5530,6 +5593,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_InvalidSignaturePublicKey {
             get {
                 return ResourceManager.GetString("ERR_InvalidSignaturePublicKey", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only calls to &apos;{0}&apos; which represent a splice location are currently supported in such a decorator method.
+        /// </summary>
+        internal static string ERR_InvalidSpecialMethodCallInDecorator {
+            get {
+                return ResourceManager.GetString("ERR_InvalidSpecialMethodCallInDecorator", resourceCulture);
             }
         }
         
@@ -7001,11 +7073,11 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Ordinary arrays cannot be assigned to decorated method argument array variables.
+        ///   Looks up a localized string similar to Ordinary arrays cannot be assigned to decorated member argument array variables.
         /// </summary>
-        internal static string ERR_OrdinaryArrayAssignedToDecoratedMethodArgumentArray {
+        internal static string ERR_OrdinaryArrayAssignedToDecoratedMemberArgumentArray {
             get {
-                return ResourceManager.GetString("ERR_OrdinaryArrayAssignedToDecoratedMethodArgumentArray", resourceCulture);
+                return ResourceManager.GetString("ERR_OrdinaryArrayAssignedToDecoratedMemberArgumentArray", resourceCulture);
             }
         }
         
@@ -8810,38 +8882,56 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Typecasting of a decorated method argument is only allowed when it is guaranteed to be safe.
+        ///   Looks up a localized string similar to Typecasting of a decorated member argument is only allowed when it is guaranteed to be safe.
         /// </summary>
-        internal static string ERR_UnsafeDecoratedMethodArgumentCast {
+        internal static string ERR_UnsafeDecoratedMemberArgumentCast {
             get {
-                return ResourceManager.GetString("ERR_UnsafeDecoratedMethodArgumentCast", resourceCulture);
+                return ResourceManager.GetString("ERR_UnsafeDecoratedMemberArgumentCast", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Typecasting of a decorated method return value or direct use of its value is only allowed when it is guaranteed to be safe.
+        ///   Looks up a localized string similar to Typecasting of a decorated member return value or direct use of its value is only allowed when it is guaranteed to be safe.
         /// </summary>
-        internal static string ERR_UnsafeDecoratedMethodReturnValueCast {
+        internal static string ERR_UnsafeDecoratedMemberReturnValueCast {
             get {
-                return ResourceManager.GetString("ERR_UnsafeDecoratedMethodReturnValueCast", resourceCulture);
+                return ResourceManager.GetString("ERR_UnsafeDecoratedMemberReturnValueCast", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Passing a decorated method return value variable by reference is only allowed when the parameter&apos;s type is guaranteed to be assignable to the decorated method&apos;s return type.
+        ///   Looks up a localized string similar to Passing a decorated member return value variable by reference is only allowed when the parameter&apos;s type is guaranteed to be assignable to the decorated member&apos;s return type.
         /// </summary>
-        internal static string ERR_UnsafeDecoratedMethodReturnValueRefParameterUse {
+        internal static string ERR_UnsafeDecoratedMemberReturnValueRefParameterUse {
             get {
-                return ResourceManager.GetString("ERR_UnsafeDecoratedMethodReturnValueRefParameterUse", resourceCulture);
+                return ResourceManager.GetString("ERR_UnsafeDecoratedMemberReturnValueRefParameterUse", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Typecasting of a decorated method this-reference or direct use of its value is only allowed when it is guaranteed to be safe.
+        ///   Looks up a localized string similar to Typecasting of a decorated member this-reference or direct use of its value is only allowed when it is guaranteed to be safe.
         /// </summary>
-        internal static string ERR_UnsafeDecoratedMethodThisObjectCast {
+        internal static string ERR_UnsafeDecoratedMemberThisObjectCast {
             get {
-                return ResourceManager.GetString("ERR_UnsafeDecoratedMethodThisObjectCast", resourceCulture);
+                return ResourceManager.GetString("ERR_UnsafeDecoratedMemberThisObjectCast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Typecasting of a decorated member value or direct use of its value is only allowed when it is guaranteed to be safe.
+        /// </summary>
+        internal static string ERR_UnsafeDecoratedMemberValueCast {
+            get {
+                return ResourceManager.GetString("ERR_UnsafeDecoratedMemberValueCast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Passing a decorated member value variable by reference is only allowed when the parameter&apos;s type is guaranteed to be assignable to the decorated member&apos;s type.
+        /// </summary>
+        internal static string ERR_UnsafeDecoratedMemberValueRefParameterUse {
+            get {
+                return ResourceManager.GetString("ERR_UnsafeDecoratedMemberValueRefParameterUse", resourceCulture);
             }
         }
         
@@ -8873,25 +8963,34 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Assignment of values to decorated method arguments is only allowed when the value is guaranteed to be compatible.
+        ///   Looks up a localized string similar to Assignment of values to decorated member arguments is only allowed when the value is guaranteed to be compatible.
         /// </summary>
-        internal static string ERR_UnsafeValueAssignedToDecoratedMethodArgument {
+        internal static string ERR_UnsafeValueAssignedToDecoratedMemberArgument {
             get {
-                return ResourceManager.GetString("ERR_UnsafeValueAssignedToDecoratedMethodArgument", resourceCulture);
+                return ResourceManager.GetString("ERR_UnsafeValueAssignedToDecoratedMemberArgument", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Assignment of values to decorated method return value variables is only allowed when the value is guaranteed to be compatible.
+        ///   Looks up a localized string similar to Assignment of values to decorated member return value variables is only allowed when the value is guaranteed to be compatible.
         /// </summary>
-        internal static string ERR_UnsafeValueAssignedToDecoratedMethodReturnValue {
+        internal static string ERR_UnsafeValueAssignedToDecoratedMemberReturnValue {
             get {
-                return ResourceManager.GetString("ERR_UnsafeValueAssignedToDecoratedMethodReturnValue", resourceCulture);
+                return ResourceManager.GetString("ERR_UnsafeValueAssignedToDecoratedMemberReturnValue", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The value returned by a decorator method must be guaranteed to be assignable to the decorated method&apos;s return type.
+        ///   Looks up a localized string similar to Assignment of values to decorated member value variables is only allowed when the value is guaranteed to be compatible.
+        /// </summary>
+        internal static string ERR_UnsafeValueAssignedToDecoratedMemberValue {
+            get {
+                return ResourceManager.GetString("ERR_UnsafeValueAssignedToDecoratedMemberValue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The value returned by a decorator method must be guaranteed to be assignable to the decorated member&apos;s return type.
         /// </summary>
         internal static string ERR_UnsafeValueReturnedByDecoratorMethod {
             get {

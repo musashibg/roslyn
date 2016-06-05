@@ -176,7 +176,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private CustomAttributesBag<CSharpAttributeData> _lazyReturnTypeCustomAttributesBag;
 
         private ImmutableArray<DecoratorData> _lazyDecorators;
-        private readonly object _decoratorsLock = new object();
 
         private OverriddenOrHiddenMembersResult _lazyOverriddenOrHiddenMembers;
 
@@ -1523,10 +1522,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 return decorators;
             }
 
-            lock (_decoratorsLock)
-            {
-                return GetDecorators(ref _lazyDecorators);
-            }
+            return GetDecorators(ref _lazyDecorators);
         }
 
         private ImmutableArray<DecoratorData> GetDecorators(ref ImmutableArray<DecoratorData> decorators)
@@ -1569,17 +1565,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal void ApplyDecorator(DecoratorData decorator)
         {
-            // Cannot use lock-free CompareExchange approach due to ImmutableArray<T> being a value type
-            lock (_decoratorsLock)
-            {
-                ImmutableArray<DecoratorData> decorators = GetDecorators();
+            ImmutableArray<DecoratorData> decorators = GetDecorators();
 
-                // The newly applied decorator should be applied after all existing ones, and should therefore be prepended to the front of the list
-                ImmutableArray<DecoratorData>.Builder newDecoratorsBuilder = ImmutableArray.CreateBuilder<DecoratorData>(decorators.Length + 1);
-                newDecoratorsBuilder.Add(decorator);
-                newDecoratorsBuilder.AddRange(decorators);
-                _lazyDecorators = newDecoratorsBuilder.ToImmutable();
-            }
+            // The newly applied decorator should be applied after all existing ones, and should therefore be prepended to the front of the list
+            ImmutableArray<DecoratorData>.Builder newDecoratorsBuilder = ImmutableArray.CreateBuilder<DecoratorData>(decorators.Length + 1);
+            newDecoratorsBuilder.Add(decorator);
+            newDecoratorsBuilder.AddRange(decorators);
+
+            ImmutableArray<DecoratorData> newDecorators = newDecoratorsBuilder.ToImmutable();
+            bool updatedSuccessfully = (ImmutableInterlocked.InterlockedCompareExchange(ref _lazyDecorators, newDecorators, decorators) == decorators);
+            Debug.Assert(updatedSuccessfully);
         }
 
         internal override void AddSynthesizedAttributes(ModuleCompilationState compilationState, ref ArrayBuilder<SynthesizedAttributeData> attributes)
@@ -1650,20 +1645,22 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override int CalculateLocalSyntaxOffset(int localPosition, SyntaxTree localTree)
         {
-            // Method without body doesn't declare locals.
-            Debug.Assert(this.BodySyntax != null);
-
-            // These assertions are no longer valid, when we can have code from decorators merged into the current method's body
+            // DECORATORS: Introducing decorator code breaks the following invariants
+            
+            //Debug.Assert(this.BodySyntax != null);
             //Debug.Assert(this.BodySyntax.SyntaxTree == localTree);
             //Debug.Assert(this.BodySyntax.Span.Contains(localPosition));
 
             // All locals are declared within the body of the method.
-            if (localTree == this.BodySyntax.SyntaxTree)
+            if (this.BodySyntax != null && localTree == this.BodySyntax.SyntaxTree)
             {
                 Debug.Assert(this.BodySyntax.Span.Contains(localPosition));
+                return localPosition - this.BodySyntax.SpanStart;
             }
-
-            return localPosition - this.BodySyntax.SpanStart;
+            else
+            {
+                return localPosition;
+            }
         }
     }
 }

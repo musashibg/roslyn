@@ -5,5 +5,6 @@
         None,
         ProhibitSpliceLocation = 1 << 0,
         ExpectedDynamicArgumentArray = 1 << 1,
+        InNestedLambdaBody = 1 << 2,
     }
 }

@@ -4705,8 +4705,8 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_DuplicateNamedMetaDecorationArgument" xml:space="preserve">
     <value>'{0}' duplicate named decorator/metaclass argument</value>
   </data>
-  <data name="ERR_InvalidInvokeInDecorator" xml:space="preserve">
-    <value>Only calls to MethodBase.Invoke on the target method with the target object and a variable containing a list of arguments are currently supported</value>
+  <data name="ERR_InvalidSpecialMethodCallInDecorator" xml:space="preserve">
+    <value>Only calls to '{0}' which represent a splice location are currently supported in such a decorator method</value>
   </data>
   <data name="ERR_NonSourceDecoratorClass" xml:space="preserve">
     <value>Cannot apply decorator class '{0}' because it is not part of the same assembly</value>
@@ -4717,7 +4717,7 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_ThisReferenceInDecoratorOrMetaclass" xml:space="preserve">
     <value>Decoration methods and metaclass application methods cannot access the decorator/metaclass object or its members</value>
   </data>
-  <data name="ERR_BadDecoratedMethodArgumentArrayIndex" xml:space="preserve">
+  <data name="ERR_BadDecoratedMemberArgumentArrayIndex" xml:space="preserve">
     <value>Decorated method argument arrays may only be indexed using a local variable</value>
   </data>
   <data name="ERR_BadYieldInDecoratorMethod" xml:space="preserve">
@@ -4729,25 +4729,22 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_DecoratedDecoratorMethod" xml:space="preserve">
     <value>Decorator methods cannot have decorators applied</value>
   </data>
-  <data name="ERR_DecoratedMethodArgumentArrayAssignedToOrdinaryArray" xml:space="preserve">
+  <data name="ERR_DecoratedMemberArgumentArrayAssignedToOrdinaryArray" xml:space="preserve">
     <value>Decorated method argument arrays cannot be assigned to ordinary array variables</value>
   </data>
-  <data name="ERR_DecoratedMethodArgumentArrayRequired" xml:space="preserve">
-    <value>Only an expression representing a decorator method argument array may be used here</value>
+  <data name="ERR_DecoratedMemberArgumentArrayVariableRequired" xml:space="preserve">
+    <value>Only a parameter or local variable containing a decorated member argument array may be passed here</value>
   </data>
-  <data name="ERR_DecoratedMethodArgumentArrayVariableRequired" xml:space="preserve">
-    <value>Only a parameter or local variable containing a decorated method argument array may be passed here</value>
-  </data>
-  <data name="ERR_DecoratedMethodSpecialTypeInConditionalOperator" xml:space="preserve">
+  <data name="ERR_DecoratedMemberSpecialTypeInConditionalOperator" xml:space="preserve">
     <value>Decorated method argument arrays, arguments and return values are only allowed in the branches of conditional expressions when typecasting to the expression's type is guaranteed to be safe</value>
   </data>
   <data name="ERR_DecoratorMethodParameterModification" xml:space="preserve">
     <value>A decorator method's parameters cannot be modified</value>
   </data>
-  <data name="ERR_InvalidDecoratedMethodArgumentArrayCast" xml:space="preserve">
-    <value>Typecasting of a decorated method argument array is not allowed</value>
+  <data name="ERR_InvalidDecoratedMemberArgumentArrayCast" xml:space="preserve">
+    <value>Typecasting of a decorated member argument array is not allowed</value>
   </data>
-  <data name="ERR_InvalidDecoratedMethodArgumentArrayUse" xml:space="preserve">
+  <data name="ERR_InvalidDecoratedMemberArgumentArrayUse" xml:space="preserve">
     <value>Decorated method argument arrays are not allowed in this location</value>
   </data>
   <data name="ERR_InvalidSpliceLocation" xml:space="preserve">
@@ -4756,29 +4753,29 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass" xml:space="preserve">
     <value>This language feature is not supported inside decorators and metaclasses</value>
   </data>
-  <data name="ERR_OrdinaryArrayAssignedToDecoratedMethodArgumentArray" xml:space="preserve">
-    <value>Ordinary arrays cannot be assigned to decorated method argument array variables</value>
+  <data name="ERR_OrdinaryArrayAssignedToDecoratedMemberArgumentArray" xml:space="preserve">
+    <value>Ordinary arrays cannot be assigned to decorated member argument array variables</value>
   </data>
-  <data name="ERR_UnsafeDecoratedMethodArgumentCast" xml:space="preserve">
-    <value>Typecasting of a decorated method argument is only allowed when it is guaranteed to be safe</value>
+  <data name="ERR_UnsafeDecoratedMemberArgumentCast" xml:space="preserve">
+    <value>Typecasting of a decorated member argument is only allowed when it is guaranteed to be safe</value>
   </data>
-  <data name="ERR_UnsafeDecoratedMethodReturnValueCast" xml:space="preserve">
-    <value>Typecasting of a decorated method return value or direct use of its value is only allowed when it is guaranteed to be safe</value>
+  <data name="ERR_UnsafeDecoratedMemberReturnValueCast" xml:space="preserve">
+    <value>Typecasting of a decorated member return value or direct use of its value is only allowed when it is guaranteed to be safe</value>
   </data>
-  <data name="ERR_UnsafeDecoratedMethodReturnValueRefParameterUse" xml:space="preserve">
-    <value>Passing a decorated method return value variable by reference is only allowed when the parameter's type is guaranteed to be assignable to the decorated method's return type</value>
+  <data name="ERR_UnsafeDecoratedMemberReturnValueRefParameterUse" xml:space="preserve">
+    <value>Passing a decorated member return value variable by reference is only allowed when the parameter's type is guaranteed to be assignable to the decorated member's return type</value>
   </data>
-  <data name="ERR_UnsafeDecoratedMethodThisObjectCast" xml:space="preserve">
-    <value>Typecasting of a decorated method this-reference or direct use of its value is only allowed when it is guaranteed to be safe</value>
+  <data name="ERR_UnsafeDecoratedMemberThisObjectCast" xml:space="preserve">
+    <value>Typecasting of a decorated member this-reference or direct use of its value is only allowed when it is guaranteed to be safe</value>
   </data>
-  <data name="ERR_UnsafeValueAssignedToDecoratedMethodArgument" xml:space="preserve">
-    <value>Assignment of values to decorated method arguments is only allowed when the value is guaranteed to be compatible</value>
+  <data name="ERR_UnsafeValueAssignedToDecoratedMemberArgument" xml:space="preserve">
+    <value>Assignment of values to decorated member arguments is only allowed when the value is guaranteed to be compatible</value>
   </data>
-  <data name="ERR_UnsafeValueAssignedToDecoratedMethodReturnValue" xml:space="preserve">
-    <value>Assignment of values to decorated method return value variables is only allowed when the value is guaranteed to be compatible</value>
+  <data name="ERR_UnsafeValueAssignedToDecoratedMemberReturnValue" xml:space="preserve">
+    <value>Assignment of values to decorated member return value variables is only allowed when the value is guaranteed to be compatible</value>
   </data>
   <data name="ERR_UnsafeValueReturnedByDecoratorMethod" xml:space="preserve">
-    <value>The value returned by a decorator method must be guaranteed to be assignable to the decorated method's return type</value>
+    <value>The value returned by a decorator method must be guaranteed to be assignable to the decorated member's return type</value>
   </data>
   <data name="ERR_StaticNullReference" xml:space="preserve">
     <value>A null reference exception was detected at compile time.</value>
@@ -4839,5 +4836,41 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   </data>
   <data name="WRN_OverriddenTraitMember" xml:space="preserve">
     <value>The member '{0}' of the trait '{1}' is overriden by a manually declared member with the same signature in the host type</value>
+  </data>
+  <data name="ERR_DecoratedMemberValueRequired" xml:space="preserve">
+    <value>Only an expression assignable to the decorated member's value may be used here</value>
+  </data>
+  <data name="ERR_UnsafeDecoratedMemberValueCast" xml:space="preserve">
+    <value>Typecasting of a decorated member value or direct use of its value is only allowed when it is guaranteed to be safe</value>
+  </data>
+  <data name="ERR_UnsafeDecoratedMemberValueRefParameterUse" xml:space="preserve">
+    <value>Passing a decorated member value variable by reference is only allowed when the parameter's type is guaranteed to be assignable to the decorated member's type</value>
+  </data>
+  <data name="ERR_UnsafeValueAssignedToDecoratedMemberValue" xml:space="preserve">
+    <value>Assignment of values to decorated member value variables is only allowed when the value is guaranteed to be compatible</value>
+  </data>
+  <data name="ERR_IncompleteIndexerDecoratorMethodPair" xml:space="preserve">
+    <value>Both the DecorateIndexerGet and DecorateIndexerSet methods must be overriden in order to support the decoration of indexers</value>
+  </data>
+  <data name="ERR_IncompletePropertyDecoratorMethodPair" xml:space="preserve">
+    <value>Both the DecoratePropertyGet and DecoratePropertySet methods must be overriden in order to support the decoration of properties</value>
+  </data>
+  <data name="ERR_DecoratedMemberArgumentArrayRequired" xml:space="preserve">
+    <value>Only an expression representing a decorated member argument array may be used here</value>
+  </data>
+  <data name="ERR_DecoratorDoesNotSupportConstructors" xml:space="preserve">
+    <value>Cannot apply decorator class '{0}' to constructor '{1}' because it does not support decoration of constructors</value>
+  </data>
+  <data name="ERR_DecoratorDoesNotSupportDestructors" xml:space="preserve">
+    <value>Cannot apply decorator class '{0}' to destructor '{1}' because it does not support decoration of destructors</value>
+  </data>
+  <data name="ERR_DecoratorDoesNotSupportIndexers" xml:space="preserve">
+    <value>Cannot apply decorator class '{0}' to indexer '{1}' because it does not support decoration of indexers</value>
+  </data>
+  <data name="ERR_DecoratorDoesNotSupportProperties" xml:space="preserve">
+    <value>Cannot apply decorator class '{0}' to property '{1}' because it does not support decoration of properties</value>
+  </data>
+  <data name="ERR_DecoratedPropertyAccessor" xml:space="preserve">
+    <value>The property accessor method '{0}' may not be decorated directly. Decorate its associated property instead</value>
   </data>
 </root>

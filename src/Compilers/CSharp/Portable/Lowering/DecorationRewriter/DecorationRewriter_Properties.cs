@@ -46,15 +46,23 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                             }
                         }
                     }
-                    if (receiverOpt.Type == _compilation.GetWellKnownType(WellKnownType.System_Type))
+                    if (property.ContainingType == _compilation.GetWellKnownType(WellKnownType.System_Type))
                     {
                         VisitStaticTypePropertyAccess(node, property, receiverValue, out rewrittenNode, out value);
                     }
-                    else if (receiverOpt.Type == _compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo))
+                    else if (property.ContainingType == _compilation.GetWellKnownType(WellKnownType.System_Reflection_MemberInfo))
+                    {
+                        VisitStaticMemberInfoPropertyAccess(node, property, receiverValue, out rewrittenNode, out value);
+                    }
+                    else if (property.ContainingType == _compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo))
                     {
                         VisitStaticMethodInfoPropertyAccess(node, property, receiverValue, out rewrittenNode, out value);
                     }
-                    else if (receiverOpt.Type == _compilation.GetWellKnownType(WellKnownType.System_Reflection_ParameterInfo))
+                    else if (property.ContainingType == _compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo))
+                    {
+                        VisitStaticPropertyInfoPropertyAccess(node, property, receiverValue, out rewrittenNode, out value);
+                    }
+                    else if (property.ContainingType == _compilation.GetWellKnownType(WellKnownType.System_Reflection_ParameterInfo))
                     {
                         VisitStaticParameterInfoPropertyAccess(node, property, receiverValue, out rewrittenNode, out value);
                     }
@@ -92,7 +100,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private void VisitStaticTypePropertyAccess(
             BoundPropertyAccess node,
-            PropertySymbol property,
+            PropertySymbol accessedProperty,
             CompileTimeValue receiverValue,
             out BoundExpression rewrittenNode,
             out CompileTimeValue value)
@@ -100,28 +108,27 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__FullName)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAbstract)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsArray)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsByRef)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsClass)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsConstructedGenericType)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsEnum)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericParameter)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericType)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericTypeDefinition)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsInterface)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNested)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedAssembly)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedPrivate)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedPublic)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNotPublic)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsPublic)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsSealed)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsValueType)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsVisible)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__Name)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__Namespace))
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__FullName)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAbstract)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsArray)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsByRef)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsClass)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsConstructedGenericType)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsEnum)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericParameter)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericType)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericTypeDefinition)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsInterface)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNested)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedAssembly)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedPrivate)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedPublic)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNotPublic)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsPublic)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsSealed)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsValueType)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsVisible)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__Namespace))
                 {
                     _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
                     rewrittenNode = MakeBadExpression(node.Syntax, node.Type);
@@ -137,91 +144,87 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 Debug.Assert(receiverValue is TypeValue);
                 TypeSymbol type = ((TypeValue)receiverValue).Type;
-                if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__FullName))
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__FullName))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.GetTypeFullName(type)));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAbstract))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAbstract))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.IsAbstract));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsArray))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsArray))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.IsArray()));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsByRef))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsByRef))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(((TypeValue)receiverValue).IsByRef));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsClass))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsClass))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.IsClassType()));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsConstructedGenericType))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsConstructedGenericType))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsGeneric(type) && !type.IsUnboundGenericType()));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsEnum))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsEnum))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.IsEnumType()));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericParameter))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericParameter))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.IsTypeParameter()));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericType))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericType))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsGeneric(type)));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericTypeDefinition))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsGenericTypeDefinition))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.IsUnboundGenericType()));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsInterface))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsInterface))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.IsInterfaceType()));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNested))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNested))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.ContainingType != null));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedAssembly))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedAssembly))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.ContainingType != null && type.DeclaredAccessibility == Accessibility.Internal));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedPrivate))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedPrivate))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.ContainingType != null && type.DeclaredAccessibility == Accessibility.Private));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedPublic))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNestedPublic))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.ContainingType != null && type.DeclaredAccessibility == Accessibility.Public));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNotPublic))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsNotPublic))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.ContainingType == null && type.DeclaredAccessibility != Accessibility.Public));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsPublic))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsPublic))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.ContainingType == null && type.DeclaredAccessibility == Accessibility.Public));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsSealed))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsSealed))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.IsSealed));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsValueType))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsValueType))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(type.IsValueType));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsVisible))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsVisible))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(MetaUtils.CheckTypeIsVisible(type)));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__Name))
-                {
-                    value = new ConstantStaticValue(ConstantValue.Create(type.MetadataName));
-                }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__Namespace))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__Namespace))
                 {
                     NamespaceSymbol @namespace = type.ContainingNamespace;
                     if (@namespace == null)
@@ -249,9 +252,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        private void VisitStaticMethodInfoPropertyAccess(
+        private void VisitStaticMemberInfoPropertyAccess(
             BoundPropertyAccess node,
-            PropertySymbol property,
+            PropertySymbol accessedProperty,
             CompileTimeValue receiverValue,
             out BoundExpression rewrittenNode,
             out CompileTimeValue value)
@@ -259,9 +262,83 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__DeclaringType)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__Name)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__DeclaringType)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__Name))
+                {
+                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
+                    rewrittenNode = MakeBadExpression(node.Syntax, node.Type);
+                    value = CompileTimeValue.Dynamic;
+                }
+                else
+                {
+                    rewrittenNode = null;
+                    value = null;
+                }
+            }
+            else
+            {
+                Symbol member;
+                if (receiverValue is TypeValue)
+                {
+                    member = ((TypeValue)receiverValue).Type;
+                }
+                if (receiverValue is MethodInfoValue)
+                {
+                    member = ((MethodInfoValue)receiverValue).Method;
+                }
+                else if (receiverValue is ConstructorInfoValue)
+                {
+                    member = ((ConstructorInfoValue)receiverValue).Constructor;
+                }
+                else
+                {
+                    Debug.Assert(receiverValue is PropertyInfoValue);
+                    member = ((PropertyInfoValue)receiverValue).Property;
+                }
+
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__DeclaringType))
+                {
+                    TypeSymbol containingType = member.ContainingType;
+                    if (containingType == null)
+                    {
+                        value = new ConstantStaticValue(ConstantValue.Null);
+                    }
+                    else
+                    {
+                        value = new TypeValue(containingType);
+                    }
+                }
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__Name))
+                {
+                    value = new ConstantStaticValue(ConstantValue.Create(member.MetadataName));
+                }
+                else
+                {
+                    value = null;
+                }
+
+                if (value == null)
+                {
+                    rewrittenNode = null;
+                }
+                else
+                {
+                    rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
+                }
+            }
+        }
+
+        private void VisitStaticMethodInfoPropertyAccess(
+            BoundPropertyAccess node,
+            PropertySymbol accessedProperty,
+            CompileTimeValue receiverValue,
+            out BoundExpression rewrittenNode,
+            out CompileTimeValue value)
+        {
+            if (receiverValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
                 {
                     _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
                     rewrittenNode = MakeBadExpression(node.Syntax, node.Type);
@@ -277,23 +354,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 Debug.Assert(receiverValue is MethodInfoValue);
                 MethodSymbol method = ((MethodInfoValue)receiverValue).Method;
-                if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__DeclaringType))
-                {
-                    TypeSymbol containingType = method.ContainingType;
-                    if (containingType == null)
-                    {
-                        value = new ConstantStaticValue(ConstantValue.Null);
-                    }
-                    else
-                    {
-                        value = new TypeValue(containingType);
-                    }
-                }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__Name))
-                {
-                    value = new ConstantStaticValue(ConstantValue.Create(method.Name));
-                }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
                 {
                     value = new TypeValue(method.ReturnType);
                 }
@@ -313,9 +374,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        private void VisitStaticParameterInfoPropertyAccess(
+        private void VisitStaticPropertyInfoPropertyAccess(
             BoundPropertyAccess node,
-            PropertySymbol property,
+            PropertySymbol accessedProperty,
             CompileTimeValue receiverValue,
             out BoundExpression rewrittenNode,
             out CompileTimeValue value)
@@ -323,11 +384,57 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__IsOut)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Member)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Name)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__ParameterType)
-                    || property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Position))
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
+                {
+                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
+                    rewrittenNode = MakeBadExpression(node.Syntax, node.Type);
+                    value = CompileTimeValue.Dynamic;
+                }
+                else
+                {
+                    rewrittenNode = null;
+                    value = null;
+                }
+            }
+            else
+            {
+                Debug.Assert(receiverValue is PropertyInfoValue);
+                PropertySymbol property = ((PropertyInfoValue)receiverValue).Property;
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
+                {
+                    value = new TypeValue(property.Type);
+                }
+                else
+                {
+                    value = null;
+                }
+
+                if (value == null)
+                {
+                    rewrittenNode = null;
+                }
+                else
+                {
+                    rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
+                }
+            }
+        }
+
+        private void VisitStaticParameterInfoPropertyAccess(
+            BoundPropertyAccess node,
+            PropertySymbol accessedProperty,
+            CompileTimeValue receiverValue,
+            out BoundExpression rewrittenNode,
+            out CompileTimeValue value)
+        {
+            if (receiverValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__IsOut)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Member)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Name)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__ParameterType)
+                    || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Position))
                 {
                     _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
                     rewrittenNode = MakeBadExpression(node.Syntax, node.Type);
@@ -343,25 +450,25 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 Debug.Assert(receiverValue is ParameterInfoValue);
                 ParameterSymbol parameter = ((ParameterInfoValue)receiverValue).Parameter;
-                if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__IsOut))
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__IsOut))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(parameter.RefKind == RefKind.Out));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Member))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Member))
                 {
                     // For now, we only deal at compile time with parameters of methods
                     Debug.Assert(parameter.ContainingSymbol is MethodSymbol);
                     value = new MethodInfoValue((MethodSymbol)parameter.ContainingSymbol);
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Name))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Name))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(parameter.Name));
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__ParameterType))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__ParameterType))
                 {
                     value = new TypeValue(parameter.Type, parameter.RefKind != RefKind.None);
                 }
-                else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Position))
+                else if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Position))
                 {
                     value = new ConstantStaticValue(ConstantValue.Create(parameter.Ordinal));
                 }

@@ -11,6 +11,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
     {
         private readonly CSharpCompilation _compilation;
         private readonly SourceMemberMethodSymbol _decoratorMethod;
+        private readonly DecoratedMemberKind _targetMemberKind;
         private readonly DiagnosticBag _diagnostics;
 
         private DecoratorMethodTypeCheckerFlags _flags;
@@ -22,18 +23,53 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         public DecoratorMethodTypeChecker(
             CSharpCompilation compilation,
             SourceMemberMethodSymbol decoratorMethod,
+            DecoratedMemberKind targetMemberKind,
             DiagnosticBag diagnostics)
         {
             _compilation = compilation;
             _decoratorMethod = decoratorMethod;
+            _targetMemberKind = targetMemberKind;
             _diagnostics = diagnostics;
             _invalidatedLocals = ImmutableHashSet.Create<LocalSymbol>();
             _blacklistedLocals = ImmutableHashSet.Create<LocalSymbol>();
 
             var variableTypesBuilder = ImmutableDictionary.CreateBuilder<Symbol, ExtendedTypeInfo>();
-            variableTypesBuilder.Add(decoratorMethod.Parameters[0], new ExtendedTypeInfo(compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo)));
+
+            TypeSymbol memberParameterType;
+            switch (_targetMemberKind)
+            {
+                case DecoratedMemberKind.Constructor:
+                    memberParameterType = compilation.GetWellKnownType(WellKnownType.System_Reflection_ConstructorInfo);
+                    break;
+
+                case DecoratedMemberKind.Destructor:
+                case DecoratedMemberKind.Method:
+                    memberParameterType = compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo);
+                    break;
+
+                case DecoratedMemberKind.IndexerGet:
+                case DecoratedMemberKind.IndexerSet:
+                case DecoratedMemberKind.PropertyGet:
+                case DecoratedMemberKind.PropertySet:
+                    memberParameterType = compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo);
+                    break;
+
+                default:
+                    throw ExceptionUtilities.Unreachable;
+            }
+            variableTypesBuilder.Add(decoratorMethod.Parameters[0], new ExtendedTypeInfo(memberParameterType));
+
             variableTypesBuilder.Add(decoratorMethod.Parameters[1], ExtendedTypeInfo.CreateThisObjectType(compilation));
-            variableTypesBuilder.Add(decoratorMethod.Parameters[2], ExtendedTypeInfo.CreateArgumentArrayType(compilation, false));
+
+            if (_targetMemberKind == DecoratedMemberKind.IndexerSet || _targetMemberKind == DecoratedMemberKind.PropertySet)
+            {
+                variableTypesBuilder.Add(decoratorMethod.Parameters[2], ExtendedTypeInfo.CreateMemberValueType(compilation, false));
+            }
+
+            if (_targetMemberKind != DecoratedMemberKind.Destructor && _targetMemberKind != DecoratedMemberKind.PropertyGet && _targetMemberKind != DecoratedMemberKind.PropertySet)
+            {
+                variableTypesBuilder.Add(decoratorMethod.Parameters[decoratorMethod.ParameterCount - 1], ExtendedTypeInfo.CreateArgumentArrayType(compilation, false));
+            }
             _variableTypes = variableTypesBuilder.ToImmutable();
 
             _outerScopeVariables = ImmutableHashSet.Create<Symbol>();
@@ -44,6 +80,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         public static void PerformTypeCheck(
             CSharpCompilation compilation,
             SourceMemberMethodSymbol decoratorMethod,
+            DecoratedMemberKind targetMemberKind,
             DiagnosticBag diagnostics)
         {
             if (!decoratorMethod.GetDecorators().IsEmpty)
@@ -52,7 +89,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                 return;
             }
 
-            var typeChecker = new DecoratorMethodTypeChecker(compilation, decoratorMethod, diagnostics);
+            var typeChecker = new DecoratorMethodTypeChecker(compilation, decoratorMethod, targetMemberKind, diagnostics);
 
             BoundBlock decoratorBody = decoratorMethod.EarlyBoundBody;
             if (decoratorBody == null)
@@ -123,7 +160,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             ExtendedTypeInfo expressionType = expressionTypingResult.Type;
             if (expressionType.Kind == ExtendedTypeKind.ArgumentArray)
             {
-                // If the array whose element is being accessed is a decorated method argument array, there must be a single index which is a local variable
+                // If the array whose element is being accessed is a decorated member argument array, there must be a single index which is a local variable
                 if (node.Indices.Length == 1 && node.Indices[0].Kind == BoundKind.Local)
                 {
                     return new DecoratorTypingResult(
@@ -133,7 +170,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                 }
                 else
                 {
-                    expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_BadDecoratedMethodArgumentArrayIndex, node);
+                    expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_BadDecoratedMemberArgumentArrayIndex, node);
                 }
             }
             bool isSuccessful = expressionTypingResult.IsSuccessful;
@@ -173,19 +210,26 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                         case ExtendedTypeKind.ThisObject:
                             if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(argument.Type), argumentType, subtypingAssertions))
                             {
-                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodThisObjectCast, argument);
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberThisObjectCast, argument);
                             }
                             break;
 
                         case ExtendedTypeKind.ArgumentArray:
                             // Argument arrays cannot be passed to array initializers
-                            argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, argument);
+                            argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_InvalidDecoratedMemberArgumentArrayUse, argument);
                             break;
 
                         case ExtendedTypeKind.ReturnValue:
                             if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(argument.Type), argumentType, subtypingAssertions))
                             {
-                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueCast, argument);
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberReturnValueCast, argument);
+                            }
+                            break;
+
+                        case ExtendedTypeKind.MemberValue:
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(argument.Type), argumentType, subtypingAssertions))
+                            {
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberValueCast, argument);
                             }
                             break;
                     }
@@ -238,11 +282,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
             ValidateSpecialTypeAssignment(ref leftTypingResult, ref rightTypingResult, subtypingAssertions, left);
 
-            // If the right expression is a decorated method argument array, check that the left side expression's type is also a decorated method argument array
+            // If the right expression is a decorated member argument array, check that the left side expression's type is also a decorated member argument array
             ExtendedTypeInfo rightType = rightTypingResult.Type;
             if (rightType.Kind == ExtendedTypeKind.ArgumentArray && !rightType.MatchesSpecialType(leftTypingResult.Type))
             {
-                rightTypingResult = UpdateResultOnIncompatibleSpecialType(rightTypingResult, ErrorCode.ERR_DecoratedMethodArgumentArrayAssignedToOrdinaryArray, right);
+                rightTypingResult = UpdateResultOnIncompatibleSpecialType(rightTypingResult, ErrorCode.ERR_DecoratedMemberArgumentArrayAssignedToOrdinaryArray, right);
             }
 
             return new DecoratorTypingResult(
@@ -412,21 +456,90 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     return new DecoratorTypingResult(false, ExtendedTypeInfo.CreateReturnValueType(_compilation, false), subtypingAssertions);
                 }
 
-                // Ensure that the parameter or local variable passed as a last argument in the splice location invocation is a decorated method argument array
-                BoundExpression argumentArrayArgument = node.Arguments[1];
-                DecoratorTypingResult argumentArrayArgumentTypingResult = Visit(argumentArrayArgument, subtypingAssertions);
-                if (argumentArrayArgumentTypingResult.Type.Kind != ExtendedTypeKind.ArgumentArray)
+                if (_targetMemberKind == DecoratedMemberKind.IndexerSet || _targetMemberKind == DecoratedMemberKind.PropertySet)
                 {
-                    argumentArrayArgumentTypingResult = UpdateResultOnIncompatibleSpecialType(
-                        argumentArrayArgumentTypingResult,
-                        ErrorCode.ERR_DecoratedMethodArgumentArrayVariableRequired,
-                        argumentArrayArgument);
+                    // Ensure that the parameter or local variable passed as a property-indexer value in the splice location invocation is well-typed
+                    BoundExpression valueArgument = node.Arguments[1];
+
+                    DecoratorTypingResult valueArgumentTypingResult = Visit(valueArgument, subtypingAssertions);
+                    ExtendedTypeInfo valueArgumentType = valueArgumentTypingResult.Type;
+                    ExtendedTypeInfo memberValueType = ExtendedTypeInfo.CreateMemberValueType(_compilation, false);
+                    if (valueArgumentType.IsAmbiguous)
+                    {
+                        // If the value argument expression has an ambiguous type, it is enough for either one of the alternatives to be assignable to the decorated member's type.
+                        // We update it to an unambiguous type if one of the alternatives is rejected
+                        ExtendedTypeInfo valueArgumentSpecialType = valueArgumentType.UpdateToUnambiguousSpecialType();
+                        bool isValueArgumentSpecialTypeCompatible = CheckSpecialTypeIsAssignableFrom(memberValueType, valueArgumentSpecialType, subtypingAssertions);
+                        ExtendedTypeInfo valueArgumentOrdinaryType = valueArgumentType.UpdateToUnambiguousOrdinaryType();
+                        bool isValueArgumentOrdinaryTypeCompatible = CheckSpecialTypeIsAssignableFrom(memberValueType, valueArgumentOrdinaryType, subtypingAssertions);
+                        if (isValueArgumentSpecialTypeCompatible)
+                        {
+                            if (!isValueArgumentOrdinaryTypeCompatible)
+                            {
+                                valueArgumentType = UpdateVariableToUnambiguousSpecialType(valueArgumentType);
+                                valueArgumentTypingResult = valueArgumentTypingResult.WithType(valueArgumentType);
+                            }
+                        }
+                        else
+                        {
+                            if (isValueArgumentOrdinaryTypeCompatible)
+                            {
+                                valueArgumentType = UpdateVariableToUnambiguousOrdinaryType(valueArgumentType);
+                                valueArgumentTypingResult = valueArgumentTypingResult.WithType(valueArgumentType);
+                            }
+                            else
+                            {
+                                _diagnostics.Add(ErrorCode.ERR_DecoratedMemberValueRequired, valueArgument.Syntax.Location);
+                                valueArgumentTypingResult = valueArgumentTypingResult.WithIsSuccessful(false);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // If the value argument expression has an unambiguous type, it needs to be assignable to the specified decorated member's type
+                        if (!CheckSpecialTypeIsAssignableFrom(memberValueType, valueArgumentType, subtypingAssertions))
+                        {
+                            _diagnostics.Add(ErrorCode.ERR_DecoratedMemberValueRequired, valueArgument.Syntax.Location);
+                            valueArgumentTypingResult = valueArgumentTypingResult.WithIsSuccessful(false);
+                        }
+                    }
+                    isSuccessful &= valueArgumentTypingResult.IsSuccessful;
+                    subtypingAssertions = valueArgumentTypingResult.UpdatedSubtypingAssertions;
                 }
 
-                return new DecoratorTypingResult(
-                    argumentArrayArgumentTypingResult.IsSuccessful,
-                    ExtendedTypeInfo.CreateReturnValueType(_compilation, false),
-                    argumentArrayArgumentTypingResult.UpdatedSubtypingAssertions);
+                if (_targetMemberKind != DecoratedMemberKind.Destructor && _targetMemberKind != DecoratedMemberKind.PropertyGet && _targetMemberKind != DecoratedMemberKind.PropertySet)
+                {
+                    // Ensure that the parameter or local variable passed as an argument array in the splice location invocation is well-typed
+                    BoundExpression argumentArrayArgument;
+                    switch (_targetMemberKind)
+                    {
+                        case DecoratedMemberKind.Constructor:
+                        case DecoratedMemberKind.IndexerGet:
+                        case DecoratedMemberKind.Method:
+                            argumentArrayArgument = node.Arguments[1];
+                            break;
+
+                        case DecoratedMemberKind.IndexerSet:
+                            argumentArrayArgument = node.Arguments[2];
+                            break;
+
+                        default:
+                            throw ExceptionUtilities.Unreachable;
+                    }
+
+                    DecoratorTypingResult argumentArrayArgumentTypingResult = Visit(argumentArrayArgument, subtypingAssertions);
+                    if (argumentArrayArgumentTypingResult.Type.Kind != ExtendedTypeKind.ArgumentArray)
+                    {
+                        argumentArrayArgumentTypingResult = UpdateResultOnIncompatibleSpecialType(
+                            argumentArrayArgumentTypingResult,
+                            ErrorCode.ERR_DecoratedMemberArgumentArrayVariableRequired,
+                            argumentArrayArgument);
+                    }
+                    isSuccessful &= argumentArrayArgumentTypingResult.IsSuccessful;
+                    subtypingAssertions = argumentArrayArgumentTypingResult.UpdatedSubtypingAssertions;
+                }
+
+                return new DecoratorTypingResult(isSuccessful, ExtendedTypeInfo.CreateReturnValueType(_compilation, false), subtypingAssertions);
             }
 
             if (CheckIsBaseDecoratorMethodCall(node))
@@ -438,14 +551,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
             if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArguments))
             {
-                // MetaPrimitives.CloneArguments takes a decorated method argument array and returns another decorated method argument array
+                // MetaPrimitives.CloneArguments takes a decorated member argument array and returns another decorated member argument array
                 Debug.Assert(node.Arguments.Length == 1);
 
                 BoundExpression argument = node.Arguments[0];
                 DecoratorTypingResult argumentTypingResult = Visit(argument, subtypingAssertions);
                 if (argumentTypingResult.Type.Kind != ExtendedTypeKind.ArgumentArray)
                 {
-                    argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_DecoratedMethodArgumentArrayRequired, argument);
+                    argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_DecoratedMemberArgumentArrayRequired, argument);
                 }
                 return new DecoratorTypingResult(
                     argumentTypingResult.IsSuccessful,
@@ -454,14 +567,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             }
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray))
             {
-                // MetaPrimitives.CloneArguments takes a decorated method argument array and returns a regular array of objects
+                // MetaPrimitives.CloneArguments takes a decorated member argument array and returns a regular array of objects
                 Debug.Assert(node.Arguments.Length == 1);
 
                 BoundExpression argument = node.Arguments[0];
                 DecoratorTypingResult argumentTypingResult = Visit(argument, subtypingAssertions);
                 if (argumentTypingResult.Type.Kind != ExtendedTypeKind.ArgumentArray)
                 {
-                    argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_DecoratedMethodArgumentArrayRequired, argument);
+                    argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_DecoratedMemberArgumentArrayRequired, argument);
                 }
                 return new DecoratorTypingResult(
                     argumentTypingResult.IsSuccessful,
@@ -501,7 +614,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     // Invoking arbitrary methods of an argument array is not allowed
                     if (receiverType.Kind == ExtendedTypeKind.ArgumentArray)
                     {
-                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, receiverOpt);
+                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMemberArgumentArrayUse, receiverOpt);
                     }
                 }
                 isSuccessful &= receiverTypingResult.IsSuccessful;
@@ -850,7 +963,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     // Accessing arbitrary fields of an argument array is not allowed
                     if (receiverType.Kind == ExtendedTypeKind.ArgumentArray)
                     {
-                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, receiverOpt);
+                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMemberArgumentArrayUse, receiverOpt);
                     }
                 }
                 isSuccessful &= receiverTypingResult.IsSuccessful;
@@ -1138,7 +1251,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             ExtendedTypeInfo localExtendedType;
             if (localOrdinaryType.IsObjectType())
             {
-                localExtendedType = ExtendedTypeInfo.CreateReturnValueType(_compilation, true, local);
+                // As the current implementation does not support ambiguity between different special types, we make use of the fact that member values
+                // are only relevant in property/index setter decoration, and return values are not relevant in them
+                localExtendedType = (_targetMemberKind == DecoratedMemberKind.IndexerSet || _targetMemberKind == DecoratedMemberKind.PropertySet)
+                                        ? ExtendedTypeInfo.CreateMemberValueType(_compilation, true, local)
+                                        : ExtendedTypeInfo.CreateReturnValueType(_compilation, true, local);
             }
             else if (localOrdinaryType.IsArray() && ((ArrayTypeSymbol)localOrdinaryType).ElementType.IsObjectType())
             {
@@ -1243,7 +1360,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     // Accessing arbitrary methods of an argument array is not allowed
                     if (receiverType.Kind == ExtendedTypeKind.ArgumentArray)
                     {
-                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, receiverOpt);
+                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMemberArgumentArrayUse, receiverOpt);
                     }
                 }
                 isSuccessful &= receiverTypingResult.IsSuccessful;
@@ -1393,12 +1510,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             if (receiverOpt != null && receiverOpt.Kind != BoundKind.TypeExpression)
             {
                 // Handle special property accesses
-                if (CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0])
+                if ((_targetMemberKind == DecoratedMemberKind.Constructor || _targetMemberKind == DecoratedMemberKind.Destructor || _targetMemberKind == DecoratedMemberKind.Method)
+                    && CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0])
                     && node.PropertySymbol == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__IsStatic))
                 {
                     Debug.Assert(node.Type.SpecialType == SpecialType.System_Boolean);
 
-                    // The decorated method not being static means that its this-reference is safely castable to object
+                    // The decorated member not being static means that its this-reference is safely castable to object
                     ImmutableHashSet<SubtypingAssertion> assertionsIfFalse = ImmutableHashSet.Create(
                         SubtypingAssertionComparer.Singleton,
                         new SubtypingAssertion(new ExtendedTypeInfo(_compilation.ObjectType), ExtendedTypeInfo.CreateThisObjectType(_compilation)));
@@ -1415,7 +1533,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     // Accessing arbitrary properties of an argument array is not allowed (arguments.Length is handled by VisitArrayLength)
                     if (receiverType.Kind == ExtendedTypeKind.ArgumentArray)
                     {
-                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, receiverOpt);
+                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMemberArgumentArrayUse, receiverOpt);
                     }
                 }
                 isSuccessful &= receiverTypingResult.IsSuccessful;
@@ -1446,7 +1564,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     // Accessing arbitrary properties of an argument array is not allowed (arguments.Length is handled by VisitArrayLength)
                     if (receiverType.Kind == ExtendedTypeKind.ArgumentArray)
                     {
-                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, receiverOpt);
+                        receiverTypingResult = UpdateResultOnIncompatibleSpecialType(receiverTypingResult, ErrorCode.ERR_InvalidDecoratedMemberArgumentArrayUse, receiverOpt);
                     }
                 }
                 isSuccessful &= receiverTypingResult.IsSuccessful;
@@ -1493,7 +1611,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             if (expressionOpt == null)
             {
                 // The decorator method itself should always have a return operand expression
-                Debug.Assert(_flags.HasFlag(DecoratorMethodTypeCheckerFlags.InNestedLambdaBody));
+                Debug.Assert((_targetMemberKind != DecoratedMemberKind.IndexerGet && _targetMemberKind != DecoratedMemberKind.Method && _targetMemberKind != DecoratedMemberKind.PropertyGet)
+                             || _flags.HasFlag(DecoratorMethodTypeCheckerFlags.InNestedLambdaBody));
                 return new DecoratorTypingResult(true, null, subtypingAssertions);
             }
 
@@ -1506,15 +1625,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                 ExtendedTypeInfo expressionType = expressionTypingResult.Type;
                 if (expressionType.IsAmbiguous)
                 {
-                    // If the right expression has an ambiguous type, it is enough for either one of the alternatives to be assignable to the decorated method's return type.
-                    // We update it to an inambiguous type if one of the alternatives is rejected
-                    ExtendedTypeInfo rightSpecialType = expressionType.UpdateToUnambiguousSpecialType();
-                    bool isRightSpecialTypeCompatible = CheckSpecialTypeIsAssignableFrom(returnValueType, rightSpecialType, subtypingAssertions);
-                    ExtendedTypeInfo rightOrdinaryType = expressionType.UpdateToUnambiguousOrdinaryType();
-                    bool isRightOrdinaryTypeCompatible = CheckSpecialTypeIsAssignableFrom(returnValueType, rightOrdinaryType, subtypingAssertions);
-                    if (isRightSpecialTypeCompatible)
+                    // If the expression has an ambiguous type, it is enough for either one of the alternatives to be assignable to the decorated member's return type.
+                    // We update it to an unambiguous type if one of the alternatives is rejected
+                    ExtendedTypeInfo expressionSpecialType = expressionType.UpdateToUnambiguousSpecialType();
+                    bool isExpressionSpecialTypeCompatible = CheckSpecialTypeIsAssignableFrom(returnValueType, expressionSpecialType, subtypingAssertions);
+                    ExtendedTypeInfo expressionOrdinaryType = expressionType.UpdateToUnambiguousOrdinaryType();
+                    bool isExpressionOrdinaryTypeCompatible = CheckSpecialTypeIsAssignableFrom(returnValueType, expressionOrdinaryType, subtypingAssertions);
+                    if (isExpressionSpecialTypeCompatible)
                     {
-                        if (!isRightOrdinaryTypeCompatible)
+                        if (!isExpressionOrdinaryTypeCompatible)
                         {
                             expressionType = UpdateVariableToUnambiguousSpecialType(expressionType);
                             expressionTypingResult = expressionTypingResult.WithType(expressionType);
@@ -1522,7 +1641,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     }
                     else
                     {
-                        if (isRightOrdinaryTypeCompatible)
+                        if (isExpressionOrdinaryTypeCompatible)
                         {
                             expressionType = UpdateVariableToUnambiguousOrdinaryType(expressionType);
                             expressionTypingResult = expressionTypingResult.WithType(expressionType);
@@ -1536,7 +1655,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                 }
                 else
                 {
-                    // If the right expression has an unambiguous type, it needs to be assignable to the specified decorated method's return type
+                    // If the expression has an unambiguous type, it needs to be assignable to the specified decorated member's return type
                     if (!CheckSpecialTypeIsAssignableFrom(returnValueType, expressionType, subtypingAssertions))
                     {
                         _diagnostics.Add(ErrorCode.ERR_UnsafeValueReturnedByDecoratorMethod, node.ExpressionOpt.Syntax.Location);
@@ -1962,13 +2081,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                         case ExtendedTypeKind.ThisObject:
                             if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterTypes[i]), argumentType, subtypingAssertions))
                             {
-                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodThisObjectCast, argument);
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberThisObjectCast, argument);
                             }
                             break;
 
                         case ExtendedTypeKind.ArgumentArray:
                             // Argument arrays cannot be passed to arbitrary method or indexer calls
-                            argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, argument);
+                            argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_InvalidDecoratedMemberArgumentArrayUse, argument);
                             break;
 
                         case ExtendedTypeKind.Parameter:
@@ -1979,15 +2098,31 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                         case ExtendedTypeKind.ReturnValue:
                             if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterTypes[i]), argumentType, subtypingAssertions))
                             {
-                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueCast, argument);
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberReturnValueCast, argument);
                             }
 
                             if (argumentRefKind != RefKind.None)
                             {
-                                // If a return value variable is used as a ref or out argument, the call parameter's type needs to be assignable to the decorated method's return type
+                                // If a return value variable is used as a ref or out argument, the call parameter's type needs to be assignable to the decorated member's return type
                                 if (!CheckSpecialTypeIsAssignableFrom(argumentType, new ExtendedTypeInfo(parameterTypes[i]), subtypingAssertions))
                                 {
-                                    argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueRefParameterUse, argument);
+                                    argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberReturnValueRefParameterUse, argument);
+                                }
+                            }
+                            break;
+
+                        case ExtendedTypeKind.MemberValue:
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterTypes[i]), argumentType, subtypingAssertions))
+                            {
+                                argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberValueCast, argument);
+                            }
+
+                            if (argumentRefKind != RefKind.None)
+                            {
+                                // If a member value variable is used as a ref or out argument, the call parameter's type needs to be assignable to the decorated member's type
+                                if (!CheckSpecialTypeIsAssignableFrom(argumentType, new ExtendedTypeInfo(parameterTypes[i]), subtypingAssertions))
+                                {
+                                    argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberValueRefParameterUse, argument);
                                 }
                             }
                             break;
@@ -2017,20 +2152,28 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                             // Ensure that a this-reference is assignable to the expression's ordinary type
                             if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(expression.Type), argumentType, subtypingAssertions))
                             {
-                                expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodThisObjectCast, expression);
+                                expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberThisObjectCast, expression);
                             }
                             break;
 
                         case ExtendedTypeKind.ArgumentArray:
                             // Argument arrays cannot be passed to arbitrary method calls
-                            expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayUse, expression);
+                            expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_InvalidDecoratedMemberArgumentArrayUse, expression);
                             break;
 
                         case ExtendedTypeKind.ReturnValue:
                             // Ensure that a return value is assignable to the expression's ordinary type
                             if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(expression.Type), argumentType, subtypingAssertions))
                             {
-                                expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueCast, expression);
+                                expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberReturnValueCast, expression);
+                            }
+                            break;
+
+                        case ExtendedTypeKind.MemberValue:
+                            // Ensure that a member value is assignable to the expression's ordinary type
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(expression.Type), argumentType, subtypingAssertions))
+                            {
+                                expressionTypingResult = UpdateResultOnIncompatibleSpecialType(expressionTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberValueCast, expression);
                             }
                             break;
                     }
@@ -2132,8 +2275,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         {
             Debug.Assert(sourceType.Kind != ExtendedTypeKind.OrdinaryType);
 
-            // Argument values can always be assigned to object
-            if (sourceType.Kind == ExtendedTypeKind.Parameter
+            // Argument values and member values can always be assigned to object
+            if ((sourceType.Kind == ExtendedTypeKind.Parameter || sourceType.Kind == ExtendedTypeKind.MemberValue)
                 && targetType.IsOrdinaryType
                 && targetType.OrdinaryType.IsObjectType())
             {
@@ -2212,22 +2355,130 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         private bool CheckIsSpliceLocation(BoundCall call)
         {
             MethodSymbol method = call.Method;
-            if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
+            switch (_targetMemberKind)
             {
-                // This is a call to MethodBase.Invoke(object obj, object[] parameters)
-                if (call.ReceiverOpt != null
-                    && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                    && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                    && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
-                {
-                    return true;
-                }
-                else
-                {
-                    // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
-                    // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
-                    _diagnostics.Add(ErrorCode.ERR_InvalidInvokeInDecorator, call.Syntax.Location);
-                }
+                case DecoratedMemberKind.Constructor:
+                case DecoratedMemberKind.Method:
+                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
+                    {
+                        // This is a call to MethodBase.Invoke(object obj, object[] parameters)
+                        if (call.ReceiverOpt != null
+                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
+                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
+                            && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
+                            // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
+                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
+                        }
+                    }
+                    break;
+
+                case DecoratedMemberKind.Destructor:
+                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
+                    {
+                        // This is a call to MethodBase.Invoke(object obj, object[] parameters) with null as a second argument (destructors never have arguments)
+                        if (call.ReceiverOpt != null
+                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
+                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
+                            && call.Arguments[1].Kind == BoundKind.Literal
+                            && ((BoundLiteral)call.Arguments[1]).ConstantValue.IsNull)
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
+                            // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
+                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
+                        }
+                    }
+                    break;
+
+                case DecoratedMemberKind.IndexerGet:
+                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetValue2))
+                    {
+                        // This is a call to PropertyInfo.GetValue(object obj, object[] index)
+                        if (call.ReceiverOpt != null
+                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
+                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
+                            && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            // Disallow calls to PropertyInfo.GetValue(object obj, object[] parameters) which are not obvious splices
+                            // (as they might use a different thisObject, or they might refer to this indexer through a different local variable, leading to infinite recursion)
+                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
+                        }
+                    }
+                    break;
+
+                case DecoratedMemberKind.IndexerSet:
+                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__SetValue2))
+                    {
+                        // This is a call to PropertyInfo.SetValue(object obj, object value, object[] index)
+                        if (call.ReceiverOpt != null
+                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
+                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
+                            && (call.Arguments[2].Kind == BoundKind.Parameter || call.Arguments[2].Kind == BoundKind.Local))
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            // Disallow calls to PropertyInfo.SetValue(object obj, object value, object[] index) which are not obvious splices
+                            // (as they might use a different thisObject, or they might refer to this indexer through a different local variable, leading to infinite recursion)
+                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
+                        }
+                    }
+                    break;
+
+                case DecoratedMemberKind.PropertyGet:
+                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetValue))
+                    {
+                        // This is a call to PropertyInfo.GetValue(object obj)
+                        if (call.ReceiverOpt != null
+                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
+                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1]))
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            // Disallow calls to PropertyInfo.GetValue(object obj) which are not obvious splices
+                            // (as they might use a different thisObject, or they might refer to this property through a different local variable, leading to infinite recursion)
+                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
+                        }
+                    }
+                    break;
+
+                case DecoratedMemberKind.PropertySet:
+                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__SetValue))
+                    {
+                        // This is a call to PropertyInfo.SetValue(object obj, object value)
+                        if (call.ReceiverOpt != null
+                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
+                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1]))
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            // Disallow calls to PropertyInfo.SetValue(object obj, object value) which are not obvious splices
+                            // (as they might use a different thisObject, or they might refer to this property through a different local variable, leading to infinite recursion)
+                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
+                        }
+                    }
+                    break;
+
+                default:
+                    throw ExceptionUtilities.Unreachable;
             }
             return false;
         }
@@ -2270,26 +2521,41 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     var call = (BoundCall)node;
                     MethodSymbol method = call.Method;
                     if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType)
-                        && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[0]))
+                        || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType2))
                     {
-                        return ExtendedTypeInfo.CreateThisObjectType(_compilation);
+                        if (CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[0]))
+                        {
+                            return ExtendedTypeInfo.CreateThisObjectType(_compilation);
+                        }
                     }
                     else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
-                        && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[0])
-                        && call.Arguments[1].Kind == BoundKind.Local)
+                             || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType2))
                     {
-                        return ExtendedTypeInfo.CreateParameterType(_compilation, ((BoundLocal)call.Arguments[1]).LocalSymbol);
+                        if (CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[0])
+                            && call.Arguments[1].Kind == BoundKind.Local)
+                        {
+                            return ExtendedTypeInfo.CreateParameterType(_compilation, ((BoundLocal)call.Arguments[1]).LocalSymbol);
+                        }
                     }
                     break;
 
                 case BoundKind.PropertyAccess:
                     var propertyAccess = (BoundPropertyAccess)node;
+                    PropertySymbol property = propertyAccess.PropertySymbol;
                     BoundExpression receiverOpt = propertyAccess.ReceiverOpt;
-                    if (propertyAccess.PropertySymbol == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType)
-                        && receiverOpt != null
-                        && CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0]))
+                    if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
                     {
-                        return ExtendedTypeInfo.CreateReturnValueType(_compilation, false);
+                        if (receiverOpt != null && CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0]))
+                        {
+                            return ExtendedTypeInfo.CreateReturnValueType(_compilation, false);
+                        }
+                    }
+                    else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__PropertyType))
+                    {
+                        if (receiverOpt != null && CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0]))
+                        {
+                            return ExtendedTypeInfo.CreateMemberValueType(_compilation, false);
+                        }
                     }
                     break;
             }
@@ -2347,7 +2613,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     case ExtendedTypeKind.ArgumentArray:
                         if (rightType.IsOrdinaryType)
                         {
-                            leftTypingResult = UpdateResultOnIncompatibleSpecialType(leftTypingResult, ErrorCode.ERR_OrdinaryArrayAssignedToDecoratedMethodArgumentArray, node);
+                            leftTypingResult = UpdateResultOnIncompatibleSpecialType(leftTypingResult, ErrorCode.ERR_OrdinaryArrayAssignedToDecoratedMemberArgumentArray, node);
                         }
                         else if (leftType.IsAmbiguous && !rightType.IsAmbiguous)
                         {
@@ -2367,13 +2633,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
                         if (_invalidatedLocals.Contains(leftType.ParameterIndexLocal))
                         {
-                            _diagnostics.Add(ErrorCode.ERR_UnsafeValueAssignedToDecoratedMethodArgument, node.Syntax.Location);
+                            _diagnostics.Add(ErrorCode.ERR_UnsafeValueAssignedToDecoratedMemberArgument, node.Syntax.Location);
                             leftTypingResult = leftTypingResult.WithIsSuccessful(false);
                         }
                         else if (rightType.IsAmbiguous)
                         {
-                            // If the right expression has an ambiguous type, it is enough for either one of the alternatives to be assignable to the decorated method's parameter type.
-                            // We update it to an inambiguous type if one of the alternatives is rejected
+                            // If the right expression has an ambiguous type, it is enough for either one of the alternatives to be assignable to the decorated member's parameter type.
+                            // We update it to an unambiguous type if one of the alternatives is rejected
                             ExtendedTypeInfo rightSpecialType = rightType.UpdateToUnambiguousSpecialType();
                             bool isRightSpecialTypeCompatible = CheckSpecialTypeIsAssignableFrom(leftType, rightSpecialType, subtypingAssertions);
                             ExtendedTypeInfo rightOrdinaryType = rightType.UpdateToUnambiguousOrdinaryType();
@@ -2395,17 +2661,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                                 }
                                 else
                                 {
-                                    _diagnostics.Add(ErrorCode.ERR_UnsafeValueAssignedToDecoratedMethodArgument, node.Syntax.Location);
+                                    _diagnostics.Add(ErrorCode.ERR_UnsafeValueAssignedToDecoratedMemberArgument, node.Syntax.Location);
                                     leftTypingResult = leftTypingResult.WithIsSuccessful(false);
                                 }
                             }
                         }
                         else
                         {
-                            // If the right expression has an unambiguous type, it needs to be assignable to the specified decorated method's parameter type
+                            // If the right expression has an unambiguous type, it needs to be assignable to the specified decorated member's parameter type
                             if (!CheckSpecialTypeIsAssignableFrom(leftType, rightType, subtypingAssertions))
                             {
-                                _diagnostics.Add(ErrorCode.ERR_UnsafeValueAssignedToDecoratedMethodArgument, node.Syntax.Location);
+                                _diagnostics.Add(ErrorCode.ERR_UnsafeValueAssignedToDecoratedMemberArgument, node.Syntax.Location);
                                 leftTypingResult = leftTypingResult.WithIsSuccessful(false);
                             }
                         }
@@ -2414,8 +2680,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     case ExtendedTypeKind.ReturnValue:
                         if (rightType.IsAmbiguous)
                         {
-                            // If the right expression has an ambiguous type, it is enough for either one of the alternatives to be assignable to the decorated method's return type.
-                            // We update it to an inambiguous type if one of the alternatives is rejected
+                            // If the right expression has an ambiguous type, it is enough for either one of the alternatives to be assignable to the decorated member's return type.
+                            // We update it to an unambiguous type if one of the alternatives is rejected
                             ExtendedTypeInfo rightSpecialType = rightType.UpdateToUnambiguousSpecialType();
                             bool isRightSpecialTypeCompatible = CheckSpecialTypeIsAssignableFrom(leftType, rightSpecialType, subtypingAssertions);
                             ExtendedTypeInfo rightOrdinaryType = rightType.UpdateToUnambiguousOrdinaryType();
@@ -2437,16 +2703,65 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                                 }
                                 else
                                 {
-                                    leftTypingResult = UpdateResultOnIncompatibleSpecialType(leftTypingResult, ErrorCode.ERR_UnsafeValueAssignedToDecoratedMethodReturnValue, node);
+                                    leftTypingResult = UpdateResultOnIncompatibleSpecialType(leftTypingResult, ErrorCode.ERR_UnsafeValueAssignedToDecoratedMemberReturnValue, node);
                                 }
                             }
                         }
                         else
                         {
-                            // If the right expression has an unambiguous type, it needs to be assignable to the specified decorated method's return type
+                            // If the right expression has an unambiguous type, it needs to be assignable to the specified decorated member's return type
                             if (!CheckSpecialTypeIsAssignableFrom(leftType, rightType, subtypingAssertions))
                             {
-                                leftTypingResult = UpdateResultOnIncompatibleSpecialType(leftTypingResult, ErrorCode.ERR_UnsafeValueAssignedToDecoratedMethodReturnValue, node);
+                                leftTypingResult = UpdateResultOnIncompatibleSpecialType(leftTypingResult, ErrorCode.ERR_UnsafeValueAssignedToDecoratedMemberReturnValue, node);
+                            }
+
+                            // If the left expression still has an ambiguous type and the right expression has a special unambiguous type, check if the left expression's ordinary type
+                            // is compatible with the right expression's special type and remove the ambiguity if it isn't
+                            if (leftType.IsAmbiguous && !rightType.IsOrdinaryType
+                                && !CheckSpecialTypeIsAssignableTo(leftType.UpdateToUnambiguousOrdinaryType(), rightType, subtypingAssertions))
+                            {
+                                leftType = UpdateVariableToUnambiguousSpecialType(leftType);
+                                leftTypingResult = leftTypingResult.WithType(leftType);
+                            }
+                        }
+                        break;
+
+                    case ExtendedTypeKind.MemberValue:
+                        if (rightType.IsAmbiguous)
+                        {
+                            // If the right expression has an ambiguous type, it is enough for either one of the alternatives to be assignable to the decorated member's type.
+                            // We update it to an unambiguous type if one of the alternatives is rejected
+                            ExtendedTypeInfo rightSpecialType = rightType.UpdateToUnambiguousSpecialType();
+                            bool isRightSpecialTypeCompatible = CheckSpecialTypeIsAssignableFrom(leftType, rightSpecialType, subtypingAssertions);
+                            ExtendedTypeInfo rightOrdinaryType = rightType.UpdateToUnambiguousOrdinaryType();
+                            bool isRightOrdinaryTypeCompatible = CheckSpecialTypeIsAssignableFrom(leftType, rightOrdinaryType, subtypingAssertions);
+                            if (isRightSpecialTypeCompatible)
+                            {
+                                if (!isRightOrdinaryTypeCompatible)
+                                {
+                                    rightType = UpdateVariableToUnambiguousSpecialType(rightType);
+                                    rightTypingResult = rightTypingResult.WithType(rightType);
+                                }
+                            }
+                            else
+                            {
+                                if (isRightOrdinaryTypeCompatible)
+                                {
+                                    rightType = UpdateVariableToUnambiguousOrdinaryType(rightType);
+                                    rightTypingResult = rightTypingResult.WithType(rightType);
+                                }
+                                else
+                                {
+                                    leftTypingResult = UpdateResultOnIncompatibleSpecialType(leftTypingResult, ErrorCode.ERR_UnsafeValueAssignedToDecoratedMemberValue, node);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // If the right expression has an unambiguous type, it needs to be assignable to the specified decorated member's type
+                            if (!CheckSpecialTypeIsAssignableFrom(leftType, rightType, subtypingAssertions))
+                            {
+                                leftTypingResult = UpdateResultOnIncompatibleSpecialType(leftTypingResult, ErrorCode.ERR_UnsafeValueAssignedToDecoratedMemberValue, node);
                             }
 
                             // If the left expression still has an ambiguous type and the right expression has a special unambiguous type, check if the left expression's ordinary type
@@ -2480,14 +2795,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
                         if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(node.Type), operandType, subtypingAssertions))
                         {
-                            _diagnostics.Add(ErrorCode.ERR_UnsafeDecoratedMethodThisObjectCast, node.Syntax.Location);
+                            _diagnostics.Add(ErrorCode.ERR_UnsafeDecoratedMemberThisObjectCast, node.Syntax.Location);
                             operandTypingResult = operandTypingResult.WithIsSuccessful(false);
                         }
                         break;
 
                     case ExtendedTypeKind.ArgumentArray:
-                        // No conversions are allowed on decorated method argument array expressions
-                        operandTypingResult = UpdateResultOnIncompatibleSpecialType(operandTypingResult, ErrorCode.ERR_InvalidDecoratedMethodArgumentArrayCast, node);
+                        // No conversions are allowed on decorated member argument array expressions
+                        operandTypingResult = UpdateResultOnIncompatibleSpecialType(operandTypingResult, ErrorCode.ERR_InvalidDecoratedMemberArgumentArrayCast, node);
                         break;
 
                     case ExtendedTypeKind.Parameter:
@@ -2496,7 +2811,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
                         if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(node.Type), operandType, subtypingAssertions))
                         {
-                            _diagnostics.Add(ErrorCode.ERR_UnsafeDecoratedMethodArgumentCast, node.Syntax.Location);
+                            _diagnostics.Add(ErrorCode.ERR_UnsafeDecoratedMemberArgumentCast, node.Syntax.Location);
                             operandTypingResult = operandTypingResult.WithIsSuccessful(false);
                         }
                         break;
@@ -2504,7 +2819,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     case ExtendedTypeKind.ReturnValue:
                         if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(node.Type), operandType, subtypingAssertions))
                         {
-                            operandTypingResult = UpdateResultOnIncompatibleSpecialType(operandTypingResult, ErrorCode.ERR_UnsafeDecoratedMethodReturnValueCast, node);
+                            operandTypingResult = UpdateResultOnIncompatibleSpecialType(operandTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberReturnValueCast, node);
+                        }
+                        break;
+
+                    case ExtendedTypeKind.MemberValue:
+                        if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(node.Type), operandType, subtypingAssertions))
+                        {
+                            operandTypingResult = UpdateResultOnIncompatibleSpecialType(operandTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberValueCast, node);
                         }
                         break;
                 }

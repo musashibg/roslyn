@@ -287,16 +287,23 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (receiverResult.BindingTime != BindingTime.Dynamic)
             {
                 // Detect well-known method invocations
-                if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods)
+                if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetConstructors)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetConstructors2)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods2)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetProperties)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetProperties2)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAssignableFrom)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__GetParameters)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetAccessors)
                     || method.OriginalDefinition == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T)
                     || method.OriginalDefinition == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T2)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArguments)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
-                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType))
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType2)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType2))
                 {
                     forceDynamic = false;
                 }
@@ -312,11 +319,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (!forceDynamic)
             {
                 // Handle well-known method invocations with static binding time
-                if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods))
+                if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetConstructors)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetProperties))
                 {
                     return new BindingTimeAnalysisResult(BindingTime.StaticComplexValue);
                 }
-                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods2))
+                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetConstructors2)
+                         || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods2)
+                         || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetProperties2))
                 {
                     if (argumentsResults[0].BindingTime != BindingTime.Dynamic)
                     {
@@ -343,11 +354,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 {
                     return new BindingTimeAnalysisResult(BindingTime.StaticComplexValue, null, receiverResult.ComplexValuedSymbols);
                 }
+                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetAccessors))
+                {
+                    return new BindingTimeAnalysisResult(BindingTime.StaticComplexValue, null, receiverResult.ComplexValuedSymbols);
+                }
                 else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArguments))
                 {
                     return new BindingTimeAnalysisResult(BindingTime.StaticArgumentArray);
                 }
-                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType))
+                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
+                         || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType2))
                 {
                     if (argumentsResults[0].BindingTime != BindingTime.Dynamic
                         && argumentsResults[1].BindingTime != BindingTime.Dynamic)
@@ -359,7 +375,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         MakeComplexValuedSymbolsDynamic(argumentsResults);
                     }
                 }
-                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType))
+                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType)
+                         || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType2))
                 {
                     if (argumentsResults[0].BindingTime != BindingTime.Dynamic)
                     {
@@ -1157,7 +1174,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                             return new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue);
                         }
                     }
-                    if (receiverOpt.Type == Compilation.GetWellKnownType(WellKnownType.System_Type))
+                    else if (property.ContainingType == Compilation.GetWellKnownType(WellKnownType.System_Type))
                     {
                         if (property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__FullName)
                             || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAbstract)
@@ -1179,22 +1196,34 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                             || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsSealed)
                             || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsValueType)
                             || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsVisible)
-                            || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__Name)
                             || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__Namespace))
                         {
                             return new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue);
                         }
                     }
-                    else if (receiverOpt.Type == Compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo))
+                    else if (property.ContainingType == Compilation.GetWellKnownType(WellKnownType.System_Reflection_MemberInfo))
                     {
                         if (property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__DeclaringType)
-                            || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__Name)
-                            || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
+                            || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__Name))
                         {
                             return new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue);
                         }
                     }
-                    else if (receiverOpt.Type == Compilation.GetWellKnownType(WellKnownType.System_Reflection_ParameterInfo))
+                    else if (property.ContainingType == Compilation.GetWellKnownType(WellKnownType.System_Reflection_MethodInfo))
+                    {
+                        if (property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
+                        {
+                            return new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue);
+                        }
+                    }
+                    else if (property.ContainingType == Compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo))
+                    {
+                        if (property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__PropertyType))
+                        {
+                            return new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue);
+                        }
+                    }
+                    else if (property.ContainingType == Compilation.GetWellKnownType(WellKnownType.System_Reflection_ParameterInfo))
                     {
                         if (property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__IsOut)
                             || property == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Name)
@@ -1628,6 +1657,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             else
             {
                 _diagnostics.Add(errorCode, location, ImmutableArray.Create(_sourceLocation));
+            }
+        }
+
+        protected void Error(ErrorCode errorCode, Location location, params object[] args)
+        {
+            if (_sourceLocation == null)
+            {
+                _diagnostics.Add(errorCode, location, args);
+            }
+            else
+            {
+                _diagnostics.Add(errorCode, location, ImmutableArray.Create(_sourceLocation), args);
             }
         }
 

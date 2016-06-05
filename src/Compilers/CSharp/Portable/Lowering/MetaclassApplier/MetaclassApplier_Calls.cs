@@ -14,10 +14,20 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<CompileTimeValue> argumentValues = VisitList(node.Arguments, arg);
 
             // Handle well-known method invocations with static binding time
-            if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods)
-                || method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods2))
+            if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetConstructors)
+                || method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetConstructors2))
+            {
+                return VisitGetConstructors(node, receiverValue, argumentValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods)
+                     || method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetMethods2))
             {
                 return VisitGetMethods(node, receiverValue, argumentValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetProperties)
+                     || method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__GetProperties2))
+            {
+                return VisitGetProperties(node, receiverValue, argumentValues);
             }
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAssignableFrom))
             {
@@ -26,6 +36,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__GetParameters))
             {
                 return VisitGetParametersCall(node, receiverValue, argumentValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetAccessors))
+            {
+                return VisitGetAccessorsCall(node, receiverValue, argumentValues);
             }
             else if (method.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T)
                      || method.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T2))
@@ -41,15 +55,45 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 return VisitApplyDecoratorCall(node, argumentValues);
             }
-            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType))
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
+                     || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType2))
             {
                 return VisitParameterTypeCall(node, argumentValues);
             }
             else
             {
-                Debug.Assert(method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType));
+                Debug.Assert(method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType)
+                             || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType2));
                 return VisitThisObjectTypeCall(node, argumentValues);
             }
+        }
+
+        private CompileTimeValue VisitGetConstructors(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
+        {
+            Debug.Assert(receiverValue != null && argumentValues.Length <= 1);
+
+            if (receiverValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            Debug.Assert(receiverValue is TypeValue && node.Type.IsArray());
+
+            BindingFlags bindingFlags;
+            if (argumentValues.IsEmpty)
+            {
+                bindingFlags = BindingFlags.Instance | BindingFlags.Public;
+            }
+            else
+            {
+                var bindingFlagsValue = argumentValues[0] as EnumValue;
+                Debug.Assert(bindingFlagsValue != null && bindingFlagsValue.EnumType == _compilation.GetWellKnownType(WellKnownType.System_Reflection_BindingFlags));
+                bindingFlags = (BindingFlags)bindingFlagsValue.UnderlyingValue.Int32Value;
+            }
+
+            return StaticValueUtils.LookupConstructors(((TypeValue)receiverValue).Type, bindingFlags, (ArrayTypeSymbol)node.Type);
         }
 
         private CompileTimeValue VisitGetMethods(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
@@ -78,6 +122,34 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
 
             return StaticValueUtils.LookupMethods(((TypeValue)receiverValue).Type, bindingFlags, (ArrayTypeSymbol)node.Type);
+        }
+
+        private CompileTimeValue VisitGetProperties(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
+        {
+            Debug.Assert(receiverValue != null && argumentValues.Length <= 1);
+
+            if (receiverValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            Debug.Assert(receiverValue is TypeValue && node.Type.IsArray());
+
+            BindingFlags bindingFlags;
+            if (argumentValues.IsEmpty)
+            {
+                bindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
+            }
+            else
+            {
+                var bindingFlagsValue = argumentValues[0] as EnumValue;
+                Debug.Assert(bindingFlagsValue != null && bindingFlagsValue.EnumType == _compilation.GetWellKnownType(WellKnownType.System_Reflection_BindingFlags));
+                bindingFlags = (BindingFlags)bindingFlagsValue.UnderlyingValue.Int32Value;
+            }
+
+            return StaticValueUtils.LookupProperties(((TypeValue)receiverValue).Type, bindingFlags, (ArrayTypeSymbol)node.Type);
         }
 
         private CompileTimeValue VisitIsAssignableFromCall(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
@@ -116,11 +188,47 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
-            Debug.Assert(receiverValue is MethodInfoValue);
-            MethodSymbol method = ((MethodInfoValue)receiverValue).Method;
+            MethodSymbol method;
+            if (receiverValue is MethodInfoValue)
+            {
+                method = ((MethodInfoValue)receiverValue).Method;
+            }
+            else
+            {
+                Debug.Assert(receiverValue is ConstructorInfoValue);
+                method = ((ConstructorInfoValue)receiverValue).Constructor;
+            }
             return new ArrayValue(
                 _compilation.CreateArrayTypeSymbol(_compilation.GetWellKnownType(WellKnownType.System_Reflection_ParameterInfo)),
                 method.Parameters.SelectAsArray(p => (CompileTimeValue)(new ParameterInfoValue(p))));
+        }
+
+        private CompileTimeValue VisitGetAccessorsCall(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
+        {
+            Debug.Assert(receiverValue != null && argumentValues.IsEmpty);
+
+            if (receiverValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            Debug.Assert(receiverValue is PropertyInfoValue);
+            PropertySymbol property = ((PropertyInfoValue)receiverValue).Property;
+
+            ImmutableArray<CompileTimeValue>.Builder accessorsBuilder = ImmutableArray.CreateBuilder<CompileTimeValue>();
+            if (property.GetMethod != null)
+            {
+                accessorsBuilder.Add(new MethodInfoValue(property.GetMethod));
+            }
+            if (property.SetMethod != null)
+            {
+                accessorsBuilder.Add(new MethodInfoValue(property.SetMethod));
+            }
+            return new ArrayValue(
+                _compilation.CreateArrayTypeSymbol(_compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo)),
+                accessorsBuilder.ToImmutable());
         }
 
         private CompileTimeValue VisitGetCustomAttributesCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
@@ -153,6 +261,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
                     MethodSymbol method = ((MethodInfoValue)argumentValue).Method;
                     return StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, method.GetAttributes(), _diagnostics, out candidateAttribute);
+                }
+                else if (argumentValue is ConstructorInfoValue)
+                {
+                    Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
+                    MethodSymbol constructor = ((ConstructorInfoValue)argumentValue).Constructor;
+                    return StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, constructor.GetAttributes(), _diagnostics, out candidateAttribute);
+                }
+                else if (argumentValue is PropertyInfoValue)
+                {
+                    Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
+                    PropertySymbol property = ((PropertyInfoValue)argumentValue).Property;
+                    return StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, property.GetAttributes(), _diagnostics, out candidateAttribute);
                 }
                 else
                 {
@@ -237,20 +357,47 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private CompileTimeValue VisitApplyDecoratorCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
             Debug.Assert(argumentValues.Length == 2);
-            CompileTimeValue methodInfoValue = argumentValues[0];
+            CompileTimeValue memberInfoValue = argumentValues[0];
             var decoratorValue = argumentValues[1] as DecoratorValue;
 
-            Debug.Assert(methodInfoValue is MethodInfoValue && decoratorValue != null);
-            var method = ((MethodInfoValue)methodInfoValue).Method as SourceMethodSymbol;
-            if (method == null || method.ContainingType != _targetType)
+            Debug.Assert(decoratorValue != null);
+
+            Symbol member;
+            if (memberInfoValue is MethodInfoValue)
+            {
+                member = ((MethodInfoValue)memberInfoValue).Method;
+            }
+            else if (memberInfoValue is ConstructorInfoValue)
+            {
+                member = ((ConstructorInfoValue)memberInfoValue).Constructor;
+            }
+            else
+            {
+                Debug.Assert(memberInfoValue is PropertyInfoValue);
+                member = ((PropertyInfoValue)memberInfoValue).Property;
+            }
+
+            if (member.ContainingType != _targetType)
             {
                 _diagnostics.Add(ErrorCode.ERR_MetaclassModificationOnNonTargetType, node.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
-            else
+            else if (member is SourcePropertyAccessorSymbol)
+            {
+                _diagnostics.Add(ErrorCode.ERR_DecoratedPropertyAccessor, node.Syntax.Location, member);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
             {
                 var decoratorData = decoratorValue.CreateDecoratorData(new SimpleSyntaxReference(node.Syntax));
-                method.ApplyDecorator(decoratorData);
+                if (member is SourceMethodSymbol)
+                {
+                    ((SourceMethodSymbol)member).ApplyDecorator(decoratorData);
+                }
+                else
+                {
+                    Debug.Assert(member is SourcePropertySymbol);
+                    ((SourcePropertySymbol)member).ApplyDecorator(decoratorData);
+                }
                 return new ConstantStaticValue(ConstantValue.Null);
             }
         }
@@ -258,37 +405,85 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private CompileTimeValue VisitParameterTypeCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
             Debug.Assert(argumentValues.Length == 2);
-            CompileTimeValue methodInfoValue = argumentValues[0];
+            CompileTimeValue memberInfoValue = argumentValues[0];
             CompileTimeValue parameterIndexValue = argumentValues[1];
 
-            Debug.Assert(methodInfoValue is MethodInfoValue && parameterIndexValue is ConstantStaticValue);
-            MethodSymbol method = ((MethodInfoValue)methodInfoValue).Method;
+            Symbol member;
+            if (memberInfoValue is MethodInfoValue)
+            {
+                member = ((MethodInfoValue)memberInfoValue).Method;
+            }
+            else if (memberInfoValue is ConstructorInfoValue)
+            {
+                member = ((ConstructorInfoValue)memberInfoValue).Constructor;
+            }
+            else
+            {
+                Debug.Assert(memberInfoValue is PropertyInfoValue);
+                member = ((PropertyInfoValue)memberInfoValue).Property;
+            }
+
+            Debug.Assert(parameterIndexValue is ConstantStaticValue);
             ConstantValue parameterIndexConstantValue = ((ConstantStaticValue)parameterIndexValue).Value;
             Debug.Assert(parameterIndexConstantValue.SpecialType == SpecialType.System_Int32);
             int parameterIndex = parameterIndexConstantValue.Int32Value;
 
-            if (parameterIndex < 0 || parameterIndex >= method.ParameterCount)
+            int parameterCount;
+            if (member.Kind == SymbolKind.Method)
+            {
+                parameterCount = ((MethodSymbol)member).ParameterCount;
+            }
+            else
+            {
+                Debug.Assert(member.Kind == SymbolKind.Property);
+                parameterCount = ((PropertySymbol)member).ParameterCount;
+            }
+
+            if (parameterIndex < 0 || parameterIndex >= parameterCount)
             {
                 _diagnostics.Add(ErrorCode.ERR_StaticIndexOutOfBounds, node.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
             else
             {
-                return new TypeValue(method.ParameterTypes[parameterIndex]);
+                TypeSymbol parameterType;
+                if (member.Kind == SymbolKind.Method)
+                {
+                    parameterType = ((MethodSymbol)member).ParameterTypes[parameterIndex];
+                }
+                else
+                {
+                    Debug.Assert(member.Kind == SymbolKind.Property);
+                    parameterType = ((PropertySymbol)member).ParameterTypes[parameterIndex];
+                }
+
+                return new TypeValue(parameterType);
             }
         }
 
         private CompileTimeValue VisitThisObjectTypeCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
             Debug.Assert(argumentValues.Length == 1);
-            CompileTimeValue methodInfoValue = argumentValues[0];
+            CompileTimeValue memberInfoValue = argumentValues[0];
 
-            Debug.Assert(methodInfoValue is MethodInfoValue);
-            MethodSymbol method = ((MethodInfoValue)methodInfoValue).Method;
+            Symbol member;
+            if (memberInfoValue is MethodInfoValue)
+            {
+                member = ((MethodInfoValue)memberInfoValue).Method;
+            }
+            else if (memberInfoValue is ConstructorInfoValue)
+            {
+                member = ((ConstructorInfoValue)memberInfoValue).Constructor;
+            }
+            else
+            {
+                Debug.Assert(memberInfoValue is PropertyInfoValue);
+                member = ((PropertyInfoValue)memberInfoValue).Property;
+            }
 
-            TypeSymbol thisObjectType = method.IsStatic
+            TypeSymbol thisObjectType = member.IsStatic
                                             ? _compilation.GetSpecialType(SpecialType.System_Void)
-                                            : method.ContainingType;
+                                            : member.ContainingType;
             return new TypeValue(thisObjectType);
         }
     }

@@ -43,6 +43,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 return false;
             }
 
+            // Any non-void source type is assignable to object
+            if (targetType.IsObjectType())
+            {
+                return true;
+            }
+
             if (targetType.Kind == SymbolKind.NamedType)
             {
                 if (targetType.IsInterfaceType())

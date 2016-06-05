@@ -964,9 +964,13 @@ namespace Microsoft.CodeAnalysis.CodeGen
                         if (lastOffset != offset)
                         {
                             Debug.Assert(lastOffset < offset);
+
+                            // DECORATORS: Introducing decorator code breaks the following invariant
+
                             // if there are any sequence points, there must
                             // be a sequence point at offset 0.
-                            Debug.Assert((lastOffset >= 0) || (offset == 0));
+                            //Debug.Assert((lastOffset >= 0) || (offset == 0));
+
                             // the first sequence point on tree/offset location
                             lastOffset = offset;
                             seqPoints.Add(seqPoint);
