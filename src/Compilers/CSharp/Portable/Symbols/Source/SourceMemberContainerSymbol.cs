@@ -1667,11 +1667,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             CheckForUnmatchedOperators(diagnostics);
 
             // Decorators
-            HashSet<DiagnosticInfo> useSiteDiagnostics = null;
-            if (this is SourceNamedTypeSymbol
-                && this.IsDerivedFrom(DeclaringCompilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator), false, ref useSiteDiagnostics))
+            if (this is SourceNamedTypeSymbol)
             {
-                CheckDecoratorTypeSafety(diagnostics);
+                HashSet<DiagnosticInfo> useSiteDiagnostics = null;
+                if (this.IsDerivedFrom(DeclaringCompilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator), false, ref useSiteDiagnostics))
+                {
+                    CheckDecoratorTypeSafety(diagnostics);
+                    CheckDecoratorOrMetaclassMembers(diagnostics);
+                }
+                else if (this.IsDerivedFrom(DeclaringCompilation.GetWellKnownType(WellKnownType.CSharp_Meta_Metaclass), false, ref useSiteDiagnostics))
+                {
+                    CheckDecoratorOrMetaclassMembers(diagnostics);
+                }
             }
         }
 
@@ -2206,10 +2213,66 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             CheckForEqualityAndGetHashCode(diagnostics);
         }
 
+        internal bool HasDecoratorOrMetaclassMembersErrors { get; private set; }
+
+        private void CheckDecoratorOrMetaclassMembers(DiagnosticBag outerDiagnostics)
+        {
+            // Ensure that the base type's members have been fully processed first
+            var sourceBaseType = BaseType as SourceMemberContainerTypeSymbol;
+            if (sourceBaseType != null)
+            {
+                sourceBaseType.ForceComplete(null, CancellationToken.None);
+            }
+
+            DiagnosticBag diagnostics = DiagnosticBag.GetInstance();
+
+            ImmutableArray<Symbol> members = GetMembers();
+            foreach (Symbol member in members)
+            {
+                switch (member.Kind)
+                {
+                    case SymbolKind.Field:
+                        continue;
+
+                    case SymbolKind.Method:
+                        var method = (MethodSymbol)member;
+                        if (method.MethodKind == MethodKind.Constructor)
+                        {
+                            if (method is SourceConstructorSymbol)
+                            {
+                                SimpleConstructorInspector.Inspect((SourceConstructorSymbol)method, diagnostics);
+                            }
+                            continue;
+                        }
+                        else if (method.IsDecoratorMethod(DeclaringCompilation) || method.IsMetaclassApplicationMethod(DeclaringCompilation)
+                            || method.AssociatedSymbol != null)
+                        {
+                            continue;
+                        }
+                        break;
+
+                    case SymbolKind.Property:
+                        var property = (SourcePropertySymbol)member;
+                        if (property.IsAutoProperty)
+                        {
+                            continue;
+                        }
+                        break;
+                }
+
+                diagnostics.Add(ErrorCode.ERR_BadMemberInDecoratorOrMetaclass, member.Locations.First());
+            }
+
+            HasDecoratorOrMetaclassMembersErrors = !diagnostics.IsEmptyWithoutResolution || (sourceBaseType != null && sourceBaseType.HasDecoratorOrMetaclassMembersErrors);
+            outerDiagnostics.AddRangeAndFree(diagnostics);
+        }
+
         internal bool HasDecoratorMethodErrors { get; private set; }
 
-        private void CheckDecoratorTypeSafety(DiagnosticBag diagnostics)
+        private void CheckDecoratorTypeSafety(DiagnosticBag outerDiagnostics)
         {
+            DiagnosticBag diagnostics = DiagnosticBag.GetInstance();
+
             var decoratorMethods = new Dictionary<DecoratedMemberKind, SourceMemberMethodSymbol>();
             foreach (DecoratedMemberKind targetMemberKind in Enum.GetValues(typeof(DecoratedMemberKind)))
             {
@@ -2232,6 +2295,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             }
 
             HasDecoratorMethodErrors = !diagnostics.IsEmptyWithoutResolution;
+            outerDiagnostics.AddRangeAndFree(diagnostics);
         }
 
         private void CheckForUnmatchedOperator(DiagnosticBag diagnostics, string operatorName1, string operatorName2)

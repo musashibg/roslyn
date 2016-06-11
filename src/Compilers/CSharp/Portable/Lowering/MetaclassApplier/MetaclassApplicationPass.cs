@@ -39,13 +39,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 cancellationToken.ThrowIfCancellationRequested();
 
                 MetaclassData metaclass = metaclasses[metaclassOrdinal];
-                if (metaclass.HasErrors)
+                var metaclassClass = (SourceMemberContainerTypeSymbol)metaclass.MetaclassClass;
+                metaclassClass.ForceComplete(new SourceLocation(metaclass.ApplicationSyntaxReference), cancellationToken);
+                if (metaclass.HasErrors || metaclassClass.HasDecoratorOrMetaclassMembersErrors)
                 {
                     // Do not apply metaclasses which contain errors
                     continue;
                 }
-
-                metaclass.MetaclassClass.ForceComplete(new SourceLocation(metaclass.ApplicationSyntaxReference), cancellationToken);
 
                 MetaclassApplier.ApplyMetaclass(compilation, type, metaclass, compilationState, diagnostics, cancellationToken);
             }

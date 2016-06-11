@@ -1439,6 +1439,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Decorator instantiation arguments may not contain complex-valued variables or expressions which alter the values of variables of the metaclass application method.
+        /// </summary>
+        internal static string ERR_BadExpressionInDecoratorArgument {
+            get {
+                return ResourceManager.GetString("ERR_BadExpressionInDecoratorArgument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Extension method must be defined in a non-generic static class.
         /// </summary>
         internal static string ERR_BadExtensionAgg {
@@ -1597,6 +1606,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_BadMemberFlag {
             get {
                 return ResourceManager.GetString("ERR_BadMemberFlag", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decorator and metaclass types may only contain constructors, fields, and auto-implemented properties in addition to the overridden decorator/metaclass application methods..
+        /// </summary>
+        internal static string ERR_BadMemberInDecoratorOrMetaclass {
+            get {
+                return ResourceManager.GetString("ERR_BadMemberInDecoratorOrMetaclass", resourceCulture);
             }
         }
         
@@ -3208,15 +3226,6 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_DecoratorsNotAllowed {
             get {
                 return ResourceManager.GetString("ERR_DecoratorsNotAllowed", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Decorators with costructor or named arguments are not supported.
-        /// </summary>
-        internal static string ERR_DecoratorWithArguments {
-            get {
-                return ResourceManager.GetString("ERR_DecoratorWithArguments", resourceCulture);
             }
         }
         
@@ -5413,6 +5422,15 @@ namespace Microsoft.CodeAnalysis.CSharp {
         internal static string ERR_InvalidDecoratedMemberArgumentArrayUse {
             get {
                 return ResourceManager.GetString("ERR_InvalidDecoratedMemberArgumentArrayUse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decorator and metaclass constructors may only contain simple assignments of constant expressions, constructor parameters, fields or properties to the object&apos;s fields and properties..
+        /// </summary>
+        internal static string ERR_InvalidDecoratorOrMetaclassConstructorBody {
+            get {
+                return ResourceManager.GetString("ERR_InvalidDecoratorOrMetaclassConstructorBody", resourceCulture);
             }
         }
         

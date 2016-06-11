@@ -1,5 +1,7 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
@@ -7,6 +9,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
     {
         private readonly NamedTypeSymbol _decoratorType;
         private readonly MethodSymbol _decoratorConstructor;
+        private readonly ImmutableArray<BoundExpression> _constructorArguments;
+        private readonly ImmutableArray<KeyValuePair<string, BoundExpression>> _namedArguments;
 
         public NamedTypeSymbol DecoratorType
         {
@@ -18,11 +22,27 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             get { return _decoratorConstructor; }
         }
 
-        public DecoratorValue(NamedTypeSymbol decoratorType, MethodSymbol decoratorConstructor)
+        public ImmutableArray<BoundExpression> ConstructorArguments
+        {
+            get { return _constructorArguments; }
+        }
+
+        public ImmutableArray<KeyValuePair<string, BoundExpression>> NamedArguments
+        {
+            get { return _namedArguments; }
+        }
+
+        public DecoratorValue(
+            NamedTypeSymbol decoratorType,
+            MethodSymbol decoratorConstructor,
+            ImmutableArray<BoundExpression> constructorArguments,
+            ImmutableArray<KeyValuePair<string, BoundExpression>> namedArguments)
             : base(CompileTimeValueKind.Complex)
         {
             _decoratorType = decoratorType;
             _decoratorConstructor = decoratorConstructor;
+            _constructorArguments = constructorArguments;
+            _namedArguments = namedArguments;
         }
 
         public override bool Equals(object obj)
@@ -33,7 +53,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 return false;
             }
 
-            return DecoratorType == other.DecoratorType && DecoratorConstructor == other.DecoratorConstructor;
+            return DecoratorType == other.DecoratorType
+                   && DecoratorConstructor == other.DecoratorConstructor
+                   && ConstructorArguments == other.ConstructorArguments
+                   && NamedArguments == other.NamedArguments;
         }
 
         public override int GetHashCode()
@@ -43,7 +66,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public DecoratorData CreateDecoratorData(SyntaxReference syntaxReference)
         {
-            return new DecoratorData(syntaxReference, DecoratorType, DecoratorConstructor, false);
+            return new DecoratorData(syntaxReference, DecoratorType, DecoratorConstructor, ConstructorArguments, default(ImmutableArray<int>), NamedArguments, false);
         }
     }
 }

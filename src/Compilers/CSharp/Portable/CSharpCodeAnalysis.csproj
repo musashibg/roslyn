@@ -386,6 +386,8 @@
     <Compile Include="Lowering\DecorationRewriter\DecorationRewriteResult.cs" />
     <Compile Include="Lowering\DecorationRewriter\DecorationRewriter_Calls.cs" />
     <Compile Include="Lowering\DecorationRewriter\DecorationRewriter_Properties.cs" />
+    <Compile Include="Lowering\DecorationRewriter\VariableNameGenerator.cs" />
+    <Compile Include="Lowering\MetaclassApplier\DecoratorInstanceArgumentRewriter.cs" />
     <Compile Include="Lowering\MetaclassApplier\MetaclassApplicationPass.cs" />
     <Compile Include="Lowering\MetaclassApplier\MetaclassApplier.cs" />
     <Compile Include="Lowering\MetaclassApplier\MetaclassApplier_Calls.cs" />
@@ -590,6 +592,9 @@
     <Compile Include="Symbols\Meta\ExtendedTypeInfo.cs" />
     <Compile Include="Symbols\Meta\ExtendedTypeKind.cs" />
     <Compile Include="Symbols\Meta\MetaclassData.cs" />
+    <Compile Include="Symbols\Meta\SimpleConstructorAssignmentOperand.cs" />
+    <Compile Include="Symbols\Meta\SimpleConstructorInspectionException.cs" />
+    <Compile Include="Symbols\Meta\SimpleConstructorInspector.cs" />
     <Compile Include="Symbols\Meta\SubtypingAssertion.cs" />
     <Compile Include="Symbols\Meta\SubtypingAssertionComparer.cs" />
     <Compile Include="Symbols\DynamicTypeEraser.cs" />

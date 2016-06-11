@@ -1465,8 +1465,13 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
 
             var localKind = local.SynthesizedKind;
 
-            // only user-defined locals should be named during lowering:
-            Debug.Assert((local.Name == null) == (localKind != SynthesizedLocalKind.UserDefined));
+            // only user-defined and decoration-generated locals should be named during lowering:
+            Debug.Assert((local.Name == null) == (localKind != SynthesizedLocalKind.UserDefined
+                                                  && localKind != SynthesizedLocalKind.DecoratorParameter
+                                                  && localKind != SynthesizedLocalKind.DecoratorLocal
+                                                  && localKind != SynthesizedLocalKind.DecoratorTempResult
+                                                  && localKind != SynthesizedLocalKind.DecoratorTempLocal
+                                                  && localKind != SynthesizedLocalKind.DecoratedMethodParameter));
 
             if (!localKind.IsLongLived())
             {

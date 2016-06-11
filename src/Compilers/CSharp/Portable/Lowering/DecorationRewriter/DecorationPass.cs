@@ -52,13 +52,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 cancellationToken.ThrowIfCancellationRequested();
 
                 DecoratorData decorator = decorators[decoratorOrdinal];
-                if (decorator.HasErrors || ((SourceMemberContainerTypeSymbol)decorator.DecoratorClass).HasDecoratorMethodErrors)
+                var decoratorClass = (SourceMemberContainerTypeSymbol)decorator.DecoratorClass;
+                decoratorClass.ForceComplete(new SourceLocation(decorator.ApplicationSyntaxReference), cancellationToken);
+                if (decorator.HasErrors || decoratorClass.HasDecoratorMethodErrors || decoratorClass.HasDecoratorOrMetaclassMembersErrors)
                 {
                     // Do not apply decorators which contain errors
                     continue;
                 }
-
-                decorator.DecoratorClass.ForceComplete(new SourceLocation(decorator.ApplicationSyntaxReference), cancellationToken);
 
                 block = DecorationRewriter.Rewrite(compilation, method, block, decorator, decoratorOrdinal, compilationState, diagnostics, cancellationToken);
             }

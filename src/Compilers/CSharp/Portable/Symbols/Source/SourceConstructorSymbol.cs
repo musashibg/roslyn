@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using Roslyn.Utilities;
+using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
 
 namespace Microsoft.CodeAnalysis.CSharp.Symbols
 {
@@ -284,5 +285,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             // we haven't found the constructor part that declares the variable:
             throw ExceptionUtilities.Unreachable;
         }
+
+        internal ImmutableDictionary<Symbol, SimpleConstructorAssignmentOperand> SimpleConstructorAssignments { get; set; }
     }
 }

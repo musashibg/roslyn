@@ -17,12 +17,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly BoundBlock _targetBody;
         private readonly DecoratedMemberKind _targetMemberKind;
         private readonly int _argumentCount;
+        private readonly SourceMemberMethodSymbol _decoratorMethod;
+        private readonly int _decoratorOrdinal;
+        private readonly ImmutableDictionary<Symbol, BoundExpression> _decoratorArguments;
         private readonly SyntheticBoundNodeFactory _factory;
         private readonly DecorationBindingTimeAnalyzer _bindingTimeAnalyzer;
-        private readonly SourceMemberMethodSymbol _decoratorMethod;
-        private readonly List<EncapsulatingStatementKind> _encapsulatingStatements;
-        private readonly int _decoratorOrdinal;
         private readonly DiagnosticBag _diagnostics;
+        private readonly List<EncapsulatingStatementKind> _encapsulatingStatements;
+        private readonly VariableNameGenerator _variableNameGenerator;
 
         private DecorationRewriterFlags _flags;
         private ImmutableDictionary<Symbol, LocalSymbol> _replacementSymbols;
@@ -38,6 +40,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             DecoratedMemberKind targetMemberKind,
             SourceMemberMethodSymbol decoratorMethod,
             int decoratorOrdinal,
+            ImmutableDictionary<Symbol, BoundExpression> decoratorArguments,
             SyntheticBoundNodeFactory factory,
             DecorationBindingTimeAnalyzer bindingTimeAnalyzer,
             DiagnosticBag diagnostics)
@@ -68,15 +71,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     throw ExceptionUtilities.Unreachable;
             }
 
-            _factory = factory;
-            _factory.CurrentMethod = targetMethod;
-            _bindingTimeAnalyzer = bindingTimeAnalyzer;
             _decoratorMethod = decoratorMethod;
             _decoratorOrdinal = decoratorOrdinal;
+            _decoratorArguments = decoratorArguments;
+            _factory = factory;
+            _factory.CurrentMethod = targetMethod;
             Debug.Assert(factory.CurrentType == targetMethod.ContainingType);
+            _bindingTimeAnalyzer = bindingTimeAnalyzer;
             _diagnostics = diagnostics;
 
             _encapsulatingStatements = new List<EncapsulatingStatementKind>();
+            _variableNameGenerator = new VariableNameGenerator(_targetMethod.Parameters.Select(p => p.Name));
             _flags = DecorationRewriterFlags.None;
             _replacementSymbols = ImmutableDictionary<Symbol, LocalSymbol>.Empty;
             _spliceOrdinal = 0;
@@ -116,8 +121,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 return targetMethodBody;
             }
 
+            ImmutableDictionary<Symbol, BoundExpression> decoratorArguments = BuildDecoratorArguments(decoratorData);
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Perform binding-time analysis on the decorator method's body in order to identify variables, expressions and statements which can be statically evaluated
-            var bindingTimeAnalyzer = new DecorationBindingTimeAnalyzer(compilation, diagnostics, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorMethod, targetMemberKind);
+            var bindingTimeAnalyzer = new DecorationBindingTimeAnalyzer(
+                compilation,
+                diagnostics,
+                decoratorData.ApplicationSyntaxReference.GetLocation(),
+                targetMemberKind,
+                decoratorMethod,
+                decoratorArguments);
             if (!bindingTimeAnalyzer.PerformAnalysis())
             {
                 return targetMethodBody;
@@ -134,6 +148,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 targetMemberKind,
                 decoratorMethod,
                 decoratorOrdinal,
+                decoratorArguments,
                 factory,
                 bindingTimeAnalyzer,
                 diagnostics);
@@ -392,7 +407,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             // If the left side is a variable whose type has been altered, a conversion has been introduced for it and we want to strip it
             if (leftResult.Node.Kind == BoundKind.Conversion)
             {
-                leftResult = new DecorationRewriteResult(StripConversions((BoundExpression)leftResult.Node), leftResult.UpdatedVariableValues, leftResult.MustEmit, leftResult.Value);
+                leftResult = new DecorationRewriteResult(MetaUtils.StripConversions((BoundExpression)leftResult.Node), leftResult.UpdatedVariableValues, leftResult.MustEmit, leftResult.Value);
             }
 
             DecorationRewriteResult rightResult;
@@ -496,6 +511,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 expressionResult.UpdatedVariableValues,
                 true,
                 CompileTimeValue.Dynamic);
+        }
+
+        public override DecorationRewriteResult VisitBaseReference(BoundBaseReference node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
+        {
+            if (_flags.HasFlag(DecorationRewriterFlags.InDecoratorArgument))
+            {
+                return new DecorationRewriteResult(node, variableValues, false, CompileTimeValue.Dynamic);
+            }
+            else
+            {
+                throw ExceptionUtilities.Unreachable;
+            }
         }
 
         public override DecorationRewriteResult VisitBinaryOperator(BoundBinaryOperator node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -663,7 +690,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     localOpt,
                     (BoundExpression)exceptionSourceResult?.Node,
                     node.ExceptionTypeOpt,
-                    (BoundExpression)exceptionFilterResult.Node,
+                    (BoundExpression)exceptionFilterResult?.Node,
                     GetBlock(bodyResult.Node),
                     node.IsSynthesizedAsyncCatchAll),
                 bodyResult.UpdatedVariableValues,
@@ -1271,6 +1298,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override DecorationRewriteResult VisitFieldAccess(BoundFieldAccess node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            if (!_flags.HasFlag(DecorationRewriterFlags.InDecoratorArgument))
+            {
+                BoundExpression strippedReceiver = MetaUtils.StripConversions(node.ReceiverOpt);
+                if (strippedReceiver != null && (strippedReceiver.Kind == BoundKind.BaseReference || strippedReceiver.Kind == BoundKind.ThisReference))
+                {
+                    return VisitDecoratorArgument(node, node.FieldSymbol, variableValues);
+                }
+            }
+
             DecorationRewriteResult receiverResult = Visit(node.ReceiverOpt, variableValues);
             if (receiverResult != null)
             {
@@ -1995,6 +2031,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override DecorationRewriteResult VisitLocal(BoundLocal node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(!_flags.HasFlag(DecorationRewriterFlags.InDecoratorArgument));
+
             LocalSymbol localSymbol = node.LocalSymbol;
             CompileTimeValue value;
             if (!variableValues.TryGetValue(localSymbol, out value))
@@ -2369,10 +2407,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override DecorationRewriteResult VisitParameter(BoundParameter node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(!_flags.HasFlag(DecorationRewriterFlags.InDecoratorArgument));
             Debug.Assert(_decoratorMethod.ParameterCount == 3);
 
             ParameterSymbol parameterSymbol = node.ParameterSymbol;
-            CompileTimeValue value = variableValues[parameterSymbol];
+            CompileTimeValue value;
+            if (!variableValues.TryGetValue(parameterSymbol, out value))
+            {
+                value = CompileTimeValue.Dynamic;
+            }
             BoundExpression rewrittenNode = null;
             if (parameterSymbol == _decoratorMethod.Parameters[1])
             {
@@ -2499,7 +2542,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 BoundStatement rewrittenNode = null;
                 if (_targetMethod.ReturnsVoid)
                 {
-                    if (StripConversions(rewrittenExpression).Kind == BoundKind.Literal)
+                    if (MetaUtils.StripConversions(rewrittenExpression).Kind == BoundKind.Literal)
                     {
                         rewrittenNode = node.Update(null);
                     }
@@ -2507,7 +2550,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     {
                         // Assign expression to dummy local to preserve side effects
                         CSharpSyntaxNode syntax = node.Syntax;
-                        LocalSymbol dummyLocal = _factory.SynthesizedLocal(rewrittenExpression.Type, syntax, kind: SynthesizedLocalKind.DecoratorTempLocal);
+                        LocalSymbol dummyLocal = _factory.SynthesizedLocal(
+                            rewrittenExpression.Type,
+                            syntax,
+                            kind: SynthesizedLocalKind.DecoratorTempLocal,
+                            name: _variableNameGenerator.GenerateFreshName("tempResult"));
 
                         var statements = new BoundStatement[2];
                         statements[0] = new BoundLocalDeclaration(
@@ -2766,6 +2813,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             _blockLocalsBuilder = outerBlockLocalsBuilder;
 
             return new DecorationRewriteResult(rewrittenNode, variableValues, mustEmit, possibleContinuations);
+        }
+
+        public override DecorationRewriteResult VisitThisReference(BoundThisReference node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
+        {
+            if (_flags.HasFlag(DecorationRewriterFlags.InDecoratorArgument))
+            {
+                return new DecorationRewriteResult(node, variableValues, false, CompileTimeValue.Dynamic);
+            }
+            else
+            {
+                throw ExceptionUtilities.Unreachable;
+            }
         }
 
         public override DecorationRewriteResult VisitThrowStatement(BoundThrowStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
@@ -3103,7 +3162,203 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        public BoundBlock Rewrite(BoundBlock decoratorBody)
+        private static DecoratedMemberKind GetTargetMemberKind(MethodSymbol targetMethod)
+        {
+            PropertySymbol associatedProperty;
+            CSharpSyntaxNode associatedPropertySyntax;
+            switch (targetMethod.MethodKind)
+            {
+                case MethodKind.Constructor:
+                case MethodKind.StaticConstructor:
+                    return DecoratedMemberKind.Constructor;
+
+                case MethodKind.Destructor:
+                    return DecoratedMemberKind.Destructor;
+
+                case MethodKind.PropertyGet:
+                    Debug.Assert(targetMethod is SourcePropertyAccessorSymbol && targetMethod.AssociatedSymbol is PropertySymbol);
+                    associatedProperty = (PropertySymbol)targetMethod.AssociatedSymbol;
+                    associatedPropertySyntax = associatedProperty.GetNonNullSyntaxNode();
+                    Debug.Assert(associatedPropertySyntax != null);
+                    if (associatedPropertySyntax is PropertyDeclarationSyntax)
+                    {
+                        return DecoratedMemberKind.PropertyGet;
+                    }
+                    else
+                    {
+                        Debug.Assert(associatedPropertySyntax is IndexerDeclarationSyntax);
+                        return DecoratedMemberKind.IndexerGet;
+                    }
+
+                case MethodKind.PropertySet:
+                    Debug.Assert(targetMethod is SourcePropertyAccessorSymbol && targetMethod.AssociatedSymbol is PropertySymbol);
+                    associatedProperty = (PropertySymbol)targetMethod.AssociatedSymbol;
+                    associatedPropertySyntax = associatedProperty.GetNonNullSyntaxNode();
+                    Debug.Assert(associatedPropertySyntax != null);
+                    if (associatedPropertySyntax is PropertyDeclarationSyntax)
+                    {
+                        return DecoratedMemberKind.PropertySet;
+                    }
+                    else
+                    {
+                        Debug.Assert(associatedPropertySyntax is IndexerDeclarationSyntax);
+                        return DecoratedMemberKind.IndexerSet;
+                    }
+
+                default:
+                    return DecoratedMemberKind.Method;
+            }
+        }
+
+        private static SourceMemberMethodSymbol GetDecoratorMethod(
+            CSharpCompilation compilation,
+            MethodSymbol targetMethod,
+            DecoratedMemberKind targetMemberKind,
+            DecoratorData decoratorData,
+            TypeCompilationState compilationState,
+            DiagnosticBag diagnostics)
+        {
+            var decoratorClass = decoratorData.DecoratorClass as SourceNamedTypeSymbol;
+            if (decoratorClass == null)
+            {
+                diagnostics.Add(ErrorCode.ERR_NonSourceDecoratorClass, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorData.DecoratorClass);
+                return null;
+            }
+
+            SourceMemberMethodSymbol decoratorMethod = decoratorClass.FindDecoratorMethod(targetMemberKind);
+            while (decoratorMethod == null)
+            {
+                decoratorClass = decoratorClass.BaseType as SourceNamedTypeSymbol;
+                if (decoratorClass == null)
+                {
+                    switch (targetMemberKind)
+                    {
+                        case DecoratedMemberKind.Constructor:
+                            diagnostics.Add(ErrorCode.ERR_DecoratorDoesNotSupportConstructors, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorData.DecoratorClass, targetMethod);
+                            break;
+
+                        case DecoratedMemberKind.Destructor:
+                            diagnostics.Add(ErrorCode.ERR_DecoratorDoesNotSupportDestructors, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorData.DecoratorClass, targetMethod);
+                            break;
+
+                        case DecoratedMemberKind.IndexerGet:
+                        case DecoratedMemberKind.IndexerSet:
+                            diagnostics.Add(
+                                ErrorCode.ERR_DecoratorDoesNotSupportIndexers,
+                                decoratorData.ApplicationSyntaxReference.GetLocation(),
+                                decoratorData.DecoratorClass,
+                                targetMethod.AssociatedSymbol);
+                            break;
+
+                        case DecoratedMemberKind.Method:
+                            diagnostics.Add(ErrorCode.ERR_DecoratorDoesNotSupportMethods, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorData.DecoratorClass, targetMethod);
+                            break;
+
+                        case DecoratedMemberKind.PropertyGet:
+                        case DecoratedMemberKind.PropertySet:
+                            diagnostics.Add(
+                                ErrorCode.ERR_DecoratorDoesNotSupportProperties,
+                                decoratorData.ApplicationSyntaxReference.GetLocation(),
+                                decoratorData.DecoratorClass,
+                                targetMethod.AssociatedSymbol);
+                            break;
+
+                        default:
+                            throw ExceptionUtilities.Unreachable;
+                    }
+                    return null;
+                }
+                decoratorMethod = decoratorClass.FindDecoratorMethod(targetMemberKind);
+            }
+            return decoratorMethod;
+        }
+
+        private static bool CheckIsSpecificParameter(BoundExpression node, ParameterSymbol parameter)
+        {
+            while (node.Kind == BoundKind.Conversion)
+            {
+                node = ((BoundConversion)node).Operand;
+            }
+            return node.Kind == BoundKind.Parameter && ((BoundParameter)node).ParameterSymbol == parameter;
+        }
+
+        private static bool CheckIsNullStaticValue(CompileTimeValue value)
+        {
+            return value.Kind == CompileTimeValueKind.Simple
+                   && value is ConstantStaticValue
+                   && ((ConstantStaticValue)value).Value.IsNull;
+        }
+
+        private static ImmutableArray<BoundStatement> FlattenStatementList(ImmutableArray<DecorationRewriteResult> statementsResults)
+        {
+            ImmutableArray<BoundStatement>.Builder statementsBuilder = ImmutableArray.CreateBuilder<BoundStatement>();
+            foreach (DecorationRewriteResult statementResult in statementsResults)
+            {
+                AddStatements((BoundStatement)statementResult.Node, statementsBuilder);
+            }
+            return statementsBuilder.ToImmutable();
+        }
+
+        private static void AddStatements(BoundStatement statement, ImmutableArray<BoundStatement>.Builder statementsBuilder)
+        {
+            if (statement.Kind == BoundKind.StatementList)
+            {
+                foreach (BoundStatement childStatement in ((BoundStatementList)statement).Statements)
+                {
+                    AddStatements(childStatement, statementsBuilder);
+                }
+            }
+            else
+            {
+                statementsBuilder.Add(statement);
+            }
+        }
+
+        private static ImmutableDictionary<Symbol, BoundExpression> BuildDecoratorArguments(DecoratorData decoratorData)
+        {
+            ImmutableDictionary<Symbol, BoundExpression>.Builder decoratorArgumentsBuilder = ImmutableDictionary.CreateBuilder<Symbol, BoundExpression>();
+
+            // Process decorator constructor and its arguments
+            Debug.Assert(decoratorData.DecoratorConstructor != null);
+            if (decoratorData.DecoratorConstructor is SourceConstructorSymbol)
+            {
+                var constructor = (SourceConstructorSymbol)decoratorData.DecoratorConstructor;
+                if (constructor.SimpleConstructorAssignments != null)
+                {
+                    foreach (KeyValuePair<Symbol, SimpleConstructorAssignmentOperand> kv in constructor.SimpleConstructorAssignments)
+                    {
+                        BoundExpression argument = kv.Value.Expression;
+                        if (argument == null)
+                        {
+                            ParameterSymbol parameter = kv.Value.Parameter;
+                            Debug.Assert(parameter != null);
+                            int parameterIndex = constructor.Parameters.IndexOf(parameter);
+                            Debug.Assert(parameterIndex >= 0 && parameterIndex < decoratorData.ConstructorArguments.Length);
+                            argument = decoratorData.ConstructorArguments[parameterIndex];
+                        }
+                        decoratorArgumentsBuilder[kv.Key] = argument;
+                    }
+                }
+            }
+
+            // Process named arguments
+            if (!decoratorData.NamedArguments.IsEmpty)
+            {
+                NamedTypeSymbol decoratorClass = decoratorData.DecoratorClass;
+                foreach (KeyValuePair<string, BoundExpression> kv in decoratorData.NamedArguments)
+                {
+                    ImmutableArray<Symbol> matchingMembers = decoratorClass.GetMembers(kv.Key);
+                    Debug.Assert(matchingMembers.Length == 1);
+                    Symbol matchingMember = matchingMembers[0];
+                    Debug.Assert(matchingMember.Kind == SymbolKind.Field || matchingMember.Kind == SymbolKind.Property);
+                    decoratorArgumentsBuilder[matchingMember] = kv.Value;
+                }
+            }
+
+            return decoratorArgumentsBuilder.ToImmutable();
+        }
+
+        private BoundBlock Rewrite(BoundBlock decoratorBody)
         {
             _encapsulatingStatements.Clear();
             _flags = DecorationRewriterFlags.None;
@@ -3348,7 +3603,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        public DecorationRewriteResult VisitWithExtraFlags(DecorationRewriterFlags extraFlags, BoundNode node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
+        private DecorationRewriteResult VisitWithExtraFlags(DecorationRewriterFlags extraFlags, BoundNode node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             DecorationRewriterFlags oldFlags = _flags;
             _flags |= extraFlags;
@@ -3360,7 +3615,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return result;
         }
 
-        public ImmutableArray<DecorationRewriteResult> VisitSequentialList<T>(
+        private ImmutableArray<DecorationRewriteResult> VisitSequentialList<T>(
             ImmutableArray<T> list,
             ref ImmutableDictionary<Symbol, CompileTimeValue> variableValues,
             DecorationRewriterFlags extraFlags = DecorationRewriterFlags.None)
@@ -3389,7 +3644,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        public ImmutableArray<DecorationRewriteResult> VisitIndependentList<T>(
+        private ImmutableArray<DecorationRewriteResult> VisitIndependentList<T>(
             ImmutableArray<T> list,
             ref ImmutableDictionary<Symbol, CompileTimeValue> variableValues,
             DecorationRewriterFlags extraFlags = DecorationRewriterFlags.None)
@@ -3420,7 +3675,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        public ImmutableArray<DecorationRewriteResult> VisitAndTrimStatements<T>(
+        private ImmutableArray<DecorationRewriteResult> VisitAndTrimStatements<T>(
             ImmutableArray<T> list,
             ref ImmutableDictionary<Symbol, CompileTimeValue> variableValues,
             out ImmutableHashSet<ExecutionContinuation> possibleContinuations)
@@ -3466,176 +3721,45 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        private static DecoratedMemberKind GetTargetMemberKind(MethodSymbol targetMethod)
+        private DecorationRewriteResult VisitDecoratorArgument(BoundExpression node, Symbol decoratorMember, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
-            PropertySymbol associatedProperty;
-            CSharpSyntaxNode associatedPropertySyntax;
-            switch (targetMethod.MethodKind)
+            BoundExpression decoratorArgument;
+            if (_decoratorArguments.TryGetValue(decoratorMember, out decoratorArgument))
             {
-                case MethodKind.Constructor:
-                case MethodKind.StaticConstructor:
-                    return DecoratedMemberKind.Constructor;
-
-                case MethodKind.Destructor:
-                    return DecoratedMemberKind.Destructor;
-
-                case MethodKind.PropertyGet:
-                    Debug.Assert(targetMethod is SourcePropertyAccessorSymbol && targetMethod.AssociatedSymbol is PropertySymbol);
-                    associatedProperty = (PropertySymbol)targetMethod.AssociatedSymbol;
-                    associatedPropertySyntax = associatedProperty.GetNonNullSyntaxNode();
-                    Debug.Assert(associatedPropertySyntax != null);
-                    if (associatedPropertySyntax is PropertyDeclarationSyntax)
-                    {
-                        return DecoratedMemberKind.PropertyGet;
-                    }
-                    else
-                    {
-                        Debug.Assert(associatedPropertySyntax is IndexerDeclarationSyntax);
-                        return DecoratedMemberKind.IndexerGet;
-                    }
-
-                case MethodKind.PropertySet:
-                    Debug.Assert(targetMethod is SourcePropertyAccessorSymbol && targetMethod.AssociatedSymbol is PropertySymbol);
-                    associatedProperty = (PropertySymbol)targetMethod.AssociatedSymbol;
-                    associatedPropertySyntax = associatedProperty.GetNonNullSyntaxNode();
-                    Debug.Assert(associatedPropertySyntax != null);
-                    if (associatedPropertySyntax is PropertyDeclarationSyntax)
-                    {
-                        return DecoratedMemberKind.PropertySet;
-                    }
-                    else
-                    {
-                        Debug.Assert(associatedPropertySyntax is IndexerDeclarationSyntax);
-                        return DecoratedMemberKind.IndexerSet;
-                    }
-
-                default:
-                    return DecoratedMemberKind.Method;
-            }
-        }
-
-        private static SourceMemberMethodSymbol GetDecoratorMethod(
-            CSharpCompilation compilation,
-            MethodSymbol targetMethod,
-            DecoratedMemberKind targetMemberKind,
-            DecoratorData decoratorData,
-            TypeCompilationState compilationState,
-            DiagnosticBag diagnostics)
-        {
-            var decoratorClass = decoratorData.DecoratorClass as SourceNamedTypeSymbol;
-            if (decoratorClass == null)
-            {
-                diagnostics.Add(ErrorCode.ERR_NonSourceDecoratorClass, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorData.DecoratorClass);
-                return null;
-            }
-
-            SourceMemberMethodSymbol decoratorMethod = decoratorClass.FindDecoratorMethod(targetMemberKind);
-            while (decoratorMethod == null)
-            {
-                decoratorClass = decoratorClass.BaseType as SourceNamedTypeSymbol;
-                if (decoratorClass == null)
-                {
-                    switch (targetMemberKind)
-                    {
-                        case DecoratedMemberKind.Constructor:
-                            diagnostics.Add(ErrorCode.ERR_DecoratorDoesNotSupportConstructors, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorData.DecoratorClass, targetMethod);
-                            break;
-
-                        case DecoratedMemberKind.Destructor:
-                            diagnostics.Add(ErrorCode.ERR_DecoratorDoesNotSupportDestructors, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorData.DecoratorClass, targetMethod);
-                            break;
-
-                        case DecoratedMemberKind.IndexerGet:
-                        case DecoratedMemberKind.IndexerSet:
-                            diagnostics.Add(
-                                ErrorCode.ERR_DecoratorDoesNotSupportIndexers,
-                                decoratorData.ApplicationSyntaxReference.GetLocation(),
-                                decoratorData.DecoratorClass,
-                                targetMethod.AssociatedSymbol);
-                            break;
-
-                        case DecoratedMemberKind.Method:
-                            diagnostics.Add(ErrorCode.ERR_DecoratorDoesNotSupportMethods, decoratorData.ApplicationSyntaxReference.GetLocation(), decoratorData.DecoratorClass, targetMethod);
-                            break;
-
-                        case DecoratedMemberKind.PropertyGet:
-                        case DecoratedMemberKind.PropertySet:
-                            diagnostics.Add(
-                                ErrorCode.ERR_DecoratorDoesNotSupportProperties,
-                                decoratorData.ApplicationSyntaxReference.GetLocation(),
-                                decoratorData.DecoratorClass,
-                                targetMethod.AssociatedSymbol);
-                            break;
-
-                        default:
-                            throw ExceptionUtilities.Unreachable;
-                    }
-                    return null;
-                }
-                decoratorMethod = decoratorClass.FindDecoratorMethod(targetMemberKind);
-            }
-            return decoratorMethod;
-        }
-
-        private static bool CheckIsSpecificParameter(BoundExpression node, ParameterSymbol parameter)
-        {
-            while (node.Kind == BoundKind.Conversion)
-            {
-                node = ((BoundConversion)node).Operand;
-            }
-            return node.Kind == BoundKind.Parameter && ((BoundParameter)node).ParameterSymbol == parameter;
-        }
-
-        private static BoundExpression StripConversions(BoundExpression expression)
-        {
-            while (expression != null)
-            {
-                switch (expression.Kind)
-                {
-                    case BoundKind.Conversion:
-                        expression = ((BoundConversion)expression).Operand;
-                        break;
-
-                    case BoundKind.AsOperator:
-                        expression = ((BoundAsOperator)expression).Operand;
-                        break;
-
-                    default:
-                        return expression;
-                }
-            }
-            return null;
-        }
-
-        private static bool CheckIsNullStaticValue(CompileTimeValue value)
-        {
-            return value.Kind == CompileTimeValueKind.Simple
-                   && value is ConstantStaticValue
-                   && ((ConstantStaticValue)value).Value.IsNull;
-        }
-
-        private static ImmutableArray<BoundStatement> FlattenStatementList(ImmutableArray<DecorationRewriteResult> statementsResults)
-        {
-            ImmutableArray<BoundStatement>.Builder statementsBuilder = ImmutableArray.CreateBuilder<BoundStatement>();
-            foreach (DecorationRewriteResult statementResult in statementsResults)
-            {
-                AddStatements((BoundStatement)statementResult.Node, statementsBuilder);
-            }
-            return statementsBuilder.ToImmutable();
-        }
-
-        private static void AddStatements(BoundStatement statement, ImmutableArray<BoundStatement>.Builder statementsBuilder)
-        {
-            if (statement.Kind == BoundKind.StatementList)
-            {
-                foreach (BoundStatement childStatement in ((BoundStatementList)statement).Statements)
-                {
-                    AddStatements(childStatement, statementsBuilder);
-                }
+                return VisitWithExtraFlags(DecorationRewriterFlags.InDecoratorArgument, decoratorArgument, variableValues);
             }
             else
             {
-                statementsBuilder.Add(statement);
+                // No value was assigned to the field/property manually or in the decorator constructor, so it contains the default value for the type
+                TypeSymbol type = node.Type;
+                BoundExpression rewrittenNode;
+                CompileTimeValue value;
+                if (type.IsClassType())
+                {
+                    value = new ConstantStaticValue(ConstantValue.Null);
+                    rewrittenNode = MakeSimpleStaticValueExpression(value, type, node.Syntax);
+                }
+                else if (MetaUtils.CheckIsSimpleStaticValueType(type, _compilation))
+                {
+                    if (type.SpecialType != SpecialType.None)
+                    {
+                        value = new ConstantStaticValue(ConstantValue.Default(type.SpecialType));
+                    }
+                    else
+                    {
+                        Debug.Assert(type.IsEnumType());
+                        value = new EnumValue(type, ConstantValue.Default(type.GetEnumUnderlyingType().SpecialType));
+                    }
+                    rewrittenNode = MakeSimpleStaticValueExpression(value, type, node.Syntax);
+                }
+                else
+                {
+                    rewrittenNode = new BoundDefaultOperator(node.Syntax, node.Type) { WasCompilerGenerated = true };
+                    value = CompileTimeValue.Dynamic;
+                }
+
+                // A lone default expression should never be a stand-alone statement, so we return MustEmit = false
+                return new DecorationRewriteResult(rewrittenNode, variableValues, false, value);
             }
         }
 
@@ -3687,7 +3811,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     replacementSymbol = _factory.SynthesizedLocal(
                         parameter.Type,
                         syntax: parameter.DeclaringSyntaxReferences[0].GetSyntax(),
-                        kind: SynthesizedLocalKind.DecoratorParameter);
+                        kind: SynthesizedLocalKind.DecoratorParameter,
+                        name: _variableNameGenerator.GenerateFreshName(parameter.Name));
                 }
                 else
                 {
@@ -3698,14 +3823,26 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         replacementSymbol = _factory.SynthesizedLocal(
                             _targetMethod.ReturnType,
                             syntax: local.GetDeclaratorSyntax(),
-                            kind: SynthesizedLocalKind.DecoratorLocal);
+                            kind: SynthesizedLocalKind.DecoratorLocal,
+                            name: _variableNameGenerator.GenerateFreshName(local.Name));
+                    }
+                    else if (_decoratorMethod.DecoratorMethodVariableTypes[local].Kind == ExtendedTypeKind.MemberValue)
+                    {
+                        Debug.Assert(_targetMethod is SourcePropertyAccessorSymbol && _targetMethod.AssociatedSymbol is PropertySymbol);
+                        var associatedProperty = (PropertySymbol)_targetMethod.AssociatedSymbol;
+                        replacementSymbol = _factory.SynthesizedLocal(
+                            associatedProperty.Type,
+                            syntax: local.GetDeclaratorSyntax(),
+                            kind: SynthesizedLocalKind.DecoratorLocal,
+                            name: _variableNameGenerator.GenerateFreshName(local.Name));
                     }
                     else
                     {
                         replacementSymbol = _factory.SynthesizedLocal(
                             local.Type,
                             syntax: local.GetDeclaratorSyntax(),
-                            kind: SynthesizedLocalKind.DecoratorLocal);
+                            kind: SynthesizedLocalKind.DecoratorLocal,
+                            name: _variableNameGenerator.GenerateFreshName(local.Name));
                     }
                 }
                 Debug.Assert(replacementSymbol != null);

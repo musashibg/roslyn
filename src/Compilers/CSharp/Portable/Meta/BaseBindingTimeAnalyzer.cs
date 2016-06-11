@@ -224,8 +224,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitBaseReference(BoundBaseReference node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
-            throw new BindingTimeAnalysisException();
+            if (flags.HasFlag(BindingTimeAnalyzerFlags.InMetaDecorationArgument))
+            {
+                return new BindingTimeAnalysisResult(BindingTime.Dynamic);
+            }
+            else
+            {
+                Error(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
+                throw new BindingTimeAnalysisException();
+            }
         }
 
         public override BindingTimeAnalysisResult VisitBinaryOperator(BoundBinaryOperator node, BindingTimeAnalyzerFlags flags)
@@ -1401,8 +1408,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitThisReference(BoundThisReference node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
-            throw new BindingTimeAnalysisException();
+            if (flags.HasFlag(BindingTimeAnalyzerFlags.InMetaDecorationArgument))
+            {
+                return new BindingTimeAnalysisResult(BindingTime.Dynamic);
+            }
+            else
+            {
+                Error(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
+                throw new BindingTimeAnalysisException();
+            }
         }
 
         public override BindingTimeAnalysisResult VisitThrowStatement(BoundThrowStatement node, BindingTimeAnalyzerFlags flags)

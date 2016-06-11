@@ -9,11 +9,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
     internal sealed class MetaclassBindingTimeAnalyzer : StaticOnlyBindingTimeAnalyzer
     {
         private readonly SourceMemberMethodSymbol _applicationMethod;
+        private readonly ImmutableDictionary<Symbol, BoundExpression> _metaclassArguments;
 
-        public MetaclassBindingTimeAnalyzer(CSharpCompilation compilation, DiagnosticBag diagnostics, Location sourceLocation, SourceMemberMethodSymbol applicationMethod)
+        public MetaclassBindingTimeAnalyzer(
+            CSharpCompilation compilation,
+            DiagnosticBag diagnostics,
+            Location sourceLocation,
+            SourceMemberMethodSymbol applicationMethod,
+            ImmutableDictionary<Symbol, BoundExpression> metaclassArguments)
             : base(compilation, diagnostics, sourceLocation)
         {
             _applicationMethod = applicationMethod;
+            _metaclassArguments = metaclassArguments;
         }
 
         public override BindingTimeAnalysisResult VisitCall(BoundCall node, BindingTimeAnalyzerFlags flags)
@@ -32,21 +39,46 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return base.VisitCall(node, flags);
         }
 
+        public override BindingTimeAnalysisResult VisitFieldAccess(BoundFieldAccess node, BindingTimeAnalyzerFlags flags)
+        {
+            if (!flags.HasFlag(BindingTimeAnalyzerFlags.InMetaDecorationArgument))
+            {
+                BoundExpression strippedReceiver = MetaUtils.StripConversions(node.ReceiverOpt);
+                if (strippedReceiver != null && (strippedReceiver.Kind == BoundKind.BaseReference || strippedReceiver.Kind == BoundKind.ThisReference))
+                {
+                    return VisitMetaclassArgument(node, node.FieldSymbol, flags);
+                }
+            }
+
+            return base.VisitFieldAccess(node, flags);
+        }
+
+        public override BindingTimeAnalysisResult VisitPropertyAccess(BoundPropertyAccess node, BindingTimeAnalyzerFlags flags)
+        {
+            if (!flags.HasFlag(BindingTimeAnalyzerFlags.InMetaDecorationArgument))
+            {
+                BoundExpression strippedReceiver = MetaUtils.StripConversions(node.ReceiverOpt);
+                if (strippedReceiver != null && (strippedReceiver.Kind == BoundKind.BaseReference || strippedReceiver.Kind == BoundKind.ThisReference))
+                {
+                    return VisitMetaclassArgument(node, node.PropertySymbol, flags);
+                }
+            }
+
+            return base.VisitPropertyAccess(node, flags);
+        }
+
         public override BindingTimeAnalysisResult VisitObjectCreationExpression(BoundObjectCreationExpression node, BindingTimeAnalyzerFlags flags)
         {
             HashSet<DiagnosticInfo> useSiteDiagnostics = null;
             if (node.Type.IsDerivedFrom(Compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator), false, ref useSiteDiagnostics))
             {
-                // We can handle the compile-time execution of decorator instantiations, as long as they use the default constructor and have no property/field initialization
-                if (!node.Arguments.IsEmpty || node.InitializerExpressionOpt != null)
-                {
-                    Error(ErrorCode.ERR_DecoratorWithArguments, node.Syntax.Location);
-                    throw new BindingTimeAnalysisException();
-                }
-                else
-                {
-                    return new BindingTimeAnalysisResult(BindingTime.StaticComplexValue);
-                }
+                ImmutableArray<BindingTimeAnalysisResult> argumentsResults = VisitArguments(
+                    node.Arguments,
+                    node.ArgumentRefKindsOpt,
+                    flags | BindingTimeAnalyzerFlags.InDecoratorCreationExpression,
+                    false);
+                BindingTimeAnalysisResult initializerExpressionResult = Visit(node.InitializerExpressionOpt, flags | BindingTimeAnalyzerFlags.InDecoratorCreationExpression);
+                return new BindingTimeAnalysisResult(BindingTime.StaticComplexValue);
             }
 
             return base.VisitObjectCreationExpression(node, flags);
@@ -85,6 +117,23 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                             ? BindingTime.StaticSimpleValue
                             : BindingTime.StaticComplexValue;
                 });
+        }
+
+        private BindingTimeAnalysisResult VisitMetaclassArgument(BoundExpression node, Symbol metaclassMember, BindingTimeAnalyzerFlags flags)
+        {
+            BoundExpression meraclassArgument;
+            if (_metaclassArguments.TryGetValue(metaclassMember, out meraclassArgument))
+            {
+                return Visit(meraclassArgument, flags | BindingTimeAnalyzerFlags.InMetaDecorationArgument);
+            }
+            else
+            {
+                // No value was assigned to the field/property manually or in the metaclass constructor, so it contains the default value for the type
+                TypeSymbol type = node.Type;
+                return (type.IsClassType() || MetaUtils.CheckIsSimpleStaticValueType(node.Type, Compilation))
+                        ? new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue)
+                        : new BindingTimeAnalysisResult(BindingTime.Dynamic);
+            }
         }
     }
 }

@@ -1,5 +1,8 @@
-﻿namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
+﻿using System;
+
+namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 {
+    [Flags]
     internal enum DecoratorMethodTypeCheckerFlags
     {
         None,

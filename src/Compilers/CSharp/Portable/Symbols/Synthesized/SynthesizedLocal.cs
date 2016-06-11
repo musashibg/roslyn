@@ -20,6 +20,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private readonly SyntaxNode _syntaxOpt;
         private readonly bool _isPinned;
         private readonly RefKind _refKind;
+        private readonly string _name;
 
 #if DEBUG
         private readonly int _createdAtLineNumber;
@@ -32,6 +33,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             SyntaxNode syntaxOpt = null,
             bool isPinned = false,
             RefKind refKind = RefKind.None,
+            string name = null,
             [CallerLineNumber]int createdAtLineNumber = 0,
             [CallerFilePath]string createdAtFilePath = null)
         {
@@ -44,6 +46,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             _syntaxOpt = syntaxOpt;
             _isPinned = isPinned;
             _refKind = refKind;
+            _name = name;
 
             _createdAtLineNumber = createdAtLineNumber;
             _createdAtFilePath = createdAtFilePath;
@@ -55,7 +58,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             SynthesizedLocalKind kind,
             SyntaxNode syntaxOpt = null,
             bool isPinned = false,
-            RefKind refKind = RefKind.None)
+            RefKind refKind = RefKind.None,
+            string name = null)
         {
             _containingMethodOpt = containingMethodOpt;
             _type = type;
@@ -63,6 +67,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             _syntaxOpt = syntaxOpt;
             _isPinned = isPinned;
             _refKind = refKind;
+            _name = name;
         }
 #endif
         public SyntaxNode SyntaxOpt
@@ -113,7 +118,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         public override string Name
         {
-            get { return null; }
+            get { return _name; }
         }
 
         public override TypeSymbol Type

@@ -401,13 +401,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                         break;
 
                     case BinaryOperatorKind.And:
-                        assertionsIfTrue = leftTypingResult.AssertionsIfTrue.Union(rightTypingResult.AssertionsIfTrue ?? EmptyAssertions);
-                        assertionsIfFalse = leftTypingResult.AssertionsIfFalse.Intersect(rightTypingResult.AssertionsIfFalse ?? EmptyAssertions);
+                        assertionsIfTrue = (leftTypingResult.AssertionsIfTrue ?? EmptyAssertions).Union(rightTypingResult.AssertionsIfTrue ?? EmptyAssertions);
+                        assertionsIfFalse = (leftTypingResult.AssertionsIfFalse ?? EmptyAssertions).Intersect(rightTypingResult.AssertionsIfFalse ?? EmptyAssertions);
                         break;
 
                     case BinaryOperatorKind.Or:
-                        assertionsIfTrue = leftTypingResult.AssertionsIfTrue.Intersect(rightTypingResult.AssertionsIfTrue ?? EmptyAssertions);
-                        assertionsIfFalse = leftTypingResult.AssertionsIfFalse.Union(rightTypingResult.AssertionsIfFalse ?? EmptyAssertions);
+                        assertionsIfTrue = (leftTypingResult.AssertionsIfTrue ?? EmptyAssertions).Intersect(rightTypingResult.AssertionsIfTrue ?? EmptyAssertions);
+                        assertionsIfFalse = (leftTypingResult.AssertionsIfFalse ?? EmptyAssertions).Union(rightTypingResult.AssertionsIfFalse ?? EmptyAssertions);
                         break;
                 }
 
@@ -951,7 +951,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         {
             bool isSuccessful = true;
             BoundExpression receiverOpt = node.ReceiverOpt;
-            if (receiverOpt != null && receiverOpt.Kind != BoundKind.TypeExpression)
+            BoundExpression strippedReceiver = MetaUtils.StripConversions(receiverOpt);
+            if (receiverOpt != null && receiverOpt.Kind != BoundKind.TypeExpression
+                && strippedReceiver.Kind != BoundKind.BaseReference && strippedReceiver.Kind != BoundKind.ThisReference)
             {
                 DecoratorTypingResult receiverTypingResult = Visit(receiverOpt, subtypingAssertions);
 
@@ -1507,7 +1509,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         {
             bool isSuccessful = true;
             BoundExpression receiverOpt = node.ReceiverOpt;
-            if (receiverOpt != null && receiverOpt.Kind != BoundKind.TypeExpression)
+            BoundExpression strippedReceiver = MetaUtils.StripConversions(receiverOpt);
+            if (receiverOpt != null && receiverOpt.Kind != BoundKind.TypeExpression
+                && strippedReceiver.Kind != BoundKind.BaseReference && strippedReceiver.Kind != BoundKind.ThisReference)
             {
                 // Handle special property accesses
                 if ((_targetMemberKind == DecoratedMemberKind.Constructor || _targetMemberKind == DecoratedMemberKind.Destructor || _targetMemberKind == DecoratedMemberKind.Method)

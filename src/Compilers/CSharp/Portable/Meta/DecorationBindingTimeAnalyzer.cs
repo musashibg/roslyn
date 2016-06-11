@@ -8,24 +8,28 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
     internal sealed class DecorationBindingTimeAnalyzer : BaseBindingTimeAnalyzer
     {
-        private readonly SourceMemberMethodSymbol _decoratorMethod;
         private readonly DecoratedMemberKind _targetMemberKind;
+        private readonly SourceMemberMethodSymbol _decoratorMethod;
+        private readonly ImmutableDictionary<Symbol, BoundExpression> _decoratorArguments;
 
         public DecorationBindingTimeAnalyzer(
             CSharpCompilation compilation,
             DiagnosticBag diagnostics,
             Location sourceLocation,
+            DecoratedMemberKind targetMemberKind,
             SourceMemberMethodSymbol decoratorMethod,
-            DecoratedMemberKind targetMemberKind)
+            ImmutableDictionary<Symbol, BoundExpression> decoratorArguments)
             : base(compilation, diagnostics, sourceLocation)
         {
-            _decoratorMethod = decoratorMethod;
             _targetMemberKind = targetMemberKind;
+            _decoratorMethod = decoratorMethod;
+            _decoratorArguments = decoratorArguments;
         }
 
         public override BindingTimeAnalysisResult VisitCall(BoundCall node, BindingTimeAnalyzerFlags flags)
         {
-            if (CheckIsSpliceLocation(node) || CheckIsBaseDecoratorMethodCall(node))
+            if (!flags.HasFlag(BindingTimeAnalyzerFlags.InMetaDecorationArgument)
+                && (CheckIsSpliceLocation(node) || CheckIsBaseDecoratorMethodCall(node)))
             {
                 return new BindingTimeAnalysisResult(BindingTime.Dynamic);
             }
@@ -45,6 +49,34 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
 
             return base.VisitCall(node, flags);
+        }
+
+        public override BindingTimeAnalysisResult VisitFieldAccess(BoundFieldAccess node, BindingTimeAnalyzerFlags flags)
+        {
+            if (!flags.HasFlag(BindingTimeAnalyzerFlags.InMetaDecorationArgument))
+            {
+                BoundExpression strippedReceiver = MetaUtils.StripConversions(node.ReceiverOpt);
+                if (strippedReceiver != null &&(strippedReceiver.Kind == BoundKind.BaseReference || strippedReceiver.Kind == BoundKind.ThisReference))
+                {
+                    return VisitDecoratorArgument(node, node.FieldSymbol, flags);
+                }
+            }
+
+            return base.VisitFieldAccess(node, flags);
+        }
+
+        public override BindingTimeAnalysisResult VisitPropertyAccess(BoundPropertyAccess node, BindingTimeAnalyzerFlags flags)
+        {
+            if (!flags.HasFlag(BindingTimeAnalyzerFlags.InMetaDecorationArgument))
+            {
+                BoundExpression strippedReceiver = MetaUtils.StripConversions(node.ReceiverOpt);
+                if (strippedReceiver != null &&(strippedReceiver.Kind == BoundKind.BaseReference || strippedReceiver.Kind == BoundKind.ThisReference))
+                {
+                    return VisitDecoratorArgument(node, node.PropertySymbol, flags);
+                }
+            }
+
+            return base.VisitPropertyAccess(node, flags);
         }
 
         public bool PerformAnalysis()
@@ -96,6 +128,23 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 node = ((BoundConversion)node).Operand;
             }
             return node.Kind == BoundKind.Parameter && ((BoundParameter)node).ParameterSymbol == parameter;
+        }
+
+        private BindingTimeAnalysisResult VisitDecoratorArgument(BoundExpression node, Symbol decoratorMember, BindingTimeAnalyzerFlags flags)
+        {
+            BoundExpression decoratorArgument;
+            if (_decoratorArguments.TryGetValue(decoratorMember, out decoratorArgument))
+            {
+                return Visit(decoratorArgument, flags | BindingTimeAnalyzerFlags.InMetaDecorationArgument);
+            }
+            else
+            {
+                // No value was assigned to the field/property manually or in the decorator constructor, so it contains the default value for the type
+                TypeSymbol type = node.Type;
+                return (type.IsClassType() || MetaUtils.CheckIsSimpleStaticValueType(node.Type, Compilation))
+                        ? new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue)
+                        : new BindingTimeAnalysisResult(BindingTime.Dynamic);
+            }
         }
 
         private bool CheckIsSpliceLocation(BoundCall call)

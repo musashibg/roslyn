@@ -29,7 +29,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     // Prepare a temporary variable for the result (replace void with object to maintain the semantics of reflection method invocation)
                     LocalSymbol resultLocal = _targetMethod.ReturnsVoid
                                                 ? null
-                                                : _factory.SynthesizedLocal(_targetMethod.ReturnType, node.Syntax, kind: SynthesizedLocalKind.DecoratorTempResult);
+                                                : _factory.SynthesizedLocal(
+                                                    _targetMethod.ReturnType,
+                                                    node.Syntax,
+                                                    kind: SynthesizedLocalKind.DecoratorTempResult,
+                                                    name: _variableNameGenerator.GenerateFreshName("tempResult"));
 
                     // Prepare the spliced method body, which will be inserted prior to the current statement
                     BoundExpression valueExpression = null;
@@ -364,7 +368,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     LocalSymbol valueParameterReplacementLocal = _factory.SynthesizedLocal(
                         valueParameter.Type,
                         syntax: syntax,
-                        kind: SynthesizedLocalKind.DecoratedMethodParameter);
+                        kind: SynthesizedLocalKind.DecoratedMethodParameter,
+                        name: _variableNameGenerator.GenerateFreshName(valueParameter.Name));
 
                     parameterReplacementsBuilder.Add(valueParameter, valueParameterReplacementLocal);
 
@@ -428,7 +433,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         LocalSymbol parameterReplacementLocal = _factory.SynthesizedLocal(
                             parameter.Type,
                             syntax: syntax,
-                            kind: SynthesizedLocalKind.DecoratedMethodParameter);
+                            kind: SynthesizedLocalKind.DecoratedMethodParameter,
+                        name: _variableNameGenerator.GenerateFreshName(parameter.Name));
                         parameterReplacementLocals[i] = parameterReplacementLocal;
                         parameterReplacementsBuilder.Add(parameter, parameterReplacementLocal);
                         _blockLocalsBuilder.Add(parameterReplacementLocal);
@@ -485,6 +491,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 _spliceOrdinal,
                 _targetBody,
                 parameterReplacementsBuilder.ToImmutable(),
+                _variableNameGenerator,
                 _diagnostics);
             _splicedStatementsBuilder.Add(spliceRewrittenBody);
 
@@ -1132,11 +1139,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 var newArgumentLocals = new LocalSymbol[_argumentCount];
                 for (int i = 0; i < _argumentCount; i++)
                 {
-                    TypeSymbol parameterType = _targetMethod.ParameterTypes[i];
+                    ParameterSymbol parameter = _targetMethod.Parameters[i];
+                    TypeSymbol parameterType = parameter.Type;
                     LocalSymbol newArgumentLocal = _factory.SynthesizedLocal(
                         parameterType,
                         syntax: syntax,
-                        kind: SynthesizedLocalKind.DecoratedMethodParameter);
+                        kind: SynthesizedLocalKind.DecoratedMethodParameter,
+                        name: _variableNameGenerator.GenerateFreshName(parameter.Name));
                     newArgumentLocals[i] = newArgumentLocal;
                     _blockLocalsBuilder.Add(newArgumentLocal);
 

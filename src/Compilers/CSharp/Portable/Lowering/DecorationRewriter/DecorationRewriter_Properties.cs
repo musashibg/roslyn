@@ -9,6 +9,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         public override DecorationRewriteResult VisitPropertyAccess(BoundPropertyAccess node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             BoundExpression receiverOpt = node.ReceiverOpt;
+            PropertySymbol property = node.PropertySymbol;
+            if (!_flags.HasFlag(DecorationRewriterFlags.InDecoratorArgument))
+            {
+                BoundExpression strippedReceiver = MetaUtils.StripConversions(receiverOpt);
+                if (strippedReceiver != null && (strippedReceiver.Kind == BoundKind.BaseReference || strippedReceiver.Kind == BoundKind.ThisReference))
+                {
+                    return VisitDecoratorArgument(node, property, variableValues);
+                }
+            }
+
             DecorationRewriteResult receiverResult = Visit(receiverOpt, variableValues);
             if (receiverResult != null)
             {
@@ -17,7 +27,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             BoundExpression rewrittenNode = null;
             CompileTimeValue value = null;
-            PropertySymbol property = node.PropertySymbol;
 
             // Handle well-known property accesses with static binding time
             if (receiverOpt != null)

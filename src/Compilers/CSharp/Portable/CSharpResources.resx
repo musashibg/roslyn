@@ -4798,9 +4798,6 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_NotAMetaclass" xml:space="preserve">
     <value>'{0}' is not a metaclass</value>
   </data>
-  <data name="ERR_DecoratorWithArguments" xml:space="preserve">
-    <value>Decorators with costructor or named arguments are not supported</value>
-  </data>
   <data name="ERR_DynamicBindingTimeInCompileTimeOnlyCode" xml:space="preserve">
     <value>This expression or statement cannot be statically evaluated at compile time</value>
   </data>
@@ -4872,5 +4869,14 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   </data>
   <data name="ERR_DecoratedPropertyAccessor" xml:space="preserve">
     <value>The property accessor method '{0}' may not be decorated directly. Decorate its associated property instead</value>
+  </data>
+  <data name="ERR_BadMemberInDecoratorOrMetaclass" xml:space="preserve">
+    <value>Decorator and metaclass types may only contain constructors, fields, and auto-implemented properties in addition to the overridden decorator/metaclass application methods.</value>
+  </data>
+  <data name="ERR_InvalidDecoratorOrMetaclassConstructorBody" xml:space="preserve">
+    <value>Decorator and metaclass constructors may only contain simple assignments of constant expressions, constructor parameters, fields or properties to the object's fields and properties.</value>
+  </data>
+  <data name="ERR_BadExpressionInDecoratorArgument" xml:space="preserve">
+    <value>Decorator instantiation arguments may not contain complex-valued variables or expressions which alter the values of variables of the metaclass application method</value>
   </data>
 </root>

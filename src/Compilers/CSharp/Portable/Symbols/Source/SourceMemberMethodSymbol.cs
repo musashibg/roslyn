@@ -24,8 +24,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private ImmutableArray<ParameterSymbol> _lazyParameters;
         private TypeSymbol _lazyReturnType;
         private bool _lazyIsVararg;
-        private BoundBlock _lazyEarlyBoundBody;
-        private bool _earlyBoundBodyLoaded;
 
         /// <summary>
         /// A collection of type parameter constraints, populated when
@@ -1090,31 +1088,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         }
 
         internal override bool GenerateDebugInfo => !IsAsync && !IsIterator;
-
-        internal BoundBlock EarlyBoundBody
-        {
-            get
-            {
-                if (!_earlyBoundBodyLoaded)
-                {
-                    var blockSyntax = BodySyntax as BlockSyntax;
-                    if (blockSyntax != null)
-                    {
-                        // Bind method body
-                        var diagnostics = DiagnosticBag.GetInstance();
-
-                        var compilationState = new TypeCompilationState(ContainingType, DeclaringCompilation, null);
-                        _lazyEarlyBoundBody = MethodCompiler.BindMethodBody(this, compilationState, diagnostics);
-
-                        AddDeclarationDiagnostics(diagnostics);
-                        diagnostics.Free();
-                    }
-
-                    _earlyBoundBodyLoaded = true;
-                }
-                return _lazyEarlyBoundBody;
-            }
-        }
 
         internal ImmutableDictionary<Symbol, ExtendedTypeInfo> DecoratorMethodVariableTypes { get; set; }
     }

@@ -1298,11 +1298,12 @@ namespace Microsoft.CodeAnalysis.CSharp
         ERR_DecoratorDoesNotSupportIndexers = 7412,
         ERR_DecoratorDoesNotSupportProperties = 7413,
         ERR_DecoratedPropertyAccessor = 7414,
-
-        ERR_InvalidSpecialMethodCallInDecorator = 7420,
-        ERR_DecoratorWithArguments = 7421,
-        ERR_BaseDecoratorMethodCallNotSupported = 7422,
-        ERR_GenericTraitTypesNotSupported = 7423,
+        ERR_BadMemberInDecoratorOrMetaclass = 7415,
+        ERR_InvalidDecoratorOrMetaclassConstructorBody = 7416,
+        ERR_BadExpressionInDecoratorArgument = 7417,
+        ERR_InvalidSpecialMethodCallInDecorator = 7418,
+        ERR_BaseDecoratorMethodCallNotSupported = 7419,
+        ERR_GenericTraitTypesNotSupported = 7420,
 
         // available 7423-8000
 

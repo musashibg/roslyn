@@ -14,15 +14,19 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly SourceMemberContainerTypeSymbol _targetType;
         private readonly MetaclassBindingTimeAnalyzer _bindingTimeAnalyzer;
         private readonly SourceMemberMethodSymbol _applicationMethod;
+        private readonly ImmutableDictionary<Symbol, BoundExpression> _metaclassArguments;
         private readonly DiagnosticBag _diagnostics;
         private readonly CancellationToken _cancellationToken;
         private readonly Dictionary<Symbol, CompileTimeValue> _variableValues;
+
+        private DecoratorInstanceArgumentRewriter _lazyDecoratorInstanceArgumentRewriter;
 
         public MetaclassApplier(
             CSharpCompilation compilation,
             SourceMemberContainerTypeSymbol targetType,
             MetaclassBindingTimeAnalyzer bindingTimeAnalyzer,
             SourceMemberMethodSymbol applicationMethod,
+            ImmutableDictionary<Symbol, BoundExpression> metaclassArguments,
             DiagnosticBag diagnostics,
             CancellationToken cancellationToken)
         {
@@ -30,6 +34,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             _targetType = targetType;
             _bindingTimeAnalyzer = bindingTimeAnalyzer;
             _applicationMethod = applicationMethod;
+            _metaclassArguments = metaclassArguments;
             _diagnostics = diagnostics;
             _cancellationToken = cancellationToken;
             _variableValues = new Dictionary<Symbol, CompileTimeValue>();
@@ -65,8 +70,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 return;
             }
 
+            ImmutableDictionary<Symbol, BoundExpression> metaclassArguments = BuildMetaclassArguments(metaclassData);
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Perform binding-time analysis on the decorator method's body in order to identify variables, expressions and statements which can be statically evaluated
-            var bindingTimeAnalyzer = new MetaclassBindingTimeAnalyzer(compilation, diagnostics, metaclassData.ApplicationSyntaxReference.GetLocation(), applicationMethod);
+            var bindingTimeAnalyzer = new MetaclassBindingTimeAnalyzer(compilation, diagnostics, metaclassData.ApplicationSyntaxReference.GetLocation(), applicationMethod, metaclassArguments);
             if (!bindingTimeAnalyzer.PerformAnalysis())
             {
                 return;
@@ -74,7 +82,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             cancellationToken.ThrowIfCancellationRequested();
 
             // Create a synthetic node factory and perform the rewrite
-            var metaclassApplier = new MetaclassApplier(compilation, targetType, bindingTimeAnalyzer, applicationMethod, diagnostics, cancellationToken);
+            var metaclassApplier = new MetaclassApplier(compilation, targetType, bindingTimeAnalyzer, applicationMethod, metaclassArguments, diagnostics, cancellationToken);
             metaclassApplier.PerformApplication(applicationMethodBody);
         }
 
@@ -430,6 +438,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override CompileTimeValue VisitFieldAccess(BoundFieldAccess node, object arg)
         {
+            BoundExpression strippedReceiver = MetaUtils.StripConversions(node.ReceiverOpt);
+            if (strippedReceiver != null && (strippedReceiver.Kind == BoundKind.BaseReference || strippedReceiver.Kind == BoundKind.ThisReference))
+            {
+                return VisitMetaclassArgument(node, node.FieldSymbol, arg);
+            }
+
             // Verify that the field is an enum constant
             FieldSymbol fieldSymbol = node.FieldSymbol;
             TypeSymbol fieldType = fieldSymbol.Type;
@@ -792,13 +806,36 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override CompileTimeValue VisitObjectCreationExpression(BoundObjectCreationExpression node, object arg)
         {
-            // Only decorator creation expressions using the default constructor and no property/field initializer can be allowed through by the binding time analysis
             TypeSymbol type = node.Type;
             HashSet<DiagnosticInfo> useSiteDiagnostics = null;
             Debug.Assert(type.IsDerivedFrom(_compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator), false, ref useSiteDiagnostics));
-            Debug.Assert(type is NamedTypeSymbol && node.Arguments.IsEmpty && node.InitializerExpressionOpt == null);
+            Debug.Assert(type is NamedTypeSymbol);
 
-            return new DecoratorValue((NamedTypeSymbol)type, node.Constructor);
+            // Process constructor arguments
+            int argumentsCount = node.Arguments.Length;
+            var arguments = new BoundExpression[argumentsCount];
+            for (int i = 0; i < argumentsCount; i++)
+            {
+                arguments[i] = (BoundExpression)DecoratorInstanceArgumentRewriter.Visit(node.Arguments[i]);
+            }
+
+            // Process object initializer into a list of named arguments
+            ImmutableArray<KeyValuePair<string, BoundExpression>>.Builder namedArgumentsBuilder = ImmutableArray.CreateBuilder<KeyValuePair<string, BoundExpression>>();
+            var initializerExpression = node.InitializerExpressionOpt as BoundObjectInitializerExpression;
+            if (initializerExpression != null)
+            {
+                foreach (BoundExpression initializer in initializerExpression.Initializers)
+                {
+                    Debug.Assert(initializer.Kind == BoundKind.AssignmentOperator);
+                    var assignmentExpression = (BoundAssignmentOperator)initializer;
+                    Debug.Assert(assignmentExpression.Left.Kind == BoundKind.ObjectInitializerMember);
+                    string memberName = ((BoundObjectInitializerMember)assignmentExpression.Left).MemberSymbol.Name;
+                    var argument = (BoundExpression)DecoratorInstanceArgumentRewriter.Visit(assignmentExpression.Right);
+                    namedArgumentsBuilder.Add(new KeyValuePair<string, BoundExpression>(memberName, argument));
+                }
+            }
+
+            return new DecoratorValue((NamedTypeSymbol)type, node.Constructor, arguments.ToImmutableArray(), namedArgumentsBuilder.ToImmutable());
         }
 
         public override CompileTimeValue VisitParameter(BoundParameter node, object arg)
@@ -952,50 +989,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return null;
         }
 
-        public void PerformApplication(BoundBlock applicationMethodBody)
-        {
-            _variableValues.Clear();
-            _variableValues.Add(_applicationMethod.Parameters[0], new TypeValue(_targetType));
-            try
-            {
-                Visit(applicationMethodBody, null);
-            }
-            catch (ExecutionInterruptionException)
-            {
-            }
-        }
-
-        public ImmutableArray<CompileTimeValue> VisitList<T>(ImmutableArray<T> list, object arg)
-            where T : BoundNode
-        {
-            if (list.IsDefaultOrEmpty)
-            {
-                return ImmutableArray<CompileTimeValue>.Empty;
-            }
-            else
-            {
-                var itemValues = new CompileTimeValue[list.Length];
-                for (int i = 0; i < list.Length; i++)
-                {
-                    itemValues[i] = Visit(list[i], arg);
-                }
-
-                return itemValues.ToImmutableArray();
-            }
-        }
-
-        public void VisitStatements<T>(ImmutableArray<T> list, object arg)
-            where T : BoundStatement
-        {
-            if (!list.IsDefaultOrEmpty)
-            {
-                foreach (T statement in list)
-                {
-                    Visit(statement, arg);
-                }
-            }
-        }
-
         private static SourceMemberMethodSymbol GetApplicationMethod(
             CSharpCompilation compilation,
             MetaclassData metaclassData,
@@ -1048,6 +1041,142 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return value.Kind == CompileTimeValueKind.Simple
                    && value is ConstantStaticValue
                    && ((ConstantStaticValue)value).Value.IsNull;
+        }
+
+        private static ImmutableDictionary<Symbol, BoundExpression> BuildMetaclassArguments(MetaclassData metaclassData)
+        {
+            ImmutableDictionary<Symbol, BoundExpression>.Builder metaclassArgumentsBuilder = ImmutableDictionary.CreateBuilder<Symbol, BoundExpression>();
+
+            // Process metaclass constructor and its arguments
+            Debug.Assert(metaclassData.DecoratorConstructor != null);
+            if (metaclassData.DecoratorConstructor is SourceConstructorSymbol)
+            {
+                var constructor = (SourceConstructorSymbol)metaclassData.DecoratorConstructor;
+                if (constructor.SimpleConstructorAssignments != null)
+                {
+                    foreach (KeyValuePair<Symbol, SimpleConstructorAssignmentOperand> kv in constructor.SimpleConstructorAssignments)
+                    {
+                        BoundExpression argument = kv.Value.Expression;
+                        if (argument == null)
+                        {
+                            ParameterSymbol parameter = kv.Value.Parameter;
+                            Debug.Assert(parameter != null);
+                            int parameterIndex = constructor.Parameters.IndexOf(parameter);
+                            Debug.Assert(parameterIndex >= 0 && parameterIndex < metaclassData.ConstructorArguments.Length);
+                            argument = metaclassData.ConstructorArguments[parameterIndex];
+                        }
+                        metaclassArgumentsBuilder[kv.Key] = argument;
+                    }
+                }
+            }
+
+            // Process named arguments
+            if (!metaclassData.NamedArguments.IsEmpty)
+            {
+                NamedTypeSymbol metaclassClass = metaclassData.MetaclassClass;
+                foreach (KeyValuePair<string, BoundExpression> kv in metaclassData.NamedArguments)
+                {
+                    ImmutableArray<Symbol> matchingMembers = metaclassClass.GetMembers(kv.Key);
+                    Debug.Assert(matchingMembers.Length == 1);
+                    Symbol matchingMember = matchingMembers[0];
+                    Debug.Assert(matchingMember.Kind == SymbolKind.Field || matchingMember.Kind == SymbolKind.Property);
+                    metaclassArgumentsBuilder[matchingMember] = kv.Value;
+                }
+            }
+
+            return metaclassArgumentsBuilder.ToImmutable();
+        }
+
+        private DecoratorInstanceArgumentRewriter DecoratorInstanceArgumentRewriter
+        {
+            get
+            {
+                if (_lazyDecoratorInstanceArgumentRewriter == null)
+                {
+                    _lazyDecoratorInstanceArgumentRewriter = new DecoratorInstanceArgumentRewriter(
+                        _compilation,
+                        _applicationMethod,
+                        _metaclassArguments,
+                        _variableValues,
+                        _diagnostics);
+                }
+                return _lazyDecoratorInstanceArgumentRewriter;
+            }
+        }
+
+        private void PerformApplication(BoundBlock applicationMethodBody)
+        {
+            _variableValues.Clear();
+            _variableValues.Add(_applicationMethod.Parameters[0], new TypeValue(_targetType));
+            try
+            {
+                Visit(applicationMethodBody, null);
+            }
+            catch (ExecutionInterruptionException)
+            {
+            }
+        }
+
+        private ImmutableArray<CompileTimeValue> VisitList<T>(ImmutableArray<T> list, object arg)
+            where T : BoundNode
+        {
+            if (list.IsDefaultOrEmpty)
+            {
+                return ImmutableArray<CompileTimeValue>.Empty;
+            }
+            else
+            {
+                var itemValues = new CompileTimeValue[list.Length];
+                for (int i = 0; i < list.Length; i++)
+                {
+                    itemValues[i] = Visit(list[i], arg);
+                }
+
+                return itemValues.ToImmutableArray();
+            }
+        }
+
+        private void VisitStatements<T>(ImmutableArray<T> list, object arg)
+            where T : BoundStatement
+        {
+            if (!list.IsDefaultOrEmpty)
+            {
+                foreach (T statement in list)
+                {
+                    Visit(statement, arg);
+                }
+            }
+        }
+
+        private CompileTimeValue VisitMetaclassArgument(BoundExpression node, Symbol metaclassMember, object arg)
+        {
+            BoundExpression metaclassArgument;
+            if (_metaclassArguments.TryGetValue(metaclassMember, out metaclassArgument))
+            {
+                return Visit(metaclassArgument, arg);
+            }
+            else
+            {
+                // No value was assigned to the field/property manually or in the metaclass constructor, so it contains the default value for the type
+                TypeSymbol type = node.Type;
+                if (type.IsClassType())
+                {
+                    return new ConstantStaticValue(ConstantValue.Null);
+                }
+                else
+                {
+                    Debug.Assert(MetaUtils.CheckIsSimpleStaticValueType(type, _compilation));
+                    if (type.SpecialType != SpecialType.None)
+                    {
+                        return new ConstantStaticValue(ConstantValue.Default(type.SpecialType));
+                    }
+                    else
+                    {
+                        Debug.Assert(type.IsEnumType());
+                        return new EnumValue(type, ConstantValue.Default(type.GetEnumUnderlyingType().SpecialType));
+                    }
+                }
+            }
         }
     }
 }

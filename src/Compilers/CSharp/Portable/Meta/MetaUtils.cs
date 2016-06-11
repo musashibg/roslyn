@@ -164,6 +164,27 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return Convert(targetType, sourceExpression, compilation);
         }
 
+        public static BoundExpression StripConversions(BoundExpression expression)
+        {
+            while (expression != null)
+            {
+                switch (expression.Kind)
+                {
+                    case BoundKind.Conversion:
+                        expression = ((BoundConversion)expression).Operand;
+                        break;
+
+                    case BoundKind.AsOperator:
+                        expression = ((BoundAsOperator)expression).Operand;
+                        break;
+
+                    default:
+                        return expression;
+                }
+            }
+            return null;
+        }
+
         private static BoundExpression Convert(TypeSymbol targetType, BoundExpression sourceExpression, CSharpCompilation compilation)
         {
             HashSet<DiagnosticInfo> useSiteDiagnostics = null;

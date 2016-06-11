@@ -11,6 +11,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             BoundExpression receiverOpt = node.ReceiverOpt;
             PropertySymbol property = node.PropertySymbol;
 
+            BoundExpression strippedReceiver = MetaUtils.StripConversions(receiverOpt);
+            if (strippedReceiver != null && (strippedReceiver.Kind == BoundKind.BaseReference || strippedReceiver.Kind == BoundKind.ThisReference))
+            {
+                return VisitMetaclassArgument(node, property, arg);
+            }
+
             CompileTimeValue receiverValue = Visit(receiverOpt, arg);
 
             Debug.Assert(receiverOpt != null && receiverValue != null && receiverValue.Kind != CompileTimeValueKind.Dynamic);

@@ -11,7 +11,7 @@
         {
             BindingTimeAnalysisResult result = base.Visit(node, flags);
 
-            if (result != null && result.BindingTime == BindingTime.Dynamic)
+            if (result != null && result.BindingTime == BindingTime.Dynamic && !flags.HasFlag(BindingTimeAnalyzerFlags.InDecoratorCreationExpression))
             {
                 Error(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
                 throw new BindingTimeAnalysisException();

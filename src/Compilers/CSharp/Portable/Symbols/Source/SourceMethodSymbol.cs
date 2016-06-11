@@ -179,6 +179,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         private OverriddenOrHiddenMembersResult _lazyOverriddenOrHiddenMembers;
 
+        private BoundBlock _lazyEarlyBoundBody;
+        private bool _earlyBoundBodyLoaded;
+
         // some symbols may not have a syntax (e.g. lambdas, synthesized event accessors)
         protected readonly SyntaxReference syntaxReferenceOpt;
 
@@ -1660,6 +1663,31 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             else
             {
                 return localPosition;
+            }
+        }
+
+        internal BoundBlock EarlyBoundBody
+        {
+            get
+            {
+                if (!_earlyBoundBodyLoaded)
+                {
+                    var blockSyntax = BodySyntax as BlockSyntax;
+                    if (blockSyntax != null)
+                    {
+                        // Bind method body
+                        var diagnostics = DiagnosticBag.GetInstance();
+
+                        var compilationState = new TypeCompilationState(ContainingType, DeclaringCompilation, null);
+                        _lazyEarlyBoundBody = MethodCompiler.BindMethodBody(this, compilationState, diagnostics);
+
+                        AddDeclarationDiagnostics(diagnostics);
+                        diagnostics.Free();
+                    }
+
+                    _earlyBoundBodyLoaded = true;
+                }
+                return _lazyEarlyBoundBody;
             }
         }
     }
