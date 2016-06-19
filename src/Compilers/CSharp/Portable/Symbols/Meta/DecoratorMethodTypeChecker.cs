@@ -1721,12 +1721,27 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         public override DecoratorTypingResult VisitStringInsert(BoundStringInsert node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
             DecoratorTypingResult valueTypingResult = Visit(node.Value, subtypingAssertions);
-            DecoratorTypingResult alignmentTypingResult = Visit(node.Alignment, valueTypingResult.UpdatedSubtypingAssertions);
-            DecoratorTypingResult formatTypingResult = Visit(node.Format, alignmentTypingResult.UpdatedSubtypingAssertions);
-            return new DecoratorTypingResult(
-                valueTypingResult.IsSuccessful && alignmentTypingResult.IsSuccessful && formatTypingResult.IsSuccessful,
-                new ExtendedTypeInfo(node.Type),
-                formatTypingResult.UpdatedSubtypingAssertions);
+            bool isSuccessful = valueTypingResult.IsSuccessful;
+            subtypingAssertions = valueTypingResult.UpdatedSubtypingAssertions;
+
+            BoundExpression alignment = node.Alignment;
+            if (alignment != null)
+            {
+                DecoratorTypingResult alignmentTypingResult = Visit(alignment, subtypingAssertions);
+                isSuccessful &= alignmentTypingResult.IsSuccessful;
+                subtypingAssertions = alignmentTypingResult.UpdatedSubtypingAssertions;
+            }
+
+
+            BoundExpression format = node.Format;
+            if (alignment != null)
+            {
+                DecoratorTypingResult formatTypingResult = Visit(format, subtypingAssertions);
+                isSuccessful &= formatTypingResult.IsSuccessful;
+                subtypingAssertions = formatTypingResult.UpdatedSubtypingAssertions;
+            }
+
+            return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
         public override DecoratorTypingResult VisitSwitchLabel(BoundSwitchLabel node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)

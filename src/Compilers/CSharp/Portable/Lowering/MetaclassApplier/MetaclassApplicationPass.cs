@@ -39,6 +39,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 cancellationToken.ThrowIfCancellationRequested();
 
                 MetaclassData metaclass = metaclasses[metaclassOrdinal];
+                if (!(metaclass.MetaclassClass is SourceMemberContainerTypeSymbol))
+                {
+                    continue;
+                }
+
                 var metaclassClass = (SourceMemberContainerTypeSymbol)metaclass.MetaclassClass;
                 metaclassClass.ForceComplete(new SourceLocation(metaclass.ApplicationSyntaxReference), cancellationToken);
                 if (metaclass.HasErrors || metaclassClass.HasDecoratorOrMetaclassMembersErrors)

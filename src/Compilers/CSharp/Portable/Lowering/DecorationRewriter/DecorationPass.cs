@@ -52,6 +52,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 cancellationToken.ThrowIfCancellationRequested();
 
                 DecoratorData decorator = decorators[decoratorOrdinal];
+                if (!(decorator.DecoratorClass is SourceMemberContainerTypeSymbol))
+                {
+                    continue;
+                }
+
                 var decoratorClass = (SourceMemberContainerTypeSymbol)decorator.DecoratorClass;
                 decoratorClass.ForceComplete(new SourceLocation(decorator.ApplicationSyntaxReference), cancellationToken);
                 if (decorator.HasErrors || decoratorClass.HasDecoratorMethodErrors || decoratorClass.HasDecoratorOrMetaclassMembersErrors)

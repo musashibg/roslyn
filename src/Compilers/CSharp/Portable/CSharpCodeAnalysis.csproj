@@ -386,6 +386,7 @@
     <Compile Include="Lowering\DecorationRewriter\DecorationRewriteResult.cs" />
     <Compile Include="Lowering\DecorationRewriter\DecorationRewriter_Calls.cs" />
     <Compile Include="Lowering\DecorationRewriter\DecorationRewriter_Properties.cs" />
+    <Compile Include="Lowering\DecorationRewriter\SplicedMethodBodyRewriterFlags.cs" />
     <Compile Include="Lowering\DecorationRewriter\VariableNameGenerator.cs" />
     <Compile Include="Lowering\MetaclassApplier\DecoratorInstanceArgumentRewriter.cs" />
     <Compile Include="Lowering\MetaclassApplier\MetaclassApplicationPass.cs" />

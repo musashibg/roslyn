@@ -14,6 +14,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly VariableNameGenerator _variableNamesGenerator;
         private readonly DiagnosticBag _diagnostics;
 
+        private SplicedMethodBodyRewriterFlags _flags;
         private ImmutableDictionary<Symbol, Symbol> _replacementSymbols;
         private ImmutableArray<LocalSymbol>.Builder _blockLocalsBuilder;
 
@@ -71,6 +72,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return node.Update(locals, FlattenStatementList(statements));
         }
 
+        public override BoundNode VisitCatchBlock(BoundCatchBlock node)
+        {
+            var localOpt = node.LocalOpt == null ? null : (LocalSymbol)GetReplacementSymbol(node.LocalOpt);
+            var exceptionSourceOpt = (BoundExpression)Visit(node.ExceptionSourceOpt);
+            var exceptionFilterOpt = (BoundExpression)Visit(node.ExceptionFilterOpt);
+            var body = (BoundBlock)Visit(node.Body);
+            return node.Update(localOpt, exceptionSourceOpt, node.ExceptionTypeOpt, exceptionFilterOpt, body, node.IsSynthesizedAsyncCatchAll);
+        }
+
         public override BoundNode VisitForStatement(BoundForStatement node)
         {
             ImmutableArray<LocalSymbol>.Builder outerBlockLocalsBuilder = _blockLocalsBuilder;
@@ -85,6 +95,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             _blockLocalsBuilder = outerBlockLocalsBuilder;
 
             return node.Update(locals, initializer, condition, increment, body, node.BreakLabel, node.ContinueLabel);
+        }
+
+        public override BoundNode VisitLambda(BoundLambda node)
+        {
+            var body = (BoundBlock)VisitWithExtraFlags(SplicedMethodBodyRewriterFlags.InNestedLambdaBody, node.Body);
+            return node.Update(node.Symbol, body, node.Diagnostics, node.Binder, node.Type);
         }
 
         public override BoundNode VisitLocal(BoundLocal node)
@@ -122,6 +138,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BoundNode VisitReturnStatement(BoundReturnStatement node)
         {
+            if (_flags.HasFlag(SplicedMethodBodyRewriterFlags.InNestedLambdaBody))
+            {
+                var expressionOpt = (BoundExpression)Visit(node.ExpressionOpt);
+                return node.Update(expressionOpt);
+            }
+
             var gotoStatement = new BoundGotoStatement(node.Syntax, _postSpliceLabel);
             if (node.ExpressionOpt == null)
             {
@@ -218,6 +240,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 statementsBuilder.Add(statement);
             }
+        }
+
+        private BoundNode VisitWithExtraFlags(SplicedMethodBodyRewriterFlags extraFlags, BoundNode node)
+        {
+            SplicedMethodBodyRewriterFlags oldFlags = _flags;
+            _flags |= extraFlags;
+
+            BoundNode result = Visit(node);
+
+            _flags = oldFlags;
+
+            return result;
         }
 
         private Symbol GetReplacementSymbol(Symbol originalSymbol)

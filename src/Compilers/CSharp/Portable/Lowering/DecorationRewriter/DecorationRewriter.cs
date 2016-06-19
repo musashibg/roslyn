@@ -691,7 +691,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     (BoundExpression)exceptionSourceResult?.Node,
                     node.ExceptionTypeOpt,
                     (BoundExpression)exceptionFilterResult?.Node,
-                    GetBlock(bodyResult.Node),
+                    GetBlock(bodyResult.Node, node.Body.Syntax),
                     node.IsSynthesizedAsyncCatchAll),
                 bodyResult.UpdatedVariableValues,
                 true,
@@ -2017,7 +2017,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             DecorationRewriteResult bodyResult = VisitWithExtraFlags(DecorationRewriterFlags.InNestedLambdaBody, node.Body, variableValues);
 
             return new DecorationRewriteResult(
-                node.Update(node.Symbol, GetBlock(bodyResult.Node), node.Diagnostics, node.Binder, node.Type),
+                node.Update(node.Symbol, GetBlock(bodyResult.Node, node.Body.Syntax), node.Diagnostics, node.Binder, node.Type),
                 bodyResult.UpdatedVariableValues,
                 true,
                 CompileTimeValue.Dynamic);
@@ -2629,13 +2629,24 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         public override DecorationRewriteResult VisitStringInsert(BoundStringInsert node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             DecorationRewriteResult valueResult = Visit(node.Value, variableValues);
-            DecorationRewriteResult alignmentResult = Visit(node.Alignment, valueResult.UpdatedVariableValues);
-            DecorationRewriteResult formatResult = Visit(node.Format, alignmentResult.UpdatedVariableValues);
+            variableValues = valueResult.UpdatedVariableValues;
+
+            DecorationRewriteResult alignmentResult = Visit(node.Alignment, variableValues);
+            if (alignmentResult != null)
+            {
+                variableValues = alignmentResult.UpdatedVariableValues;
+            }
+
+            DecorationRewriteResult formatResult = Visit(node.Format, variableValues);
+            if (formatResult != null)
+            {
+                variableValues = formatResult.UpdatedVariableValues;
+            }
 
             // A lone string insertion should never be a stand-alone statement, so we return MustEmit = false
             return new DecorationRewriteResult(
-                node.Update((BoundExpression)valueResult.Node, (BoundExpression)alignmentResult.Node, (BoundExpression)formatResult.Node, node.Type),
-                formatResult.UpdatedVariableValues,
+                node.Update((BoundExpression)valueResult.Node, (BoundExpression)alignmentResult?.Node, (BoundExpression)formatResult?.Node, node.Type),
+                variableValues,
                 true,
                 CompileTimeValue.Dynamic);
         }
@@ -2900,7 +2911,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     else
                     {
                         rewrittenNode = node.Update(
-                            GetBlock(tryBlockResult.Node),
+                            GetBlock(tryBlockResult.Node, node.TryBlock.Syntax),
                             catchBlocksResults.SelectAsArray(r => (BoundCatchBlock)r.Node),
                             null,
                             node.PreferFaultHandler);
@@ -2909,9 +2920,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 else
                 {
                     rewrittenNode = node.Update(
-                        GetBlock(tryBlockResult.Node),
+                        GetBlock(tryBlockResult.Node, node.TryBlock.Syntax),
                         catchBlocksResults.SelectAsArray(r => (BoundCatchBlock)r.Node),
-                        GetBlock(finallyBlockResult.Node),
+                        GetBlock(finallyBlockResult.Node, node.FinallyBlockOpt.Syntax),
                         node.PreferFaultHandler);
                 }
                 mustEmit = true;
@@ -3432,7 +3443,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 // Decorate target method body
                 DecorationRewriteResult bodyRewriteResult = Visit(decoratorBody, variableValuesBuilder.ToImmutable());
-                var decoratedBody = GetBlock(bodyRewriteResult.Node);
+                var decoratedBody = GetBlock(bodyRewriteResult.Node, decoratorBody.Syntax);
 
                 // Generate the decoration prologue and epilogue
                 ImmutableArray<BoundStatement>.Builder prologueStatements = ImmutableArray.CreateBuilder<BoundStatement>();
@@ -3957,7 +3968,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return new DecorationRewriteResult(MakeNoOpStatement(syntax), updatedVariableValues, false, possibleContinuations);
         }
 
-        private BoundBlock GetBlock(BoundNode node)
+        private BoundBlock GetBlock(BoundNode node, CSharpSyntaxNode syntax)
         {
             if (node.Kind == BoundKind.Block)
             {
@@ -3966,7 +3977,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             else
             {
                 Debug.Assert(node is BoundStatement);
-                return new BoundBlock(node.Syntax, ImmutableArray<LocalSymbol>.Empty, ImmutableArray.Create((BoundStatement)node)) { WasCompilerGenerated = true, };
+                return new BoundBlock(syntax, ImmutableArray<LocalSymbol>.Empty, ImmutableArray.Create((BoundStatement)node)) { WasCompilerGenerated = true, };
             }
         }
     }
