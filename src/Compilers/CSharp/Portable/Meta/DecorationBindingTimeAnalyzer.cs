@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
 using Roslyn.Utilities;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Threading;
 
 namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
@@ -15,11 +16,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         public DecorationBindingTimeAnalyzer(
             CSharpCompilation compilation,
             DiagnosticBag diagnostics,
+            CancellationToken cancellationToken,
             Location sourceLocation,
             DecoratedMemberKind targetMemberKind,
             SourceMemberMethodSymbol decoratorMethod,
             ImmutableDictionary<Symbol, BoundExpression> decoratorArguments)
-            : base(compilation, diagnostics, sourceLocation)
+            : base(compilation, diagnostics, cancellationToken, sourceLocation)
         {
             _targetMemberKind = targetMemberKind;
             _decoratorMethod = decoratorMethod;

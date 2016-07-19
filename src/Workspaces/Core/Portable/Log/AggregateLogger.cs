@@ -101,7 +101,15 @@ namespace Microsoft.CodeAnalysis.Internal.Log
                     continue;
                 }
 
-                logger.Log(functionId, logMessage);
+                // TODO: Fix temporary workaround
+                // VSTelemetryActivityLogger throws an InvalidOperationException which crashes the whole application
+                try
+                {
+                    logger.Log(functionId, logMessage);
+                }
+                catch (InvalidOperationException)
+                {
+                }
             }
         }
 

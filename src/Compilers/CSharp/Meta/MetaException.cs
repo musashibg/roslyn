@@ -22,9 +22,11 @@ namespace CSharp.Meta
         {
         }
 
+#if (!PORTABLE)
         protected MetaException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
         }
+#endif
     }
 }

@@ -101,7 +101,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 return VisitGetProperties(node, receiverResult, argumentsResults, variableValues);
             }
-            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAssignableFrom))
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAssignableFrom)
+                     || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaExtensions__IsAssignableFrom))
             {
                 return VisitIsAssignableFromCall(node, receiverResult, argumentsResults, variableValues);
             }
@@ -133,6 +134,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray))
             {
                 return VisitCloneArgumentsToObjectArrayCall(node, argumentsResults, variableValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__DefaultValue))
+            {
+                return VisitDefaultValueCall(node, receiverResult, argumentsResults, variableValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsReadOnly))
+            {
+                return VisitIsReadOnlyCall(node, receiverResult, argumentsResults, variableValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsWriteOnly))
+            {
+                return VisitIsWriteOnlyCall(node, receiverResult, argumentsResults, variableValues);
             }
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
                      || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType2))
@@ -707,15 +720,30 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
-            Debug.Assert(receiverResult != null && argumentsResults.Length == 1);
-            CompileTimeValue receiverValue = receiverResult.Value;
-            CompileTimeValue otherTypeValue = argumentsResults[0].Value;
+            CompileTimeValue targetTypeValue;
+            CompileTimeValue sourceTypeValue;
+            bool isExtensionMethod;
+            MethodSymbol method = node.Method;
             CSharpSyntaxNode syntax = node.Syntax;
-
-            if (receiverValue is ConstantStaticValue)
+            if (method.IsStatic)
             {
-                Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                Debug.Assert(argumentsResults.Length == 2);
+                targetTypeValue = argumentsResults[0].Value;
+                sourceTypeValue = argumentsResults[1].Value;
+                isExtensionMethod = true;
+            }
+            else
+            {
+                Debug.Assert(receiverResult != null && argumentsResults.Length == 1);
+                targetTypeValue = receiverResult.Value;
+                sourceTypeValue = argumentsResults[0].Value;
+                isExtensionMethod = false;
+            }
+
+            if (targetTypeValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)targetTypeValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[0] : node.ReceiverOpt).Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -723,10 +751,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     CompileTimeValue.Dynamic);
             }
 
-            if (otherTypeValue is ConstantStaticValue)
+            if (sourceTypeValue is ConstantStaticValue)
             {
-                Debug.Assert(((ConstantStaticValue)otherTypeValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                Debug.Assert(((ConstantStaticValue)sourceTypeValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[1] : node.Arguments[0]).Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -734,7 +762,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     CompileTimeValue.Dynamic);
             }
 
-            if (receiverValue.Kind == CompileTimeValueKind.Dynamic || otherTypeValue.Kind == CompileTimeValueKind.Dynamic)
+            if (targetTypeValue.Kind == CompileTimeValueKind.Dynamic || sourceTypeValue.Kind == CompileTimeValueKind.Dynamic)
             {
                 return new DecorationRewriteResult(
                     node.Update((BoundExpression)receiverResult.Node, node.Method, argumentsResults.SelectAsArray(r => (BoundExpression)r.Node)),
@@ -743,10 +771,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     CompileTimeValue.Dynamic);
             }
 
-            Debug.Assert(receiverValue is TypeValue && otherTypeValue is TypeValue);
+            Debug.Assert(targetTypeValue is TypeValue && sourceTypeValue is TypeValue);
             var value = new ConstantStaticValue(
                 ConstantValue.Create(
-                    MetaUtils.CheckTypeIsAssignableFrom(((TypeValue)receiverValue).Type, ((TypeValue)otherTypeValue).Type)));
+                    MetaUtils.CheckTypeIsAssignableFrom(((TypeValue)targetTypeValue).Type, ((TypeValue)sourceTypeValue).Type)));
             return new DecorationRewriteResult(
                 MakeSimpleStaticValueExpression(value, node.Type, node.Syntax),
                 variableValues,
@@ -978,7 +1006,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (argumentValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)argumentValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -1277,6 +1305,156 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return new DecorationRewriteResult(rewrittenNode, variableValues, true, CompileTimeValue.Dynamic);
         }
 
+        private DecorationRewriteResult VisitDefaultValueCall(
+            BoundCall node,
+            DecorationRewriteResult receiverResult,
+            ImmutableArray<DecorationRewriteResult> argumentsResults,
+            ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
+        {
+            Debug.Assert(argumentsResults.Length == 1);
+            CompileTimeValue typeValue = argumentsResults[0].Value;
+            CSharpSyntaxNode syntax = node.Syntax;
+
+            if (typeValue.Kind != CompileTimeValueKind.Dynamic)
+            {
+                if (typeValue is ConstantStaticValue)
+                {
+                    Debug.Assert(((ConstantStaticValue)typeValue).Value.IsNull);
+                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    return new DecorationRewriteResult(
+                        MakeBadExpression(syntax, node.Type),
+                        variableValues,
+                        true,
+                        CompileTimeValue.Dynamic);
+                }
+
+                Debug.Assert(typeValue is TypeValue);
+                TypeSymbol type = ((TypeValue)typeValue).Type;
+
+                BoundExpression rewrittenNode;
+                CompileTimeValue value;
+                if (type.IsClassType() || type == _compilation.GetSpecialType(SpecialType.System_Void))
+                {
+                    value = new ConstantStaticValue(ConstantValue.Null);
+                    rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
+                }
+                else if (MetaUtils.CheckIsSimpleStaticValueType(type, _compilation))
+                {
+                    if (type.SpecialType != SpecialType.None)
+                    {
+                        value = new ConstantStaticValue(ConstantValue.Default(type.SpecialType));
+                    }
+                    else
+                    {
+                        Debug.Assert(type.IsEnumType());
+                        value = new EnumValue(type, ConstantValue.Default(type.GetEnumUnderlyingType().SpecialType));
+                    }
+                    rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
+                }
+                else
+                {
+                    rewrittenNode = MetaUtils.ConvertIfNeeded(
+                        node.Type,
+                        new BoundDefaultOperator(node.Syntax, type) { WasCompilerGenerated = true },
+                        _compilation);
+                    value = CompileTimeValue.Dynamic;
+                }
+
+                // A lone default expression should never be a stand-alone statement, so we return MustEmit = false
+                return new DecorationRewriteResult(rewrittenNode, variableValues, false, value);
+            }
+
+            return new DecorationRewriteResult(
+                node.Update((BoundExpression)receiverResult.Node, node.Method, argumentsResults.SelectAsArray(r => (BoundExpression)r.Node)),
+                variableValues,
+                true,
+                CompileTimeValue.Dynamic);
+        }
+
+        private DecorationRewriteResult VisitIsReadOnlyCall(
+            BoundCall node,
+            DecorationRewriteResult receiverResult,
+            ImmutableArray<DecorationRewriteResult> argumentsResults,
+            ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
+        {
+            Debug.Assert(argumentsResults.Length == 1);
+            CompileTimeValue propertyInfoValue = argumentsResults[0].Value;
+            CSharpSyntaxNode syntax = node.Syntax;
+
+            if (propertyInfoValue.Kind != CompileTimeValueKind.Dynamic)
+            {
+                if (propertyInfoValue is ConstantStaticValue)
+                {
+                    Debug.Assert(((ConstantStaticValue)propertyInfoValue).Value.IsNull);
+                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    return new DecorationRewriteResult(
+                        MakeBadExpression(syntax, node.Type),
+                        variableValues,
+                        true,
+                        CompileTimeValue.Dynamic);
+                }
+
+                Debug.Assert(propertyInfoValue is PropertyInfoValue);
+                PropertySymbol property = ((PropertyInfoValue)propertyInfoValue).Property;
+
+                bool isReadOnly = (property.SetMethod == null);
+                var value = new ConstantStaticValue(ConstantValue.Create(isReadOnly));
+                return new DecorationRewriteResult(
+                    MakeSimpleStaticValueExpression(value, node.Type, syntax),
+                    variableValues,
+                    false,
+                    value);
+            }
+
+            return new DecorationRewriteResult(
+                node.Update((BoundExpression)receiverResult.Node, node.Method, argumentsResults.SelectAsArray(r => (BoundExpression)r.Node)),
+                variableValues,
+                true,
+                CompileTimeValue.Dynamic);
+        }
+
+        private DecorationRewriteResult VisitIsWriteOnlyCall(
+            BoundCall node,
+            DecorationRewriteResult receiverResult,
+            ImmutableArray<DecorationRewriteResult> argumentsResults,
+            ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
+        {
+            Debug.Assert(argumentsResults.Length == 1);
+            CompileTimeValue propertyInfoValue = argumentsResults[0].Value;
+            CSharpSyntaxNode syntax = node.Syntax;
+
+            if (propertyInfoValue.Kind != CompileTimeValueKind.Dynamic)
+            {
+                if (propertyInfoValue is ConstantStaticValue)
+                {
+                    Debug.Assert(((ConstantStaticValue)propertyInfoValue).Value.IsNull);
+                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    return new DecorationRewriteResult(
+                        MakeBadExpression(syntax, node.Type),
+                        variableValues,
+                        true,
+                        CompileTimeValue.Dynamic);
+                }
+
+                Debug.Assert(propertyInfoValue is PropertyInfoValue);
+                PropertySymbol property = ((PropertyInfoValue)propertyInfoValue).Property;
+
+                bool isReadOnly = (property.GetMethod == null);
+                var value = new ConstantStaticValue(ConstantValue.Create(isReadOnly));
+                return new DecorationRewriteResult(
+                    MakeSimpleStaticValueExpression(value, node.Type, syntax),
+                    variableValues,
+                    false,
+                    value);
+            }
+
+            return new DecorationRewriteResult(
+                node.Update((BoundExpression)receiverResult.Node, node.Method, argumentsResults.SelectAsArray(r => (BoundExpression)r.Node)),
+                variableValues,
+                true,
+                CompileTimeValue.Dynamic);
+        }
+
         private DecorationRewriteResult VisitParameterTypeCall(
             BoundCall node,
             DecorationRewriteResult receiverResult,
@@ -1290,6 +1468,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             if (memberInfoValue.Kind != CompileTimeValueKind.Dynamic && parameterIndexValue.Kind != CompileTimeValueKind.Dynamic)
             {
+                if (memberInfoValue is ConstantStaticValue)
+                {
+                    Debug.Assert(((ConstantStaticValue)memberInfoValue).Value.IsNull);
+                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    return new DecorationRewriteResult(
+                        MakeBadExpression(syntax, node.Type),
+                        variableValues,
+                        true,
+                        CompileTimeValue.Dynamic);
+                }
+
                 Symbol member;
                 if (memberInfoValue is MethodInfoValue)
                 {
@@ -1371,6 +1560,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             if (memberInfoValue.Kind != CompileTimeValueKind.Dynamic)
             {
+                if (memberInfoValue is ConstantStaticValue)
+                {
+                    Debug.Assert(((ConstantStaticValue)memberInfoValue).Value.IsNull);
+                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    return new DecorationRewriteResult(
+                        MakeBadExpression(syntax, node.Type),
+                        variableValues,
+                        true,
+                        CompileTimeValue.Dynamic);
+                }
+
                 Symbol member;
                 if (memberInfoValue is MethodInfoValue)
                 {

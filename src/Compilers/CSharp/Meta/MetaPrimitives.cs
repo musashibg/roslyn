@@ -64,6 +64,39 @@ namespace CSharp.Meta
             return clonedArguments;
         }
 
+        public static object DefaultValue(Type type)
+        {
+#if (PORTABLE)
+            return type.GetTypeInfo().IsValueType && type != typeof(void)
+                    ? Activator.CreateInstance(type)
+                    : null;
+#else
+            return type.IsValueType && type != typeof(void)
+                    ? Activator.CreateInstance(type)
+                    : null;
+#endif
+        }
+
+        public static bool IsReadOnly(PropertyInfo property)
+        {
+#if (PORTABLE)
+            return property.SetMethod == null;
+#else
+            MethodInfo[] accessors = property.GetAccessors();
+            return accessors.Length == 1 && accessors[0].ReturnType != typeof(void);
+#endif
+        }
+
+        public static bool IsWriteOnly(PropertyInfo property)
+        {
+#if (PORTABLE)
+            return property.GetMethod == null;
+#else
+            MethodInfo[] accessors = property.GetAccessors();
+            return accessors.Length == 1 && accessors[0].ReturnType == typeof(void);
+#endif
+        }
+
         /// <summary>
         /// Returns the type of a method's parameter. Used to introduce argument subtyping assertions in decorator method type checking.
         /// </summary>
@@ -155,9 +188,15 @@ namespace CSharp.Meta
                 throw new ArgumentNullException(nameof(property));
             }
 
+#if (PORTABLE)
+            MethodInfo accessor = property.GetMethod ?? property.SetMethod;
+            Debug.Assert(accessor != null);
+            return accessor.IsStatic ? typeof(void) : property.DeclaringType;
+#else
             MethodInfo[] accessors = property.GetAccessors();
             Debug.Assert(accessors != null && accessors.Length > 0);
             return accessors[0].IsStatic ? typeof(void) : property.DeclaringType;
+#endif
         }
     }
 }

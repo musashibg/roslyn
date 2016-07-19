@@ -2892,6 +2892,15 @@ namespace Microsoft.CodeAnalysis
                     (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
                     (ushort)SignatureTypeCode.SZArray, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
 
+                // CSharp_Meta_MetaExtensions__IsAssignableFrom
+                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
+                (ushort)WellKnownType.CSharp_Meta_MetaExtensions,                                                           // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    2,                                                                                                      // Method Signature
+                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
+                    (ushort)SignatureTypeCode.TypeHandle, (ushort)WellKnownType.System_Type,
+                    (ushort)SignatureTypeCode.TypeHandle, (ushort)WellKnownType.System_Type,
+
                 // CSharp_Meta_MetaPrimitives__AddTrait
                 (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
                 (ushort)WellKnownType.CSharp_Meta_MetaPrimitives,                                                           // DeclaringTypeId
@@ -2933,6 +2942,30 @@ namespace Microsoft.CodeAnalysis
                     1,                                                                                                      // Method Signature
                     (ushort)SignatureTypeCode.SZArray, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
                     (ushort)SignatureTypeCode.SZArray, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+
+                // CSharp_Meta_MetaPrimitives__DefaultValue
+                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
+                (ushort)WellKnownType.CSharp_Meta_MetaPrimitives,                                                           // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    1,                                                                                                      // Method Signature
+                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (ushort)SignatureTypeCode.TypeHandle, (ushort)WellKnownType.System_Type,
+
+                // CSharp_Meta_MetaPrimitives__IsReadOnly
+                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
+                (ushort)WellKnownType.CSharp_Meta_MetaPrimitives,                                                           // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    1,                                                                                                      // Method Signature
+                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
+                    (ushort)SignatureTypeCode.TypeHandle, (ushort)WellKnownType.System_Reflection_PropertyInfo,
+
+                // CSharp_Meta_MetaPrimitives__IsWriteOnly
+                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
+                (ushort)WellKnownType.CSharp_Meta_MetaPrimitives,                                                           // DeclaringTypeId
+                0,                                                                                                          // Arity
+                    1,                                                                                                      // Method Signature
+                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
+                    (ushort)SignatureTypeCode.TypeHandle, (ushort)WellKnownType.System_Reflection_PropertyInfo,
 
                 // CSharp_Meta_MetaPrimitives__ParameterType
                 (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
@@ -3314,11 +3347,15 @@ namespace Microsoft.CodeAnalysis
                 ".ctor",                                    // System_ComponentModel_EditorBrowsableAttribute__ctor
                 "SustainedLowLatency",                      // System_Runtime_GCLatencyMode__SustainedLowLatency
                 "Format",                                   // System_String__Format_IFormatProvider
+                "IsAssignableFrom",                         // CSharp_Meta_MetaExtensions__IsAssignableFrom
                 "AddTrait",                                 // CSharp_Meta_MetaPrimitives__AddTrait
                 "AddTrait",                                 // CSharp_Meta_MetaPrimitives__AddTrait_T
                 "ApplyDecorator",                           // CSharp_Meta_MetaPrimitives__ApplyDecorator
                 "CloneArguments",                           // CSharp_Meta_MetaPrimitives__CloneArguments
                 "CloneArgumentsToObjectArray",              // CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray
+                "DefaultValue",                             // CSharp_Meta_MetaPrimitives__DefaultValue
+                "IsReadOnly",                               // CSharp_Meta_MetaPrimitives__IsReadOnly
+                "IsWriteOnly",                              // CSharp_Meta_MetaPrimitives__IsWriteOnly
                 "ParameterType",                            // CSharp_Meta_MetaPrimitives__ParameterType
                 "ParameterType",                            // CSharp_Meta_MetaPrimitives__ParameterType2
                 "ThisObjectType",                           // CSharp_Meta_MetaPrimitives__ThisObjectType

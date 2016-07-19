@@ -75,6 +75,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             }
         }
 
+        protected virtual void BeforeMakeInterfaceInfo()
+        {
+        }
+
         private InterfaceInfo GetInterfaceInfo()
         {
             var info = _lazyInterfaceInfo;
@@ -83,6 +87,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 Debug.Assert(info != s_noInterfaces || info.IsDefaultValue(), "default value was modified");
                 return info;
             }
+
+            BeforeMakeInterfaceInfo();
 
             for (var baseType = this; !ReferenceEquals(baseType, null); baseType = baseType.BaseTypeNoUseSiteDiagnostics)
             {

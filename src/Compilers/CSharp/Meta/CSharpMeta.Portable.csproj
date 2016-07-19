@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="Settings">
+    <Import Project="..\..\..\..\build\Targets\VSL.Settings.targets" />
+  </ImportGroup>
+  <PropertyGroup>
+    <OutDir>$(OutDir)CSharp.Meta\Portable\</OutDir>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{1C299725-8E5F-416D-8E72-52E46401EE26}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AuthenticodeCertificateName>MicrosoftSHA1Win8WinBlue</AuthenticodeCertificateName>
+    <RootNamespace>CSharp.Meta</RootNamespace>
+    <AssemblyName>CSharp.Meta</AssemblyName>
+    <ProjectTypeGuids>{786C830F-07A1-408B-BD7F-6EE04809D6DB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <TargetFrameworkProfile>Profile259</TargetFrameworkProfile>
+    <TargetFrameworkIdentifier>.NETPortable</TargetFrameworkIdentifier>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <CopyNuGetImplementations>false</CopyNuGetImplementations>
+    <DefineConstants>PORTABLE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- A reference to the entire .NET Framework is automatically included -->
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Metaclass.cs" />
+    <Compile Include="Decorator.cs" />
+    <Compile Include="MetaException.cs" />
+    <Compile Include="MetaExtensions.cs" />
+    <Compile Include="MetaPrimitives.cs" />
+    <Compile Include="Trait.cs" />
+  </ItemGroup>
+  <ImportGroup Label="Targets">
+    <Import Project="..\..\..\..\build\Targets\VSL.Imports.targets" />
+  </ImportGroup>
+</Project>

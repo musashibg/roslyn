@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 
 namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
     internal abstract class BaseBindingTimeAnalyzer : BoundTreeVisitor<BindingTimeAnalyzerFlags, BindingTimeAnalysisResult>
     {
         private readonly DiagnosticBag _diagnostics;
+        private readonly CancellationToken _cancellationToken;
         private readonly Location _sourceLocation;
         private readonly List<EncapsulatingStatementKind> _encapsulatingStatements;
 
@@ -22,16 +24,19 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             get { return _variableBindingTimes; }
         }
 
-        protected BaseBindingTimeAnalyzer(CSharpCompilation compilation, DiagnosticBag diagnostics, Location sourceLocation)
+        protected BaseBindingTimeAnalyzer(CSharpCompilation compilation, DiagnosticBag diagnostics, CancellationToken cancellationToken, Location sourceLocation)
         {
             Compilation = compilation;
             _diagnostics = diagnostics;
+            _cancellationToken = cancellationToken;
             _sourceLocation = sourceLocation;
             _encapsulatingStatements = new List<EncapsulatingStatementKind>();
         }
 
         public override BindingTimeAnalysisResult Visit(BoundNode node, BindingTimeAnalyzerFlags flags)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
+
             if (node == null)
             {
                 return new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue);
@@ -305,8 +310,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetAccessors)
                     || method.OriginalDefinition == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T)
                     || method.OriginalDefinition == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T2)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaExtensions__IsAssignableFrom)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArguments)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsReadOnly)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsWriteOnly)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType2)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType)
@@ -365,9 +373,25 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 {
                     return new BindingTimeAnalysisResult(BindingTime.StaticComplexValue, null, receiverResult.ComplexValuedSymbols);
                 }
+                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaExtensions__IsAssignableFrom))
+                {
+                    if (argumentsResults[0].BindingTime != BindingTime.Dynamic
+                        && argumentsResults[1].BindingTime != BindingTime.Dynamic)
+                    {
+                        return new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue);
+                    }
+                }
                 else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArguments))
                 {
                     return new BindingTimeAnalysisResult(BindingTime.StaticArgumentArray);
+                }
+                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsReadOnly)
+                         || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsWriteOnly))
+                {
+                    if (argumentsResults[0].BindingTime != BindingTime.Dynamic)
+                    {
+                        return new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue);
+                    }
                 }
                 else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
                          || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType2))

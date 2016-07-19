@@ -74,7 +74,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             cancellationToken.ThrowIfCancellationRequested();
 
             // Perform binding-time analysis on the decorator method's body in order to identify variables, expressions and statements which can be statically evaluated
-            var bindingTimeAnalyzer = new MetaclassBindingTimeAnalyzer(compilation, diagnostics, metaclassData.ApplicationSyntaxReference.GetLocation(), applicationMethod, metaclassArguments);
+            var bindingTimeAnalyzer = new MetaclassBindingTimeAnalyzer(
+                compilation,
+                diagnostics,
+                cancellationToken,
+                metaclassData.ApplicationSyntaxReference.GetLocation(),
+                applicationMethod,
+                metaclassArguments);
             if (!bindingTimeAnalyzer.PerformAnalysis())
             {
                 return;

@@ -166,6 +166,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private ThreeState _lazyContainsExtensionMethods;
         private ThreeState _lazyAnyMemberHasAttributes;
 
+        private readonly ManualResetEventSlim _allPartsCompleteEvent;
+        // No Interlocked.CompareExchange for boolean values forces us to use int
+        private int _currentlyProcessingFlag;
+
         private ImmutableArray<MetaclassData> _lazyMetaclasses;
 
         #region Construction
@@ -196,6 +200,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 : SpecialType.None;
 
             _flags = new Flags(specialType, modifiers, typeKind);
+
+            _allPartsCompleteEvent = new ManualResetEventSlim();
 
             var containingType = this.ContainingType;
             if ((object)containingType != null && containingType.IsSealed && this.DeclaredAccessibility.HasProtected())
@@ -381,6 +387,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         #endregion
 
+        protected override void BeforeMakeInterfaceInfo()
+        {
+            // Ensure the base type has been fully processed
+            var sourceBaseType = BaseType as SourceMemberContainerTypeSymbol;
+            if (sourceBaseType != null)
+            {
+                sourceBaseType.WaitForCompletion(CancellationToken.None);
+            }
+
+            base.BeforeMakeInterfaceInfo();
+        }
+
         #region Metaclasses and traits
 
         internal ImmutableArray<MetaclassData> GetMetaclasses()
@@ -437,13 +455,22 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         private void ApplyMetaclasses(CancellationToken cancellationToken)
         {
-            DiagnosticBag diagnostics = DiagnosticBag.GetInstance();
-            var compilationState = new TypeCompilationState(this, DeclaringCompilation, null);
-            MetaclassApplicationPass.ApplyMetaclasses(this, compilationState, diagnostics, cancellationToken);
+            if (!GetMetaclasses().IsEmpty)
+            {
+                // Ensure the base type has been fully processed
+                var sourceBaseType = BaseType as SourceMemberContainerTypeSymbol;
+                if (sourceBaseType != null)
+                {
+                    sourceBaseType.WaitForCompletion(cancellationToken);
+                }
 
-            AddDeclarationDiagnostics(diagnostics);
-            diagnostics.Free();
+                DiagnosticBag diagnostics = DiagnosticBag.GetInstance();
+                var compilationState = new TypeCompilationState(this, DeclaringCompilation, null);
+                MetaclassApplicationPass.ApplyMetaclasses(this, compilationState, diagnostics, cancellationToken);
 
+                AddDeclarationDiagnostics(diagnostics);
+                diagnostics.Free();
+            }
             state.NotePartComplete(CompletionPart.Metaclasses);
         }
 
@@ -733,150 +760,199 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return state.HasComplete(part);
         }
 
+        internal void WaitForCompletion(CancellationToken cancellationToken)
+        {
+            if (HasComplete(CompletionPart.All))
+            {
+                return;
+            }
+
+            if (_currentlyProcessingFlag == 0)
+            {
+                ForceComplete(null, cancellationToken);
+            }
+
+            while (!HasComplete(CompletionPart.All))
+            {
+                _allPartsCompleteEvent.Wait(100, cancellationToken);
+            }
+
+            // If all parts are complete, ensure the event is set
+            if (!_allPartsCompleteEvent.IsSet)
+            {
+                _allPartsCompleteEvent.Set();
+            }
+        }
+
         protected abstract void CheckBase(DiagnosticBag diagnostics);
         protected abstract void CheckInterfaces(DiagnosticBag diagnostics);
 
         internal override void ForceComplete(SourceLocation locationOpt, CancellationToken cancellationToken)
         {
-            while (true)
+            if (Interlocked.CompareExchange(ref _currentlyProcessingFlag, 1, 0) == 1)
             {
-                // NOTE: cases that depend on GetMembers[ByName] should call RequireCompletionPartMembers.
-                cancellationToken.ThrowIfCancellationRequested();
-                var incompletePart = state.NextIncompletePart;
-                switch (incompletePart)
+                // Another thread is already executing ForceComplete on this type. We wait until it is done
+                while (!HasComplete(CompletionPart.All))
                 {
-                    case CompletionPart.Attributes:
-                        GetAttributes();
-                        break;
-
-                    case CompletionPart.StartBaseType:
-                    case CompletionPart.FinishBaseType:
-                        if (state.NotePartComplete(CompletionPart.StartBaseType))
-                        {
-                            var diagnostics = DiagnosticBag.GetInstance();
-                            CheckBase(diagnostics);
-                            AddDeclarationDiagnostics(diagnostics);
-                            state.NotePartComplete(CompletionPart.FinishBaseType);
-                            diagnostics.Free();
-                        }
-                        break;
-
-                    case CompletionPart.StartInterfaces:
-                    case CompletionPart.FinishInterfaces:
-                        if (state.NotePartComplete(CompletionPart.StartInterfaces))
-                        {
-                            var diagnostics = DiagnosticBag.GetInstance();
-                            CheckInterfaces(diagnostics);
-                            AddDeclarationDiagnostics(diagnostics);
-                            state.NotePartComplete(CompletionPart.FinishInterfaces);
-                            diagnostics.Free();
-                        }
-                        break;
-
-                    case CompletionPart.EnumUnderlyingType:
-                        var discarded = this.EnumUnderlyingType;
-                        break;
-
-                    case CompletionPart.TypeArguments:
-                        {
-                            var tmp = this.TypeArgumentsNoUseSiteDiagnostics; // force type arguments
-                        }
-                        break;
-
-                    case CompletionPart.TypeParameters:
-                        // force type parameters
-                        foreach (var typeParameter in this.TypeParameters)
-                        {
-                            typeParameter.ForceComplete(locationOpt, cancellationToken);
-                        }
-
-                        state.NotePartComplete(CompletionPart.TypeParameters);
-                        break;
-
-                    case CompletionPart.Members:
-                        this.GetMembersByName();
-                        break;
-
-                    case CompletionPart.TypeMembers:
-                        this.GetTypeMembersUnordered();
-                        break;
-
-                    case CompletionPart.SynthesizedExplicitImplementations:
-                        this.GetSynthesizedExplicitImplementations(cancellationToken); //force interface and base class errors to be checked
-                        break;
-
-                    case CompletionPart.StartMemberChecks:
-                    case CompletionPart.FinishMemberChecks:
-                        if (state.NotePartComplete(CompletionPart.StartMemberChecks))
-                        {
-                            var diagnostics = DiagnosticBag.GetInstance();
-                            AfterMembersChecks(diagnostics);
-                            AddDeclarationDiagnostics(diagnostics);
-
-                            // We may produce a SymbolDeclaredEvent for the enclosing type before events for its contained members
-                            DeclaringCompilation.SymbolDeclaredEvent(this);
-                            var thisThreadCompleted = state.NotePartComplete(CompletionPart.FinishMemberChecks);
-                            Debug.Assert(thisThreadCompleted);
-                            diagnostics.Free();
-                        }
-                        break;
-
-                    case CompletionPart.MembersCompleted:
-                        {
-                            ImmutableArray<Symbol> members = this.GetMembersUnordered();
-
-                            bool allCompleted = true;
-
-                            if (locationOpt == null)
-                            {
-                                foreach (var member in members)
-                                {
-                                    cancellationToken.ThrowIfCancellationRequested();
-                                    member.ForceComplete(locationOpt, cancellationToken);
-                                }
-                            }
-                            else
-                            {
-                                foreach (var member in members)
-                                {
-                                    ForceCompleteMemberByLocation(locationOpt, member, cancellationToken);
-                                    allCompleted = allCompleted && member.HasComplete(CompletionPart.All);
-                                }
-                            }
-
-                            if (!allCompleted)
-                            {
-                                // We did not complete all members so we won't have enough information for
-                                // the PointedAtManagedTypeChecks, so just kick out now.
-                                var allParts = CompletionPart.NamedTypeSymbolWithLocationAll;
-                                state.SpinWaitComplete(allParts, cancellationToken);
-                                return;
-                            }
-
-                            EnsureFieldDefinitionsNoted();
-
-                            // We've completed all members, so we're ready for the PointedAtManagedTypeChecks;
-                            // proceed to the next iteration.
-                            state.NotePartComplete(CompletionPart.MembersCompleted);
-                            break;
-                        }
-
-                    case CompletionPart.Metaclasses:
-                        ApplyMetaclasses(cancellationToken);
-                        break;
-
-                    case CompletionPart.None:
-                        return;
-
-                    default:
-                        // This assert will trigger if we forgot to handle any of the completion parts
-                        Debug.Assert((incompletePart & CompletionPart.NamedTypeSymbolAll) == 0);
-                        // any other values are completion parts intended for other kinds of symbols
-                        state.NotePartComplete(CompletionPart.All & ~CompletionPart.NamedTypeSymbolAll);
-                        break;
+                    _allPartsCompleteEvent.Wait(100, cancellationToken);
                 }
 
-                state.SpinWaitComplete(incompletePart, cancellationToken);
+                // If all parts are complete, ensure the event is set
+                if (!_allPartsCompleteEvent.IsSet)
+                {
+                    _allPartsCompleteEvent.Set();
+                }
+                return;
+            }
+
+            try
+            {
+                while (true)
+                {
+                    // NOTE: cases that depend on GetMembers[ByName] should call RequireCompletionPartMembers.
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var incompletePart = state.NextIncompletePart;
+                    switch (incompletePart)
+                    {
+                        case CompletionPart.Attributes:
+                            GetAttributes();
+                            break;
+
+                        case CompletionPart.StartBaseType:
+                        case CompletionPart.FinishBaseType:
+                            if (state.NotePartComplete(CompletionPart.StartBaseType))
+                            {
+                                var diagnostics = DiagnosticBag.GetInstance();
+                                CheckBase(diagnostics);
+                                AddDeclarationDiagnostics(diagnostics);
+                                state.NotePartComplete(CompletionPart.FinishBaseType);
+                                diagnostics.Free();
+                            }
+                            break;
+
+                        case CompletionPart.StartInterfaces:
+                        case CompletionPart.FinishInterfaces:
+                            if (state.NotePartComplete(CompletionPart.StartInterfaces))
+                            {
+                                var diagnostics = DiagnosticBag.GetInstance();
+                                CheckInterfaces(diagnostics);
+                                AddDeclarationDiagnostics(diagnostics);
+                                state.NotePartComplete(CompletionPart.FinishInterfaces);
+                                diagnostics.Free();
+                            }
+                            break;
+
+                        case CompletionPart.EnumUnderlyingType:
+                            var discarded = this.EnumUnderlyingType;
+                            break;
+
+                        case CompletionPart.TypeArguments:
+                            {
+                                var tmp = this.TypeArgumentsNoUseSiteDiagnostics; // force type arguments
+                            }
+                            break;
+
+                        case CompletionPart.TypeParameters:
+                            // force type parameters
+                            foreach (var typeParameter in this.TypeParameters)
+                            {
+                                typeParameter.ForceComplete(locationOpt, cancellationToken);
+                            }
+
+                            state.NotePartComplete(CompletionPart.TypeParameters);
+                            break;
+
+                        case CompletionPart.Members:
+                            this.GetMembersByName();
+                            break;
+
+                        case CompletionPart.TypeMembers:
+                            this.GetTypeMembersUnordered();
+                            break;
+
+                        case CompletionPart.SynthesizedExplicitImplementations:
+                            this.GetSynthesizedExplicitImplementations(cancellationToken); //force interface and base class errors to be checked
+                            break;
+
+                        case CompletionPart.StartMemberChecks:
+                        case CompletionPart.FinishMemberChecks:
+                            if (state.NotePartComplete(CompletionPart.StartMemberChecks))
+                            {
+                                var diagnostics = DiagnosticBag.GetInstance();
+                                AfterMembersChecks(diagnostics, cancellationToken);
+                                AddDeclarationDiagnostics(diagnostics);
+
+                                // We may produce a SymbolDeclaredEvent for the enclosing type before events for its contained members
+                                DeclaringCompilation.SymbolDeclaredEvent(this);
+                                var thisThreadCompleted = state.NotePartComplete(CompletionPart.FinishMemberChecks);
+                                Debug.Assert(thisThreadCompleted);
+                                diagnostics.Free();
+                            }
+                            break;
+
+                        case CompletionPart.MembersCompleted:
+                            {
+                                ImmutableArray<Symbol> members = this.GetMembersUnordered();
+
+                                bool allCompleted = true;
+
+                                if (locationOpt == null)
+                                {
+                                    foreach (var member in members)
+                                    {
+                                        cancellationToken.ThrowIfCancellationRequested();
+                                        member.ForceComplete(locationOpt, cancellationToken);
+                                    }
+                                }
+                                else
+                                {
+                                    foreach (var member in members)
+                                    {
+                                        ForceCompleteMemberByLocation(locationOpt, member, cancellationToken);
+                                        allCompleted = allCompleted && member.HasComplete(CompletionPart.All);
+                                    }
+                                }
+
+                                if (!allCompleted)
+                                {
+                                    // We did not complete all members so we won't have enough information for
+                                    // the PointedAtManagedTypeChecks, so just kick out now.
+                                    var allParts = CompletionPart.NamedTypeSymbolWithLocationAll;
+                                    state.SpinWaitComplete(allParts, cancellationToken);
+                                    _allPartsCompleteEvent.Set();
+                                    return;
+                                }
+
+                                EnsureFieldDefinitionsNoted();
+
+                                // We've completed all members, so we're ready for the PointedAtManagedTypeChecks;
+                                // proceed to the next iteration.
+                                state.NotePartComplete(CompletionPart.MembersCompleted);
+                                break;
+                            }
+
+                        case CompletionPart.Metaclasses:
+                            ApplyMetaclasses(cancellationToken);
+                            break;
+
+                        case CompletionPart.None:
+                            _allPartsCompleteEvent.Set();
+                            return;
+
+                        default:
+                            // This assert will trigger if we forgot to handle any of the completion parts
+                            Debug.Assert((incompletePart & CompletionPart.NamedTypeSymbolAll) == 0);
+                            // any other values are completion parts intended for other kinds of symbols
+                            state.NotePartComplete(CompletionPart.All & ~CompletionPart.NamedTypeSymbolAll);
+                            break;
+                    }
+
+                    state.SpinWaitComplete(incompletePart, cancellationToken);
+                }
+            }
+            finally
+            {
+                _currentlyProcessingFlag = 0;
             }
 
             throw ExceptionUtilities.Unreachable;
@@ -1647,24 +1723,41 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return _lazyMembersDictionary;
         }
 
-        protected void AfterMembersChecks(DiagnosticBag diagnostics)
+        protected void AfterMembersChecks(DiagnosticBag diagnostics, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (IsInterface)
             {
                 CheckInterfaceMembers(this.GetMembersAndInitializers().NonTypeNonIndexerMembers, diagnostics);
             }
+            cancellationToken.ThrowIfCancellationRequested();
 
             CheckMemberNamesDistinctFromType(diagnostics);
+            cancellationToken.ThrowIfCancellationRequested();
+
             CheckMemberNameConflicts(diagnostics);
+            cancellationToken.ThrowIfCancellationRequested();
+
             CheckSpecialMemberErrors(diagnostics);
+            cancellationToken.ThrowIfCancellationRequested();
+
             CheckTypeParameterNameConflicts(diagnostics);
+            cancellationToken.ThrowIfCancellationRequested();
+
             CheckAccessorNameConflicts(diagnostics);
+            cancellationToken.ThrowIfCancellationRequested();
 
             bool unused = KnownCircularStruct;
 
             CheckSequentialOnPartialType(diagnostics);
+            cancellationToken.ThrowIfCancellationRequested();
+
             CheckForProtectedInStaticClass(diagnostics);
+            cancellationToken.ThrowIfCancellationRequested();
+
             CheckForUnmatchedOperators(diagnostics);
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Decorators
             if (this is SourceNamedTypeSymbol)
@@ -1672,12 +1765,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 HashSet<DiagnosticInfo> useSiteDiagnostics = null;
                 if (this.IsDerivedFrom(DeclaringCompilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator), false, ref useSiteDiagnostics))
                 {
-                    CheckDecoratorTypeSafety(diagnostics);
-                    CheckDecoratorOrMetaclassMembers(diagnostics);
+                    CheckDecoratorTypeSafety(diagnostics, cancellationToken);
+                    CheckDecoratorOrMetaclassMembers(diagnostics, cancellationToken);
                 }
                 else if (this.IsDerivedFrom(DeclaringCompilation.GetWellKnownType(WellKnownType.CSharp_Meta_Metaclass), false, ref useSiteDiagnostics))
                 {
-                    CheckDecoratorOrMetaclassMembers(diagnostics);
+                    CheckDecoratorOrMetaclassMembers(diagnostics, cancellationToken);
                 }
             }
         }
@@ -2215,13 +2308,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal bool HasDecoratorOrMetaclassMembersErrors { get; private set; }
 
-        private void CheckDecoratorOrMetaclassMembers(DiagnosticBag outerDiagnostics)
+        private void CheckDecoratorOrMetaclassMembers(DiagnosticBag outerDiagnostics, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Ensure that the base type's members have been fully processed first
             var sourceBaseType = BaseType as SourceMemberContainerTypeSymbol;
             if (sourceBaseType != null)
             {
-                sourceBaseType.ForceComplete(null, CancellationToken.None);
+                sourceBaseType.WaitForCompletion(cancellationToken);
             }
 
             DiagnosticBag diagnostics = DiagnosticBag.GetInstance();
@@ -2229,6 +2324,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             ImmutableArray<Symbol> members = GetMembers();
             foreach (Symbol member in members)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 switch (member.Kind)
                 {
                     case SymbolKind.Field:
@@ -2269,17 +2366,21 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal bool HasDecoratorMethodErrors { get; private set; }
 
-        private void CheckDecoratorTypeSafety(DiagnosticBag outerDiagnostics)
+        private void CheckDecoratorTypeSafety(DiagnosticBag outerDiagnostics, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             DiagnosticBag diagnostics = DiagnosticBag.GetInstance();
 
             var decoratorMethods = new Dictionary<DecoratedMemberKind, SourceMemberMethodSymbol>();
             foreach (DecoratedMemberKind targetMemberKind in Enum.GetValues(typeof(DecoratedMemberKind)))
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 SourceMemberMethodSymbol decoratorMethod = ((SourceNamedTypeSymbol)this).FindDecoratorMethod(targetMemberKind);
                 if (decoratorMethod != null)
                 {
-                    DecoratorMethodTypeChecker.PerformTypeCheck(DeclaringCompilation, decoratorMethod, targetMemberKind, diagnostics);
+                    DecoratorMethodTypeChecker.PerformTypeCheck(DeclaringCompilation, decoratorMethod, targetMemberKind, diagnostics, cancellationToken);
                     decoratorMethods.Add(targetMemberKind, decoratorMethod);
                 }
             }

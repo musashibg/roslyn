@@ -253,6 +253,7 @@ namespace Microsoft.CodeAnalysis
         // Decorators
         CSharp_Meta_Decorator,
         CSharp_Meta_Metaclass,
+        CSharp_Meta_MetaExtensions,
         CSharp_Meta_MetaPrimitives,
         CSharp_Meta_Trait,
 
@@ -503,6 +504,7 @@ namespace Microsoft.CodeAnalysis
 
             "CSharp.Meta.Decorator",
             "CSharp.Meta.Metaclass",
+            "CSharp.Meta.MetaExtensions",
             "CSharp.Meta.MetaPrimitives",
             "CSharp.Meta.Trait",
         };

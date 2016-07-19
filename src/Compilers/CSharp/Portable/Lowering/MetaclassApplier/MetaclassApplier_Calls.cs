@@ -29,7 +29,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 return VisitGetProperties(node, receiverValue, argumentValues);
             }
-            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAssignableFrom))
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAssignableFrom)
+                     || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaExtensions__IsAssignableFrom))
             {
                 return VisitIsAssignableFromCall(node, receiverValue, argumentValues);
             }
@@ -54,6 +55,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ApplyDecorator))
             {
                 return VisitApplyDecoratorCall(node, argumentValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsReadOnly))
+            {
+                return VisitIsReadOnlyCall(node, argumentValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsWriteOnly))
+            {
+                return VisitIsWriteOnlyCall(node, argumentValues);
             }
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
                      || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType2))
@@ -154,27 +163,44 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitIsAssignableFromCall(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
         {
-            Debug.Assert(receiverValue != null && argumentValues.Length == 1);
-            CompileTimeValue otherTypeValue = argumentValues[0];
-
-            if (receiverValue is ConstantStaticValue)
+            CompileTimeValue targetTypeValue;
+            CompileTimeValue sourceTypeValue;
+            bool isExtensionMethod;
+            MethodSymbol method = node.Method;
+            CSharpSyntaxNode syntax = node.Syntax;
+            if (method.IsStatic)
             {
-                Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                Debug.Assert(argumentValues.Length == 2);
+                targetTypeValue = argumentValues[0];
+                sourceTypeValue = argumentValues[1];
+                isExtensionMethod = true;
+            }
+            else
+            {
+                Debug.Assert(receiverValue != null && argumentValues.Length == 1);
+                targetTypeValue = receiverValue;
+                sourceTypeValue = argumentValues[0];
+                isExtensionMethod = false;
+            }
+
+            if (targetTypeValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)targetTypeValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[0] : node.ReceiverOpt).Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
-            if (otherTypeValue is ConstantStaticValue)
+            if (sourceTypeValue is ConstantStaticValue)
             {
-                Debug.Assert(((ConstantStaticValue)otherTypeValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                Debug.Assert(((ConstantStaticValue)sourceTypeValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[1] : node.Arguments[0]).Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
-            Debug.Assert(receiverValue is TypeValue && otherTypeValue is TypeValue);
+            Debug.Assert(targetTypeValue is TypeValue && sourceTypeValue is TypeValue);
             return new ConstantStaticValue(
                 ConstantValue.Create(
-                    MetaUtils.CheckTypeIsAssignableFrom(((TypeValue)receiverValue).Type, ((TypeValue)otherTypeValue).Type)));
+                    MetaUtils.CheckTypeIsAssignableFrom(((TypeValue)receiverValue).Type, ((TypeValue)sourceTypeValue).Type)));
         }
 
         private CompileTimeValue VisitGetParametersCall(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
@@ -239,7 +265,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (argumentValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)argumentValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -402,11 +428,56 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
+        private CompileTimeValue VisitIsReadOnlyCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
+        {
+            Debug.Assert(argumentValues.Length == 1);
+            CompileTimeValue propertyInfoValue = argumentValues[0];
+
+            if (propertyInfoValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)propertyInfoValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            Debug.Assert(propertyInfoValue is PropertyInfoValue);
+            PropertySymbol property = ((PropertyInfoValue)propertyInfoValue).Property;
+
+            bool isReadOnly = (property.SetMethod == null);
+            return new ConstantStaticValue(ConstantValue.Create(isReadOnly));
+        }
+
+        private CompileTimeValue VisitIsWriteOnlyCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
+        {
+            Debug.Assert(argumentValues.Length == 1);
+            CompileTimeValue propertyInfoValue = argumentValues[0];
+
+            if (propertyInfoValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)propertyInfoValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            Debug.Assert(propertyInfoValue is PropertyInfoValue);
+            PropertySymbol property = ((PropertyInfoValue)propertyInfoValue).Property;
+
+            bool isWriteOnly = (property.GetMethod == null);
+            return new ConstantStaticValue(ConstantValue.Create(isWriteOnly));
+        }
+
         private CompileTimeValue VisitParameterTypeCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
             Debug.Assert(argumentValues.Length == 2);
             CompileTimeValue memberInfoValue = argumentValues[0];
             CompileTimeValue parameterIndexValue = argumentValues[1];
+
+            if (memberInfoValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)memberInfoValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
 
             Symbol member;
             if (memberInfoValue is MethodInfoValue)
@@ -465,6 +536,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         {
             Debug.Assert(argumentValues.Length == 1);
             CompileTimeValue memberInfoValue = argumentValues[0];
+
+            if (memberInfoValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)memberInfoValue).Value.IsNull);
+                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
 
             Symbol member;
             if (memberInfoValue is MethodInfoValue)

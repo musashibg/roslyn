@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 
 namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 {
@@ -13,6 +14,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         private readonly SourceMemberMethodSymbol _decoratorMethod;
         private readonly DecoratedMemberKind _targetMemberKind;
         private readonly DiagnosticBag _diagnostics;
+        private readonly CancellationToken _cancellationToken;
 
         private DecoratorMethodTypeCheckerFlags _flags;
         private ImmutableHashSet<LocalSymbol> _invalidatedLocals;
@@ -24,12 +26,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             CSharpCompilation compilation,
             SourceMemberMethodSymbol decoratorMethod,
             DecoratedMemberKind targetMemberKind,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            CancellationToken cancellationToken)
         {
             _compilation = compilation;
             _decoratorMethod = decoratorMethod;
             _targetMemberKind = targetMemberKind;
             _diagnostics = diagnostics;
+            _cancellationToken = cancellationToken;
             _invalidatedLocals = ImmutableHashSet.Create<LocalSymbol>();
             _blacklistedLocals = ImmutableHashSet.Create<LocalSymbol>();
 
@@ -81,15 +85,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             CSharpCompilation compilation,
             SourceMemberMethodSymbol decoratorMethod,
             DecoratedMemberKind targetMemberKind,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!decoratorMethod.GetDecorators().IsEmpty)
             {
                 diagnostics.Add(ErrorCode.ERR_DecoratedDecoratorMethod, decoratorMethod.SyntaxNode.Location);
                 return;
             }
 
-            var typeChecker = new DecoratorMethodTypeChecker(compilation, decoratorMethod, targetMemberKind, diagnostics);
+            var typeChecker = new DecoratorMethodTypeChecker(compilation, decoratorMethod, targetMemberKind, diagnostics, cancellationToken);
 
             BoundBlock decoratorBody = decoratorMethod.EarlyBoundBody;
             if (decoratorBody == null)
@@ -107,6 +114,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult Visit(BoundNode node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
+
             Debug.Assert(node != null);
 
             if (node is BoundStatement)
@@ -581,6 +590,23 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     new ExtendedTypeInfo(node.Type), // This should be object[]
                     argumentTypingResult.UpdatedSubtypingAssertions);
             }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__DefaultValue))
+            {
+                // MetaPrimitives.DefaultValue(<type expression>) might return a specially-typed value
+                Debug.Assert(node.Arguments.Length == 1 && node.Type.IsObjectType());
+
+                DecoratorTypingResult argumentResult = Visit(node.Arguments[0], subtypingAssertions);
+
+                ExtendedTypeInfo typeValue = TryParseTypeFromExpression(node.Arguments[0]);
+                if (typeValue != null && !typeValue.IsOrdinaryType)
+                {
+                    return new DecoratorTypingResult(true, typeValue, argumentResult.UpdatedSubtypingAssertions);
+                }
+                else
+                {
+                    return new DecoratorTypingResult(true, new ExtendedTypeInfo(node.Type), argumentResult.UpdatedSubtypingAssertions);
+                }
+            }
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsAssignableFrom))
             {
                 // <type expression 1>.IsAssignableFrom(<type expression 2>) might introduce a subtyping assertion
@@ -588,6 +614,24 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
                 ExtendedTypeInfo supertypeValue = TryParseTypeFromExpression(receiverOpt);
                 ExtendedTypeInfo subtypeValue = TryParseTypeFromExpression(node.Arguments[0]);
+                if (supertypeValue != null && subtypeValue != null
+                    && !(supertypeValue.IsOrdinaryType && subtypeValue.IsOrdinaryType))
+                {
+                    ImmutableHashSet<SubtypingAssertion> assertionsIfTrue = ImmutableHashSet.Create(
+                        SubtypingAssertionComparer.Singleton,
+                        new SubtypingAssertion(supertypeValue, subtypeValue)
+                    );
+
+                    return new DecoratorTypingResult(true, new ExtendedTypeInfo(node.Type), subtypingAssertions, assertionsIfTrue);
+                }
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaExtensions__IsAssignableFrom))
+            {
+                // MetaExtensions.IsAssignableFrom(<type expression 1>, <type expression 2>) might introduce a subtyping assertion
+                Debug.Assert(node.Arguments.Length == 2 && node.Type.SpecialType == SpecialType.System_Boolean);
+
+                ExtendedTypeInfo supertypeValue = TryParseTypeFromExpression(node.Arguments[0]);
+                ExtendedTypeInfo subtypeValue = TryParseTypeFromExpression(node.Arguments[1]);
                 if (supertypeValue != null && subtypeValue != null
                     && !(supertypeValue.IsOrdinaryType && subtypeValue.IsOrdinaryType))
                 {

@@ -23,10 +23,6 @@
       <Project>{1EE8CAD3-55F9-4D91-96B2-084641DA9A6C}</Project>
       <Name>CodeAnalysis</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Meta\CSharpMeta.csproj">
-      <Project>{69e37a80-0942-48cc-a90e-cd3da7676dde}</Project>
-      <Name>CSharpMeta</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Portable\CSharpCodeAnalysis.csproj">
       <Project>{B501A547-C911-4A05-AC6E-274A50DFF30E}</Project>
       <Name>CSharpCodeAnalysis</Name>

@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="Settings">
+    <Import Project="..\..\..\..\build\Targets\VSL.Settings.targets" />
+  </ImportGroup>
+  <PropertyGroup>
+    <OutDir>$(OutDir)CSharp.Meta\NetFX20\</OutDir>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{92912BA4-B873-4CC0-B994-AE3CD56FAD16}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AuthenticodeCertificateName>MicrosoftSHA1Win8WinBlue</AuthenticodeCertificateName>
+    <RootNamespace>CSharp.Meta</RootNamespace>
+    <AssemblyName>CSharp.Meta</AssemblyName>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <CopyNuGetImplementations>false</CopyNuGetImplementations>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Metaclass.cs" />
+    <Compile Include="Decorator.cs" />
+    <Compile Include="MetaException.cs" />
+    <Compile Include="MetaPrimitives.cs" />
+    <Compile Include="Trait.cs" />
+  </ItemGroup>
+  <ImportGroup Label="Targets">
+    <Import Project="..\..\..\..\build\Targets\VSL.Imports.targets" />
+  </ImportGroup>
+</Project>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 
 namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
@@ -14,10 +15,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         public MetaclassBindingTimeAnalyzer(
             CSharpCompilation compilation,
             DiagnosticBag diagnostics,
+            CancellationToken cancellationToken,
             Location sourceLocation,
             SourceMemberMethodSymbol applicationMethod,
             ImmutableDictionary<Symbol, BoundExpression> metaclassArguments)
-            : base(compilation, diagnostics, sourceLocation)
+            : base(compilation, diagnostics, cancellationToken, sourceLocation)
         {
             _applicationMethod = applicationMethod;
             _metaclassArguments = metaclassArguments;

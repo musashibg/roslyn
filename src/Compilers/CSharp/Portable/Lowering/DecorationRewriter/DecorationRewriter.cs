@@ -23,6 +23,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly SyntheticBoundNodeFactory _factory;
         private readonly DecorationBindingTimeAnalyzer _bindingTimeAnalyzer;
         private readonly DiagnosticBag _diagnostics;
+        private readonly CancellationToken _cancellationToken;
         private readonly List<EncapsulatingStatementKind> _encapsulatingStatements;
         private readonly VariableNameGenerator _variableNameGenerator;
 
@@ -43,7 +44,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableDictionary<Symbol, BoundExpression> decoratorArguments,
             SyntheticBoundNodeFactory factory,
             DecorationBindingTimeAnalyzer bindingTimeAnalyzer,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            CancellationToken cancellationToken)
         {
             _compilation = compilation;
             _targetMethod = targetMethod;
@@ -79,6 +81,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             Debug.Assert(factory.CurrentType == targetMethod.ContainingType);
             _bindingTimeAnalyzer = bindingTimeAnalyzer;
             _diagnostics = diagnostics;
+            _cancellationToken = cancellationToken;
 
             _encapsulatingStatements = new List<EncapsulatingStatementKind>();
             _variableNameGenerator = new VariableNameGenerator(_targetMethod.Parameters.Select(p => p.Name));
@@ -128,6 +131,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             var bindingTimeAnalyzer = new DecorationBindingTimeAnalyzer(
                 compilation,
                 diagnostics,
+                cancellationToken,
                 decoratorData.ApplicationSyntaxReference.GetLocation(),
                 targetMemberKind,
                 decoratorMethod,
@@ -151,7 +155,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 decoratorArguments,
                 factory,
                 bindingTimeAnalyzer,
-                diagnostics);
+                diagnostics,
+                cancellationToken);
             return decorationRewriter.Rewrite(decoratorBody);
         }
 
@@ -163,6 +168,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override DecorationRewriteResult Visit(BoundNode node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
+
             if (node == null)
             {
                 return null;
