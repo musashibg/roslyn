@@ -27,6 +27,24 @@
           "lib/net45/Newtonsoft.Json.dll": {}
         }
       },
+      "Roslyn.Microsoft.Build/0.0.2": {
+        "compile": {
+          "lib/net46/Microsoft.Build.Conversion.Core.dll": {},
+          "lib/net46/Microsoft.Build.Engine.dll": {},
+          "lib/net46/Microsoft.Build.Framework.dll": {},
+          "lib/net46/Microsoft.Build.Tasks.Core.dll": {},
+          "lib/net46/Microsoft.Build.Utilities.Core.dll": {},
+          "lib/net46/Microsoft.Build.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.Build.Conversion.Core.dll": {},
+          "lib/net46/Microsoft.Build.Engine.dll": {},
+          "lib/net46/Microsoft.Build.Framework.dll": {},
+          "lib/net46/Microsoft.Build.Tasks.Core.dll": {},
+          "lib/net46/Microsoft.Build.Utilities.Core.dll": {},
+          "lib/net46/Microsoft.Build.dll": {}
+        }
+      },
       "System.Collections.Immutable/1.2.0": {
         "compile": {
           "lib/portable-net45+win8+wp8+wpa81/System.Collections.Immutable.dll": {}
@@ -93,6 +111,21 @@
         "tools/install.ps1"
       ]
     },
+    "Roslyn.Microsoft.Build/0.0.2": {
+      "sha512": "AGvWVTxa1glWiDSPvgbGOkQD+qwIB46L3ZMKCgGo29cK3Z4hEiOImpllsvLzZkdDhgtms6IA+6/9GiZhCsGJ9A==",
+      "type": "package",
+      "path": "Roslyn.Microsoft.Build/0.0.2",
+      "files": [
+        "Roslyn.Microsoft.Build.0.0.2.nupkg.sha512",
+        "Roslyn.Microsoft.Build.nuspec",
+        "lib/net46/Microsoft.Build.Conversion.Core.dll",
+        "lib/net46/Microsoft.Build.Engine.dll",
+        "lib/net46/Microsoft.Build.Framework.dll",
+        "lib/net46/Microsoft.Build.Tasks.Core.dll",
+        "lib/net46/Microsoft.Build.Utilities.Core.dll",
+        "lib/net46/Microsoft.Build.dll"
+      ]
+    },
     "System.Collections.Immutable/1.2.0": {
       "sha512": "Cma8cBW6di16ZLibL8LYQ+cLjGzoKxpOTu/faZfDcx94ZjAGq6Nv5RO7+T1YZXqEXTZP9rt1wLVEONVpURtUqw==",
       "type": "package",
@@ -125,7 +158,9 @@
     }
   },
   "projectFileDependencyGroups": {
-    "": [],
+    "": [
+      "Roslyn.Microsoft.Build >= 0.0.2"
+    ],
     ".NETFramework,Version=v4.6": []
   }
 }

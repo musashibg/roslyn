@@ -32,12 +32,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Completion.Providers
             return ts != null && ts.IsIntrinsicType();
         }
 
-        protected override string GetInsertionText(
-            CompletionItem item, ISymbol symbol, SyntaxContext context, char ch)
-        {
-            return GetInsertionText(symbol, context);
-        }
-
         public static string GetInsertionText(ISymbol symbol, SyntaxContext context)
         {
             string name;

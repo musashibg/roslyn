@@ -528,12 +528,70 @@
           "lib/net45/NuGet.VisualStudio.dll": {}
         }
       },
+      "Roslyn.Microsoft.Build/0.0.2": {
+        "compile": {
+          "lib/net46/Microsoft.Build.Conversion.Core.dll": {},
+          "lib/net46/Microsoft.Build.Engine.dll": {},
+          "lib/net46/Microsoft.Build.Framework.dll": {},
+          "lib/net46/Microsoft.Build.Tasks.Core.dll": {},
+          "lib/net46/Microsoft.Build.Utilities.Core.dll": {},
+          "lib/net46/Microsoft.Build.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.Build.Conversion.Core.dll": {},
+          "lib/net46/Microsoft.Build.Engine.dll": {},
+          "lib/net46/Microsoft.Build.Framework.dll": {},
+          "lib/net46/Microsoft.Build.Tasks.Core.dll": {},
+          "lib/net46/Microsoft.Build.Utilities.Core.dll": {},
+          "lib/net46/Microsoft.Build.dll": {}
+        }
+      },
+      "Roslyn.Microsoft.VisualStudio.ExtensionManager/0.0.4": {
+        "compile": {
+          "lib/net46/Microsoft.VisualStudio.ExtensionManager.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.VisualStudio.ExtensionManager.dll": {}
+        }
+      },
+      "RoslynDependencies.Microsoft.Internal.Performance.CodeMarkers.DesignTime/14.3.25407": {
+        "compile": {
+          "lib/net46/Microsoft.Internal.Performance.CodeMarkers.DesignTime.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.Internal.Performance.CodeMarkers.DesignTime.dll": {}
+        }
+      },
+      "RoslynDependencies.Microsoft.Internal.VisualStudio.Shell.Interop.14.0.DesignTime/14.3.25407": {
+        "compile": {
+          "lib/net46/Microsoft.Internal.VisualStudio.Shell.Interop.14.0.DesignTime.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.Internal.VisualStudio.Shell.Interop.14.0.DesignTime.dll": {}
+        }
+      },
       "RoslynDependencies.Microsoft.VisualStudio.CallHierarchy.Package.Definitions/14.3.25407": {
         "compile": {
           "lib/net46/Microsoft.VisualStudio.CallHierarchy.Package.Definitions.dll": {}
         },
         "runtime": {
           "lib/net46/Microsoft.VisualStudio.CallHierarchy.Package.Definitions.dll": {}
+        }
+      },
+      "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost/14.3.25407": {
+        "compile": {
+          "lib/net46/Microsoft.VisualStudio.ComponentModelHost.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.VisualStudio.ComponentModelHost.dll": {}
+        }
+      },
+      "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider/14.3.25420": {
+        "compile": {
+          "lib/net46/Microsoft.VisualStudio.Diagnostics.PerformanceProvider.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.VisualStudio.Diagnostics.PerformanceProvider.dll": {}
         }
       },
       "RoslynDependencies.Microsoft.VisualStudio.GraphModel/14.3.25407": {
@@ -1198,6 +1256,51 @@
         "tools/install.ps1"
       ]
     },
+    "Roslyn.Microsoft.Build/0.0.2": {
+      "sha512": "AGvWVTxa1glWiDSPvgbGOkQD+qwIB46L3ZMKCgGo29cK3Z4hEiOImpllsvLzZkdDhgtms6IA+6/9GiZhCsGJ9A==",
+      "type": "package",
+      "path": "Roslyn.Microsoft.Build/0.0.2",
+      "files": [
+        "Roslyn.Microsoft.Build.0.0.2.nupkg.sha512",
+        "Roslyn.Microsoft.Build.nuspec",
+        "lib/net46/Microsoft.Build.Conversion.Core.dll",
+        "lib/net46/Microsoft.Build.Engine.dll",
+        "lib/net46/Microsoft.Build.Framework.dll",
+        "lib/net46/Microsoft.Build.Tasks.Core.dll",
+        "lib/net46/Microsoft.Build.Utilities.Core.dll",
+        "lib/net46/Microsoft.Build.dll"
+      ]
+    },
+    "Roslyn.Microsoft.VisualStudio.ExtensionManager/0.0.4": {
+      "sha512": "EIU7Aqh5nc7YGZjk8Nw+xGIXyaF3slOehmH3hYl4UVpGSuZS9faB/GufEnZvASC0GcEmZDRK/zHbEYEXfbJFRg==",
+      "type": "package",
+      "path": "Roslyn.Microsoft.VisualStudio.ExtensionManager/0.0.4",
+      "files": [
+        "Roslyn.Microsoft.VisualStudio.ExtensionManager.0.0.4.nupkg.sha512",
+        "Roslyn.Microsoft.VisualStudio.ExtensionManager.nuspec",
+        "lib/net46/Microsoft.VisualStudio.ExtensionManager.dll"
+      ]
+    },
+    "RoslynDependencies.Microsoft.Internal.Performance.CodeMarkers.DesignTime/14.3.25407": {
+      "sha512": "s7yeUocq5dN0CKCMHZlA3OL1WFS/aMdQzWxV539YhE10GlByBoIf9ioGjHy2Eth56s51JrcY/4EpvYSSQQW98g==",
+      "type": "package",
+      "path": "RoslynDependencies.Microsoft.Internal.Performance.CodeMarkers.DesignTime/14.3.25407",
+      "files": [
+        "RoslynDependencies.Microsoft.Internal.Performance.CodeMarkers.DesignTime.14.3.25407.nupkg.sha512",
+        "RoslynDependencies.Microsoft.Internal.Performance.CodeMarkers.DesignTime.nuspec",
+        "lib/net46/Microsoft.Internal.Performance.CodeMarkers.DesignTime.dll"
+      ]
+    },
+    "RoslynDependencies.Microsoft.Internal.VisualStudio.Shell.Interop.14.0.DesignTime/14.3.25407": {
+      "sha512": "ErzRV1kLBlVrD2u0V/np1YH3OQRNoeT8vPqSpGK2U9A5+712bGuAnw6pM+z2fviFewETIk3FfFCuN1cxSHxbuQ==",
+      "type": "package",
+      "path": "RoslynDependencies.Microsoft.Internal.VisualStudio.Shell.Interop.14.0.DesignTime/14.3.25407",
+      "files": [
+        "RoslynDependencies.Microsoft.Internal.VisualStudio.Shell.Interop.14.0.DesignTime.14.3.25407.nupkg.sha512",
+        "RoslynDependencies.Microsoft.Internal.VisualStudio.Shell.Interop.14.0.DesignTime.nuspec",
+        "lib/net46/Microsoft.Internal.VisualStudio.Shell.Interop.14.0.DesignTime.dll"
+      ]
+    },
     "RoslynDependencies.Microsoft.VisualStudio.CallHierarchy.Package.Definitions/14.3.25407": {
       "sha512": "M7Xl4VYTB5ZetWRee/RtylVn5DK3N0EE8r2jY7S1JyLva4H2hFhrtbL4VMsxsuD1FJaKISTGcnytePSO8k12hw==",
       "type": "package",
@@ -1206,6 +1309,26 @@
         "RoslynDependencies.Microsoft.VisualStudio.CallHierarchy.Package.Definitions.14.3.25407.nupkg.sha512",
         "RoslynDependencies.Microsoft.VisualStudio.CallHierarchy.Package.Definitions.nuspec",
         "lib/net46/Microsoft.VisualStudio.CallHierarchy.Package.Definitions.dll"
+      ]
+    },
+    "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost/14.3.25407": {
+      "sha512": "Sjz+W1gRFQnCQETH+GkAut5h08NWEwDAMCUTg+tTiZZEZ86kbNfl47LnHiEm1dZTd5v5gej4iU698lqsTS4W+A==",
+      "type": "package",
+      "path": "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost/14.3.25407",
+      "files": [
+        "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost.14.3.25407.nupkg.sha512",
+        "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost.nuspec",
+        "lib/net46/Microsoft.VisualStudio.ComponentModelHost.dll"
+      ]
+    },
+    "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider/14.3.25420": {
+      "sha512": "nhZy6p69UCv3axBbQjsr7cNcRqwH4Rcob4/jSDlzNNamwALZ8EcdToz0N77d2ddTDOK05Jzc4aZK3zmjHcAdjA==",
+      "type": "package",
+      "path": "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider/14.3.25420",
+      "files": [
+        "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider.14.3.25420.nupkg.sha512",
+        "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider.nuspec",
+        "lib/net46/Microsoft.VisualStudio.Diagnostics.PerformanceProvider.dll"
       ]
     },
     "RoslynDependencies.Microsoft.VisualStudio.GraphModel/14.3.25407": {
@@ -1540,6 +1663,9 @@
       "ManagedEsent >= 1.9.2",
       "Microsoft.CodeAnalysis.Elfie >= 0.10.6-rc2",
       "NuGet.VisualStudio >= 3.3.0",
+      "Roslyn.Microsoft.Build >= 0.0.2",
+      "RoslynDependencies.Microsoft.Internal.Performance.CodeMarkers.DesignTime >= 14.3.25407",
+      "RoslynDependencies.Microsoft.Internal.VisualStudio.Shell.Interop.14.0.DesignTime >= 14.3.25407",
       "RoslynDependencies.Microsoft.VisualStudio.CallHierarchy.Package.Definitions >= 14.3.25407",
       "RoslynDependencies.Microsoft.VisualStudio.GraphModel >= 14.3.25407",
       "RoslynDependencies.Microsoft.VisualStudio.Progression >= 14.3.25407"

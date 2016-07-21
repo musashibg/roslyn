@@ -2050,8 +2050,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 lambda.ReturnType,
                 lambda.MessageID,
                 node.Syntax,
-                true,
-                lambda.IsAsync);
+                true);
 
             // Creating a new lambda symbol automatically creates fresh parameter symbols so we need to populate the replacement symbols collection with them
             int parameterCount = lambda.ParameterCount;

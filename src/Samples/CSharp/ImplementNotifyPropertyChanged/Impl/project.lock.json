@@ -467,6 +467,30 @@
           "lib/net45/Newtonsoft.Json.dll": {}
         }
       },
+      "Roslyn.Microsoft.VisualStudio.ExtensionManager/0.0.4": {
+        "compile": {
+          "lib/net46/Microsoft.VisualStudio.ExtensionManager.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.VisualStudio.ExtensionManager.dll": {}
+        }
+      },
+      "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost/14.3.25407": {
+        "compile": {
+          "lib/net46/Microsoft.VisualStudio.ComponentModelHost.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.VisualStudio.ComponentModelHost.dll": {}
+        }
+      },
+      "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider/14.3.25420": {
+        "compile": {
+          "lib/net46/Microsoft.VisualStudio.Diagnostics.PerformanceProvider.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.VisualStudio.Diagnostics.PerformanceProvider.dll": {}
+        }
+      },
       "RoslynDependencies.Microsoft.VisualStudio.Text.Internal/14.3.25407": {
         "compile": {
           "lib/net45/Microsoft.VisualStudio.Text.Internal.dll": {}
@@ -958,6 +982,30 @@
         },
         "runtime": {
           "lib/net45/Newtonsoft.Json.dll": {}
+        }
+      },
+      "Roslyn.Microsoft.VisualStudio.ExtensionManager/0.0.4": {
+        "compile": {
+          "lib/net46/Microsoft.VisualStudio.ExtensionManager.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.VisualStudio.ExtensionManager.dll": {}
+        }
+      },
+      "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost/14.3.25407": {
+        "compile": {
+          "lib/net46/Microsoft.VisualStudio.ComponentModelHost.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.VisualStudio.ComponentModelHost.dll": {}
+        }
+      },
+      "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider/14.3.25420": {
+        "compile": {
+          "lib/net46/Microsoft.VisualStudio.Diagnostics.PerformanceProvider.dll": {}
+        },
+        "runtime": {
+          "lib/net46/Microsoft.VisualStudio.Diagnostics.PerformanceProvider.dll": {}
         }
       },
       "RoslynDependencies.Microsoft.VisualStudio.Text.Internal/14.3.25407": {
@@ -1475,6 +1523,36 @@
         "lib/portable-net45+wp80+win8+wpa81/Newtonsoft.Json.dll",
         "lib/portable-net45+wp80+win8+wpa81/Newtonsoft.Json.xml",
         "tools/install.ps1"
+      ]
+    },
+    "Roslyn.Microsoft.VisualStudio.ExtensionManager/0.0.4": {
+      "sha512": "EIU7Aqh5nc7YGZjk8Nw+xGIXyaF3slOehmH3hYl4UVpGSuZS9faB/GufEnZvASC0GcEmZDRK/zHbEYEXfbJFRg==",
+      "type": "package",
+      "path": "Roslyn.Microsoft.VisualStudio.ExtensionManager/0.0.4",
+      "files": [
+        "Roslyn.Microsoft.VisualStudio.ExtensionManager.0.0.4.nupkg.sha512",
+        "Roslyn.Microsoft.VisualStudio.ExtensionManager.nuspec",
+        "lib/net46/Microsoft.VisualStudio.ExtensionManager.dll"
+      ]
+    },
+    "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost/14.3.25407": {
+      "sha512": "Sjz+W1gRFQnCQETH+GkAut5h08NWEwDAMCUTg+tTiZZEZ86kbNfl47LnHiEm1dZTd5v5gej4iU698lqsTS4W+A==",
+      "type": "package",
+      "path": "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost/14.3.25407",
+      "files": [
+        "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost.14.3.25407.nupkg.sha512",
+        "RoslynDependencies.Microsoft.VisualStudio.ComponentModelHost.nuspec",
+        "lib/net46/Microsoft.VisualStudio.ComponentModelHost.dll"
+      ]
+    },
+    "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider/14.3.25420": {
+      "sha512": "nhZy6p69UCv3axBbQjsr7cNcRqwH4Rcob4/jSDlzNNamwALZ8EcdToz0N77d2ddTDOK05Jzc4aZK3zmjHcAdjA==",
+      "type": "package",
+      "path": "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider/14.3.25420",
+      "files": [
+        "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider.14.3.25420.nupkg.sha512",
+        "RoslynDependencies.Microsoft.VisualStudio.Diagnostics.PerformanceProvider.nuspec",
+        "lib/net46/Microsoft.VisualStudio.Diagnostics.PerformanceProvider.dll"
       ]
     },
     "RoslynDependencies.Microsoft.VisualStudio.Text.Internal/14.3.25407": {
