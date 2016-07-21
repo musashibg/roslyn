@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using Microsoft.CodeAnalysis.Editor.Commands;
 
 namespace Microsoft.CodeAnalysis.Editor.Implementation.IntelliSense.Completion
@@ -31,10 +32,12 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.IntelliSense.Completion
             var completionService = this.GetCompletionService();
             if (completionService == null)
             {
+                Trace.WriteLine("Failed to get completion service, cannot have a completion session.");
                 return;
             }
 
-            StartNewModelComputation(completionService, filterItems: false, dismissIfEmptyAllowed: false);
+            StartNewModelComputation(
+                completionService, filterItems: false, dismissIfEmptyAllowed: false);
         }
     }
 }

@@ -32,17 +32,23 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BoundNode VisitCatchBlock(BoundCatchBlock node)
         {
-            LocalSymbol localOpt = node.LocalOpt;
-            if (localOpt != null)
+            if (!node.Locals.IsEmpty)
             {
-                _symbolsBuilder.Add(localOpt);
+                foreach (LocalSymbol local in node.Locals)
+                {
+                    _symbolsBuilder.Add(local);
+                }
             }
             return base.VisitCatchBlock(node);
         }
 
         public override BoundNode VisitForEachStatement(BoundForEachStatement node)
         {
-            _symbolsBuilder.Add(node.IterationVariable);
+            LocalSymbol iterationVariableOpt = node.IterationVariableOpt;
+            if (iterationVariableOpt != null)
+            {
+                _symbolsBuilder.Add(iterationVariableOpt);
+            }
             return base.VisitForEachStatement(node);
         }
 

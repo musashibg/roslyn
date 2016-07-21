@@ -29,6 +29,11 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.Diagnostics.UserDiagnos
             symbolKindsWithNoCodeBlocks.Add(SymbolKind.Property);
             symbolKindsWithNoCodeBlocks.Add(SymbolKind.NamedType);
 
+            var syntaxKindsMissing = new HashSet<SyntaxKind>();
+
+            // AllInOneCSharpCode has no deconstruction.
+            syntaxKindsMissing.Add(SyntaxKind.VariableDeconstructionDeclarator);
+
             var analyzer = new CSharpTrackingDiagnosticAnalyzer();
             using (var workspace = await TestWorkspace.CreateCSharpAsync(source, TestOptions.Regular))
             {
@@ -37,7 +42,7 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.Diagnostics.UserDiagnos
                 await DiagnosticProviderTestUtilities.GetAllDiagnosticsAsync(analyzer, document, new Text.TextSpan(0, document.GetTextAsync().Result.Length));
                 analyzer.VerifyAllAnalyzerMembersWereCalled();
                 analyzer.VerifyAnalyzeSymbolCalledForAllSymbolKinds();
-                analyzer.VerifyAnalyzeNodeCalledForAllSyntaxKinds();
+                analyzer.VerifyAnalyzeNodeCalledForAllSyntaxKinds(syntaxKindsMissing);
                 analyzer.VerifyOnCodeBlockCalledForAllSymbolAndMethodKinds(symbolKindsWithNoCodeBlocks, true);
             }
         }

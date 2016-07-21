@@ -671,11 +671,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitCatchBlock(BoundCatchBlock node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            LocalSymbol localOpt = node.LocalOpt;
-            if (localOpt != null)
+            if (!node.Locals.IsEmpty)
             {
-                // Add the exception variable to the typing context
-                _variableTypes = _variableTypes.Add(localOpt, new ExtendedTypeInfo(localOpt.Type));
+                // Add the exception variables to the typing context
+                foreach (LocalSymbol local in node.Locals)
+                {
+                    _variableTypes = _variableTypes.Add(local, new ExtendedTypeInfo(local.Type));
+                }
             }
 
             bool isSuccessful = true;
@@ -1056,8 +1058,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         public override DecoratorTypingResult VisitForEachStatement(BoundForEachStatement node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
             // Add the foreach iteration variable to the typing context
-            LocalSymbol iterationVariable = node.IterationVariable;
-            _variableTypes = _variableTypes.Add(iterationVariable, new ExtendedTypeInfo(iterationVariable.Type));
+            LocalSymbol iterationVariableOpt = node.IterationVariableOpt;
+            if (iterationVariableOpt != null)
+            {
+                _variableTypes = _variableTypes.Add(iterationVariableOpt, new ExtendedTypeInfo(iterationVariableOpt.Type));
+            }
 
             DecoratorTypingResult expressionTypingResult = VisitAndCleanUpInvalidatedLocals(node.Expression, subtypingAssertions);
             bool isSuccessful = expressionTypingResult.IsSuccessful;
@@ -1802,14 +1807,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitSwitchSection(BoundSwitchSection node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitList(node.BoundSwitchLabels, ref subtypingAssertions);
+            bool isSuccessful = VisitList(node.SwitchLabels, ref subtypingAssertions);
             isSuccessful &= VisitList(node.Statements, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, null, subtypingAssertions);
         }
 
         public override DecoratorTypingResult VisitSwitchStatement(BoundSwitchStatement node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            DecoratorTypingResult boundExpressionTypingResult = VisitAndCleanUpInvalidatedLocals(node.BoundExpression, subtypingAssertions);
+            DecoratorTypingResult boundExpressionTypingResult = VisitAndCleanUpInvalidatedLocals(node.Expression, subtypingAssertions);
             bool isSuccessful = boundExpressionTypingResult.IsSuccessful;
 
             ImmutableHashSet<SubtypingAssertion> preSectionSubtypingAssertions = boundExpressionTypingResult.UpdatedSubtypingAssertions;

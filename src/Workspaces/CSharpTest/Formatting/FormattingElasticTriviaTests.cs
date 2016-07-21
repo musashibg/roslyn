@@ -153,6 +153,7 @@ public class SomeAttribute : System.Attribute { }
                 attributeLists: default(SyntaxList<AttributeListSyntax>),
                 decorators: default(SyntaxList<MetaDecorationSyntax>),
                 modifiers: SyntaxFactory.TokenList(),
+                refKeyword: default(SyntaxToken),
                 type: SyntaxFactory.PredefinedType(
                     SyntaxFactory.Token(
                         SyntaxKind.StringKeyword)),

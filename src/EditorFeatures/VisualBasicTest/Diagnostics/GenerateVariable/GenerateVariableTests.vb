@@ -3,6 +3,7 @@
 Option Strict Off
 
 Imports System.Threading.Tasks
+Imports Microsoft.CodeAnalysis.CodeActions
 Imports Microsoft.CodeAnalysis.CodeFixes
 Imports Microsoft.CodeAnalysis.Diagnostics
 Imports Microsoft.CodeAnalysis.VisualBasic.CodeFixes.GenerateVariable
@@ -13,6 +14,10 @@ Namespace Microsoft.CodeAnalysis.Editor.VisualBasic.UnitTests.Diagnostics.Genera
 
         Friend Overrides Function CreateDiagnosticProviderAndFixer(workspace As Workspace) As Tuple(Of DiagnosticAnalyzer, CodeFixProvider)
             Return New Tuple(Of DiagnosticAnalyzer, CodeFixProvider)(Nothing, New GenerateVariableCodeFixProvider())
+        End Function
+
+        Protected Overrides Function MassageActions(actions As IList(Of CodeAction)) As IList(Of CodeAction)
+            Return FlattenActions(actions)
         End Function
 
         <Fact, Trait(Traits.Feature, Traits.Features.CodeActionsGenerateVariable)>
@@ -181,7 +186,7 @@ NewLines("Class A \n Friend field As Integer \n End Class \n Class B \n Public S
         Public Async Function TestOnlyGenerateFieldInByRefProperty() As Task
             Await TestExactActionSetOfferedAsync(
 NewLines("Class A \n End Class \n Class B \n Public Sub Foo(ByRef d As Integer) \n End Sub \n Public Sub Bar() \n Dim s As New A() \n Foo(s.[|field|]) \n End Sub \n End Class"),
-{String.Format(FeaturesResources.GenerateFieldIn, "field", "A")})
+{String.Format(FeaturesResources.Generate_field_0_in_1, "field", "A")})
         End Function
 
         <Fact, Trait(Traits.Feature, Traits.Features.CodeActionsGenerateVariable)>

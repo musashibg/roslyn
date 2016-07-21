@@ -77,10 +77,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             var bindingTimeAnalyzer = new MetaclassBindingTimeAnalyzer(
                 compilation,
                 diagnostics,
-                cancellationToken,
                 metaclassData.ApplicationSyntaxReference.GetLocation(),
                 applicationMethod,
-                metaclassArguments);
+                metaclassArguments,
+                cancellationToken);
             if (!bindingTimeAnalyzer.PerformAnalysis())
             {
                 return;
@@ -463,7 +463,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override CompileTimeValue VisitForEachStatement(BoundForEachStatement node, object arg)
         {
-            LocalSymbol iterationVariable = node.IterationVariable;
+            LocalSymbol iterationVariableOpt = node.IterationVariableOpt;
             CompileTimeValue expressionValue = Visit(node.Expression, arg);
             Debug.Assert(expressionValue.Kind != CompileTimeValueKind.Dynamic && expressionValue.Kind != CompileTimeValueKind.ArgumentArray);
 
@@ -482,7 +482,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 if (iterationIndex < arrayValue.Array.Length)
                 {
-                    _variableValues[iterationVariable] = arrayValue.Array[iterationIndex];
+                    if (iterationVariableOpt != null)
+                    {
+                        _variableValues[iterationVariableOpt] = arrayValue.Array[iterationIndex];
+                    }
                     try
                     {
                         Visit(node.Body, arg);
@@ -869,14 +872,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override CompileTimeValue VisitSwitchStatement(BoundSwitchStatement node, object arg)
         {
-            CompileTimeValue expressionValue = Visit(node.BoundExpression, arg);
+            CompileTimeValue expressionValue = Visit(node.Expression, arg);
             Debug.Assert(expressionValue is ConstantStaticValue || expressionValue is EnumValue);
 
             BoundSwitchSection matchingSection = null;
             foreach (BoundSwitchSection switchSection in node.SwitchSections)
             {
                 bool hasMatchingLabel = false;
-                foreach (BoundSwitchLabel switchLabel in switchSection.BoundSwitchLabels)
+                foreach (BoundSwitchLabel switchLabel in switchSection.SwitchLabels)
                 {
                     CompileTimeValue labelExpressionValue = Visit(switchLabel.ExpressionOpt, arg);
                     if (labelExpressionValue != null)
@@ -901,7 +904,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 foreach (BoundSwitchSection switchSection in node.SwitchSections)
                 {
                     bool hasMatchingLabel = false;
-                    foreach (BoundSwitchLabel switchLabel in switchSection.BoundSwitchLabels)
+                    foreach (BoundSwitchLabel switchLabel in switchSection.SwitchLabels)
                     {
                         if (switchLabel.ExpressionOpt == null)
                         {

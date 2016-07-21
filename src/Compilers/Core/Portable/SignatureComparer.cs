@@ -1,5 +1,6 @@
-﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection.Metadata;
@@ -22,7 +23,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// Returns true if signature matches signature of the field.
         /// Signature should be in format described in MemberDescriptor.
         /// </summary>
-        public bool MatchFieldSignature(FieldSymbol field, ImmutableArray<ushort> signature)
+        public bool MatchFieldSignature(FieldSymbol field, ImmutableArray<byte> signature)
         {
             int position = 0;
 
@@ -37,7 +38,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// Returns true if signature matches signature of the property.
         /// Signature should be in format described in MemberDescriptor.
         /// </summary>
-        public bool MatchPropertySignature(PropertySymbol property, ImmutableArray<ushort> signature)
+        public bool MatchPropertySignature(PropertySymbol property, ImmutableArray<byte> signature)
         {
             int position = 0;
 
@@ -75,7 +76,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// Returns true if signature matches signature of the method.
         /// Signature should be in format described in MemberDescriptor.
         /// </summary>
-        public bool MatchMethodSignature(MethodSymbol method, ImmutableArray<ushort> signature)
+        public bool MatchMethodSignature(MethodSymbol method, ImmutableArray<byte> signature)
         {
             int position = 0;
 
@@ -109,7 +110,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
             return true;
         }
 
-        private bool MatchParameter(ParameterSymbol parameter, ImmutableArray<ushort> signature, ref int position)
+        private bool MatchParameter(ParameterSymbol parameter, ImmutableArray<byte> signature, ref int position)
         {
             SignatureTypeCode typeCode = (SignatureTypeCode)signature[position];
             bool isByRef;
@@ -139,7 +140,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// 
         /// Signature should be in format described in MemberDescriptor.
         /// </summary>
-        private bool MatchType(TypeSymbol type, ImmutableArray<ushort> signature, ref int position)
+        private bool MatchType(TypeSymbol type, ImmutableArray<byte> signature, ref int position)
         {
             if (type == null)
             {
@@ -160,8 +161,8 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
                     // ...
                     // ELEMENT_TYPE_VALUETYPE 0x11 Followed by TypeDef or TypeRef token
                     // ELEMENT_TYPE_CLASS 0x12 Followed by TypeDef or TypeRef token
-
-                    return MatchTypeToTypeId(type, signature[position++]);
+                    short expectedType = ReadTypeId(signature, ref position);
+                    return MatchTypeToTypeId(type, expectedType);
 
                 case SignatureTypeCode.Array:
                     if (!MatchType(GetMDArrayElementType(type), signature, ref position))
@@ -207,6 +208,23 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
 
                 default:
                     throw ExceptionUtilities.UnexpectedValue(typeCode);
+            }
+        }
+
+        /// <summary>
+        /// Read a type Id from the signature.
+        /// This may consume one or two bytes, and therefore increment the position correspondingly.
+        /// </summary>
+        private static short ReadTypeId(ImmutableArray<byte> signature, ref int position)
+        {
+            var firstByte = signature[position++];
+            if (firstByte == (byte)WellKnownType.ExtSentinel)
+            {
+                return (short)(signature[position++] + WellKnownType.ExtSentinel);
+            }
+            else
+            {
+                return firstByte;
             }
         }
 

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
@@ -9,6 +9,7 @@ using System.Linq;
 using System.Windows.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Editor.Shared.Options;
 using Microsoft.CodeAnalysis.ErrorReporting;
 using Microsoft.CodeAnalysis.Host;
 using Microsoft.CodeAnalysis.Notification;
@@ -41,7 +42,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
         /// </summary>
         private string _filePathOpt;
 
-        private readonly MiscellaneousFilesWorkspace _miscellaneousFilesWorkspaceOpt;
         private readonly VisualStudioWorkspaceImpl _visualStudioWorkspaceOpt;
         private readonly IContentTypeRegistryService _contentTypeRegistryService;
         private readonly IVsReportExternalErrors _externalErrorReporter;
@@ -100,6 +100,14 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
         private static readonly EventHandler<bool> s_additionalDocumentClosingEventHandler = OnAdditionalDocumentClosing;
         private static readonly EventHandler s_additionalDocumentUpdatedOnDiskEventHandler = OnAdditionalDocumentUpdatedOnDisk;
 
+        private readonly DiagnosticDescriptor _errorReadingRulesetRule = new DiagnosticDescriptor(
+            id: IDEDiagnosticIds.ErrorReadingRulesetId,
+            title: ServicesVSResources.ErrorReadingRuleset,
+            messageFormat: ServicesVSResources.Error_reading_ruleset_file_0_1,
+            category: FeaturesResources.Roslyn_HostError,
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
         public AbstractProject(
             VisualStudioProjectTracker projectTracker,
             Func<ProjectId, IVsReportExternalErrors> reportExternalErrorCreatorOpt,
@@ -107,7 +115,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
             IVsHierarchy hierarchy,
             string language,
             IServiceProvider serviceProvider,
-            MiscellaneousFilesWorkspace miscellaneousFilesWorkspaceOpt,
             VisualStudioWorkspaceImpl visualStudioWorkspaceOpt,
             HostDiagnosticUpdateSource hostDiagnosticUpdateSourceOpt)
         {
@@ -132,7 +139,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
             this.ProjectTracker = projectTracker;
 
             _projectSystemName = projectSystemName;
-            _miscellaneousFilesWorkspaceOpt = miscellaneousFilesWorkspaceOpt;
             _visualStudioWorkspaceOpt = visualStudioWorkspaceOpt;
             _hostDiagnosticUpdateSourceOpt = hostDiagnosticUpdateSourceOpt;
 
@@ -232,8 +238,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
         /// </summary>
         internal string TryGetBinOutputPath() => _binOutputPathOpt;
 
-        internal VisualStudioWorkspaceImpl VisualStudioWorkspace => _visualStudioWorkspaceOpt;
-
         internal IRuleSetFile RuleSetFile => this.ruleSet;
 
         internal HostDiagnosticUpdateSource HostDiagnosticUpdateSource => _hostDiagnosticUpdateSourceOpt;
@@ -248,7 +252,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
 
         public string ProjectType => _projectType;
 
-        public Workspace Workspace => (Workspace)_visualStudioWorkspaceOpt ?? _miscellaneousFilesWorkspaceOpt;
+        public Workspace Workspace => _visualStudioWorkspaceOpt;
 
         public VersionStamp Version => _version;
 
@@ -308,7 +312,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
         {
             ValidateReferences();
 
-            return ProjectInfo.Create(
+            var info = ProjectInfo.Create(
                 this.Id,
                 this.Version,
                 this.DisplayName,
@@ -323,6 +327,8 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
                 projectReferences: _projectReferences,
                 analyzerReferences: _analyzers.Values.Select(a => a.GetReference()),
                 additionalDocuments: _additionalDocuments.Values.Select(d => d.GetInitialState()));
+
+            return info.WithHasAllInformation(_intellisenseBuildSucceeded);
         }
 
         protected ImmutableArray<string> GetStrongNameKeyPaths()
@@ -352,7 +358,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
         {
             return ImmutableArray.CreateRange(_projectReferences);
         }
-        
+
         public ImmutableArray<VisualStudioMetadataReference> GetCurrentMetadataReferences()
         {
             return ImmutableArray.CreateRange(_metadataReferences);
@@ -374,6 +380,11 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
         public IEnumerable<IVisualStudioHostDocument> GetCurrentDocuments()
         {
             return _documents.Values.ToImmutableArrayOrEmpty();
+        }
+
+        public IEnumerable<IVisualStudioHostDocument> GetCurrentAdditionalDocuments()
+        {
+            return _additionalDocuments.Values.ToImmutableArrayOrEmpty();
         }
 
         public bool ContainsFile(string moniker)
@@ -411,6 +422,11 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
             return _analyzers.ContainsKey(fullPath);
         }
 
+        /// <summary>
+        /// Returns a map from full path to <see cref="VisualStudioAnalyzer"/>.
+        /// </summary>
+        public ImmutableDictionary<string, VisualStudioAnalyzer> GetProjectAnalyzersMap() => _analyzers.ToImmutableDictionary();
+
         private static string GetAssemblyName(string outputPath)
         {
             Contract.Requires(outputPath != null);
@@ -440,11 +456,26 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
             }
         }
 
-        protected int AddMetadataReferenceAndTryConvertingToProjectReferenceIfPossible(string filePath, MetadataReferenceProperties properties, int hResultForMissingFile)
+        protected bool CanConvertToProjectReferences
+        {
+            get
+            {
+                if (this.Workspace != null)
+                {
+                    return this.Workspace.Options.GetOption(InternalFeatureOnOffOptions.ProjectReferenceConversion);
+                }
+                else
+                {
+                    return InternalFeatureOnOffOptions.ProjectReferenceConversion.DefaultValue;
+                }
+            }
+        }
+
+        protected int AddMetadataReferenceAndTryConvertingToProjectReferenceIfPossible(string filePath, MetadataReferenceProperties properties)
         {
             // If this file is coming from a project, then we should convert it to a project reference instead
             AbstractProject project;
-            if (ProjectTracker.TryGetProjectByBinPath(filePath, out project))
+            if (this.CanConvertToProjectReferences && ProjectTracker.TryGetProjectByBinPath(filePath, out project))
             {
                 var projectReference = new ProjectReference(project.Id, properties.Aliases, properties.EmbedInteropTypes);
                 if (CanAddProjectReference(projectReference))
@@ -455,13 +486,50 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
                 }
             }
 
-            if (!File.Exists(filePath))
-            {
-                return hResultForMissingFile;
-            }
-
+            // regardless whether the file exists or not, we still record it. one of reason 
+            // we do that is some cross language p2p references might be resolved
+            // after they are already reported as metadata references. since we use bin path 
+            // as a way to discover them, if we don't previously record the reference ourselves, 
+            // cross p2p references won't be resolved as p2p references when we finally have 
+            // all required information.
+            //
+            // it looks like 
+            //    1. project system sometimes won't guarantee build dependency for intellisense build 
+            //       if it is cross language dependency
+            //    2. output path of referenced cross language project might be changed to right one 
+            //       once it is already added as a metadata reference.
+            //
+            // but this has one consequence. even if a user adds a project in the solution as 
+            // a metadata reference explicitly, that dll will be automatically converted back to p2p 
+            // reference.
+            // 
+            // unfortunately there is no way to prevent this using information we have since, 
+            // at this point, we don't know whether it is a metadata reference added because 
+            // we don't have enough information yet for p2p reference or user explicitly added it 
+            // as a metadata reference.
             AddMetadataReferenceCore(this.MetadataReferenceProvider.CreateMetadataReference(this, filePath, properties));
 
+            // here, we change behavior compared to old C# language service. regardless of file being exist or not, 
+            // we will always return S_OK. this is to support cross language p2p reference better. 
+            // 
+            // this should make project system to cache all cross language p2p references regardless 
+            // whether it actually exist in disk or not. 
+            // (see Roslyn bug 7315 for history - http://vstfdevdiv:8080/DevDiv_Projects/Roslyn/_workitems?_a=edit&id=7315)
+            //
+            // after this point, Roslyn will take care of non-exist metadata reference.
+            //
+            // But, this doesn't sovle the issue where actual metadata reference 
+            // (not cross language p2p reference) is missing at the time project is opened.
+            //
+            // in that case, msbuild filter those actual metadata references out, so project system doesn't know 
+            // path to the reference. since it doesn't know where dll is, it can't (or currently doesn't) 
+            // setup file change notification either to find out when dll becomes available. 
+            //
+            // at this point, user has 2 ways to recover missing metadata reference once it becomes available.
+            //
+            // one way is explicitly clicking that missing reference from solution explorer reference node.
+            // the other is building the project. at that point, project system will refresh references 
+            // which will discover new dll and connect to us. once it is connected, we will take care of it.
             return VSConstants.S_OK;
         }
 
@@ -539,10 +607,17 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
 
         private void OnAnalyzerChanged(object sender, EventArgs e)
         {
-            VisualStudioAnalyzer analyzer = (VisualStudioAnalyzer)sender;
+            // Postpone handler's actions to prevent deadlock. This AnalyzeChanged event can
+            // be invoked while the FileChangeService lock is held, and VisualStudioAnalyzer's 
+            // efforts to listen to file changes can lead to a deadlock situation.
+            // Postponing the VisualStudioAnalyzer operations gives this thread the opportunity
+            // to release the lock.
+            Dispatcher.CurrentDispatcher.BeginInvoke(new Action(() => {
+                VisualStudioAnalyzer analyzer = (VisualStudioAnalyzer)sender;
 
-            RemoveAnalyzerAssembly(analyzer.FullPath);
-            AddAnalyzerAssembly(analyzer.FullPath);
+                RemoveAnalyzerAssembly(analyzer.FullPath);
+                AddAnalyzerAssembly(analyzer.FullPath);                
+            }));
         }
 
         // Internal for unit testing
@@ -712,7 +787,12 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
 
         protected void AddFile(string filename, SourceCodeKind sourceCodeKind, uint itemId, Func<ITextBuffer, bool> canUseTextBuffer)
         {
-            var document = this.DocumentProvider.TryGetDocumentForFile(this, itemId, filePath: filename, sourceCodeKind: sourceCodeKind, canUseTextBuffer: canUseTextBuffer);
+            var document = this.DocumentProvider.TryGetDocumentForFile(
+                this,
+                itemId,
+                filePath: filename,
+                sourceCodeKind: sourceCodeKind,
+                canUseTextBuffer: canUseTextBuffer);
 
             if (document == null)
             {
@@ -726,7 +806,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
 
             AddDocument(
                 document,
-                isCurrentContext: document.Project.Hierarchy == LinkedFileUtilities.GetContextHierarchy(document, RunningDocumentTable));
+                isCurrentContext: LinkedFileUtilities.IsCurrentContextHierarchy(document, RunningDocumentTable));
         }
 
         protected void AddUntrackedFile(string filename)
@@ -756,11 +836,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
             // We do not want to allow message pumping/reentrancy when processing project system changes.
             using (Dispatcher.CurrentDispatcher.DisableProcessing())
             {
-                if (_miscellaneousFilesWorkspaceOpt != null)
-                {
-                    _miscellaneousFilesWorkspaceOpt.OnFileIncludedInProject(document);
-                }
-
                 _documents.Add(document.Id, document);
                 _documentMonikers.Add(document.Key.Moniker, document);
 
@@ -802,11 +877,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
 
         internal void AddAdditionalDocument(IVisualStudioHostDocument document, bool isCurrentContext)
         {
-            if (_miscellaneousFilesWorkspaceOpt != null)
-            {
-                _miscellaneousFilesWorkspaceOpt.OnFileIncludedInProject(document);
-            }
-
             _additionalDocuments.Add(document.Id, document);
             _documentMonikers.Add(document.Key.Moniker, document);
 
@@ -840,6 +910,48 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
             UninitializeAdditionalDocument(document);
         }
 
+        private void AddGeneratedDocument(IVisualStudioHostDocument document, bool isCurrentContext)
+        {
+            // We do not want to allow message pumping/reentrancy when processing project system changes.
+            using (Dispatcher.CurrentDispatcher.DisableProcessing())
+            {
+                _documents.Add(document.Id, document);
+                _documentMonikers.Add(document.Key.Moniker, document);
+
+                if (_pushingChangesToWorkspaceHosts)
+                {
+                    if (document.IsOpen)
+                    {
+                        this.ProjectTracker.NotifyWorkspaceHosts(host => host.OnDocumentOpened(document.Id, document.GetOpenTextBuffer(), isCurrentContext));
+                    }
+                }
+
+                document.Opened += s_documentOpenedEventHandler;
+                document.Closing += s_documentClosingEventHandler;
+                document.UpdatedOnDisk += s_documentUpdatedOnDiskEventHandler;
+
+                DocumentProvider.NotifyDocumentRegisteredToProject(document);
+
+                if (!_pushingChangesToWorkspaceHosts && document.IsOpen)
+                {
+                    StartPushingToWorkspaceAndNotifyOfOpenDocuments();
+                }
+            }
+        }
+
+        private void RemoveGeneratedDocument(IVisualStudioHostDocument document)
+        {
+            // We do not want to allow message pumping/reentrancy when processing project system changes.
+            using (Dispatcher.CurrentDispatcher.DisableProcessing())
+            {
+                _documents.Remove(document.Id);
+                _documentMonikers.Remove(document.Key.Moniker);
+
+                UninitializeDocument(document);
+                OnDocumentRemoved(document.Key.Moniker);
+            }
+        }
+
         public virtual void Disconnect()
         {
             using (_visualStudioWorkspaceOpt?.Services.GetService<IGlobalOperationNotificationService>()?.Start("Disconnect Project"))
@@ -847,11 +959,21 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
                 // Unsubscribe IVsHierarchyEvents
                 DisconnectHierarchyEvents();
 
+                var wasPushing = _pushingChangesToWorkspaceHosts;
+
+                // disable pushing down to workspaces, so we don't get redundant workspace document removed events
+                _pushingChangesToWorkspaceHosts = false;
+
                 // The project is going away, so let's remove ourselves from the host. First, we
                 // close and dispose of any remaining documents
                 foreach (var document in this.GetCurrentDocuments())
                 {
                     UninitializeDocument(document);
+                }
+
+                foreach (var document in this.GetCurrentAdditionalDocuments())
+                {
+                    UninitializeAdditionalDocument(document);
                 }
 
                 // Dispose metadata references.
@@ -879,29 +1001,37 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
 
                 ClearAnalyzerRuleSet();
 
+                // reinstate pushing down to workspace, so the workspace project remove event fires
+                _pushingChangesToWorkspaceHosts = wasPushing;
+
                 this.ProjectTracker.RemoveProject(this);
+
+                _pushingChangesToWorkspaceHosts = false;
             }
         }
 
         internal void TryProjectConversionForIntroducedOutputPath(string binPath, AbstractProject projectToReference)
         {
-            // We should not already have references for this, since we're only introducing the path for the first time
-            Contract.ThrowIfTrue(_metadataFileNameToConvertedProjectReference.ContainsKey(binPath));
-
-            var metadataReference = TryGetCurrentMetadataReference(binPath);
-            if (metadataReference != null)
+            if (this.CanConvertToProjectReferences)
             {
-                var projectReference = new ProjectReference(
-                    projectToReference.Id,
-                    metadataReference.Properties.Aliases,
-                    metadataReference.Properties.EmbedInteropTypes);
+                // We should not already have references for this, since we're only introducing the path for the first time
+                Contract.ThrowIfTrue(_metadataFileNameToConvertedProjectReference.ContainsKey(binPath));
 
-                if (CanAddProjectReference(projectReference))
+                var metadataReference = TryGetCurrentMetadataReference(binPath);
+                if (metadataReference != null)
                 {
-                    RemoveMetadataReferenceCore(metadataReference, disposeReference: true);
-                    AddProjectReference(projectReference);
+                    var projectReference = new ProjectReference(
+                        projectToReference.Id,
+                        metadataReference.Properties.Aliases,
+                        metadataReference.Properties.EmbedInteropTypes);
 
-                    _metadataFileNameToConvertedProjectReference.Add(binPath, projectReference);
+                    if (CanAddProjectReference(projectReference))
+                    {
+                        RemoveMetadataReferenceCore(metadataReference, disposeReference: true);
+                        AddProjectReference(projectReference);
+
+                        _metadataFileNameToConvertedProjectReference.Add(binPath, projectReference);
+                    }
                 }
             }
         }
@@ -981,11 +1111,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
                 this.ProjectTracker.NotifyWorkspaceHosts(host => host.OnDocumentRemoved(document.Id));
             }
 
-            if (_miscellaneousFilesWorkspaceOpt != null)
-            {
-                _miscellaneousFilesWorkspaceOpt.OnFileRemovedFromProject(document);
-            }
-
             document.Opened -= s_documentOpenedEventHandler;
             document.Closing -= s_documentClosingEventHandler;
             document.UpdatedOnDisk -= s_documentUpdatedOnDiskEventHandler;
@@ -1003,11 +1128,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
                 }
 
                 this.ProjectTracker.NotifyWorkspaceHosts(host => host.OnAdditionalDocumentRemoved(document.Id));
-            }
-
-            if (_miscellaneousFilesWorkspaceOpt != null)
-            {
-                _miscellaneousFilesWorkspaceOpt.OnFileRemovedFromProject(document);
             }
 
             document.Opened -= s_additionalDocumentOpenedEventHandler;
@@ -1152,20 +1272,12 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
             }
             else
             {
-                string message = string.Format(ServicesVSResources.ERR_CantReadRulesetFileMessage, ruleSetFile.FilePath, ruleSetFile.GetException().Message);
-                var data = new DiagnosticData(
-                    id: IDEDiagnosticIds.ErrorReadingRulesetId,
-                    category: FeaturesResources.ErrorCategory,
-                    message: message,
-                    enuMessageForBingSearch: ServicesVSResources.ERR_CantReadRulesetFileMessage,
-                    severity: DiagnosticSeverity.Error,
-                    isEnabledByDefault: true,
-                    warningLevel: 0,
-                    workspace: this.Workspace,
-                    projectId: this.Id,
-                    title: ServicesVSResources.ERR_CantReadRulesetFileTitle);
-
-                this.HostDiagnosticUpdateSource.UpdateDiagnosticsForProject(this.Id, RuleSetErrorId, SpecializedCollections.SingletonEnumerable(data));
+                var messageArguments = new string[] { ruleSetFile.FilePath, ruleSetFile.GetException().Message };
+                DiagnosticData diagnostic;
+                if (DiagnosticData.TryCreate(_errorReadingRulesetRule, messageArguments, this.Id, this.Workspace, out diagnostic))
+                {
+                    this.HostDiagnosticUpdateSource.UpdateDiagnosticsForProject(this.Id, RuleSetErrorId, SpecializedCollections.SingletonEnumerable(diagnostic));
+                }
             }
         }
 

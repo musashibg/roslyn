@@ -1,6 +1,9 @@
-{
-  "dependencies": { },
+﻿{
+  "dependencies": {
+  },
   "frameworks": {
-    "net45": { }
+    "netstandard1.3": {
+      "imports": "portable-net452"
+    }
   }
 }

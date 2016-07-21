@@ -186,6 +186,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             return SyntaxFacts.IsInTypeOnlyContext(typeNode) && IsInContextWhichNeedsDynamicAttribute(typeNode);
         }
 
+        internal static bool IsTypeInContextWhichNeedsTupleNamesAttribute(this TupleTypeSyntax syntax)
+        {
+            Debug.Assert(syntax != null);
+            return SyntaxFacts.IsInTypeOnlyContext(syntax) && IsInContextWhichNeedsTupleNamesAttribute(syntax);
+        }
+
         internal static CSharpSyntaxNode SkipParens(this CSharpSyntaxNode expression)
         {
             while (expression != null && expression.Kind() == SyntaxKind.ParenthesizedExpression)
@@ -211,6 +217,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 case SyntaxKind.PropertyDeclaration:
                 case SyntaxKind.DelegateDeclaration:
                 case SyntaxKind.EventDeclaration:
+                case SyntaxKind.EventFieldDeclaration:
                 case SyntaxKind.BaseList:
                 case SyntaxKind.SimpleBaseType:
                     return true;
@@ -225,6 +232,71 @@ namespace Microsoft.CodeAnalysis.CSharp
                 default:
                     return node.Parent != null && IsInContextWhichNeedsDynamicAttribute(node.Parent);
             }
+        }
+
+        private static bool IsInContextWhichNeedsTupleNamesAttribute(CSharpSyntaxNode node)
+        {
+            Debug.Assert(node != null);
+
+            var current = node;
+            do
+            {
+                switch (current.Kind())
+                {
+                    case SyntaxKind.Parameter:
+                    case SyntaxKind.FieldDeclaration:
+                    case SyntaxKind.MethodDeclaration:
+                    case SyntaxKind.IndexerDeclaration:
+                    case SyntaxKind.OperatorDeclaration:
+                    case SyntaxKind.ConversionOperatorDeclaration:
+                    case SyntaxKind.PropertyDeclaration:
+                    case SyntaxKind.DelegateDeclaration:
+                    case SyntaxKind.EventDeclaration:
+                    case SyntaxKind.EventFieldDeclaration:
+                    case SyntaxKind.BaseList:
+                    case SyntaxKind.SimpleBaseType:
+                    case SyntaxKind.TypeParameterConstraintClause:
+                        return true;
+
+                    case SyntaxKind.Block:
+                    case SyntaxKind.VariableDeclarator:
+                    case SyntaxKind.Attribute:
+                    case SyntaxKind.EqualsValueClause:
+                        return false;
+
+                    default:
+                        break;
+                }
+                current = current.Parent;
+            } while (current != null);
+
+            return false;
+        }
+
+        public static IndexerDeclarationSyntax Update(
+            this IndexerDeclarationSyntax syntax,
+            SyntaxList<AttributeListSyntax> attributeLists,
+            SyntaxList<MetaDecorationSyntax> decorators,
+            SyntaxTokenList modifiers,
+            SyntaxToken refKeyword,
+            TypeSyntax type,
+            ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier,
+            SyntaxToken thisKeyword,
+            BracketedParameterListSyntax parameterList,
+            AccessorListSyntax accessorList)
+        {
+            return syntax.Update(
+                attributeLists,
+                decorators,
+                modifiers,
+                refKeyword,
+                type,
+                explicitInterfaceSpecifier,
+                thisKeyword,
+                parameterList,
+                accessorList,
+                default(ArrowExpressionClauseSyntax),
+                default(SyntaxToken));
         }
 
         public static IndexerDeclarationSyntax Update(
@@ -242,6 +314,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 attributeLists,
                 decorators,
                 modifiers,
+                default(SyntaxToken),
                 type,
                 explicitInterfaceSpecifier,
                 thisKeyword,
@@ -281,6 +354,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             SyntaxList<AttributeListSyntax> attributeLists,
             SyntaxList<MetaDecorationSyntax> decorators,
             SyntaxTokenList modifiers,
+            SyntaxToken refKeyword,
             TypeSyntax returnType,
             ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier,
             SyntaxToken identifier,
@@ -294,6 +368,37 @@ namespace Microsoft.CodeAnalysis.CSharp
                 attributeLists,
                 decorators,
                 modifiers,
+                refKeyword,
+                returnType,
+                explicitInterfaceSpecifier,
+                identifier,
+                typeParameterList,
+                parameterList,
+                constraintClauses,
+                block,
+                default(ArrowExpressionClauseSyntax),
+                semicolonToken);
+        }
+
+        public static MethodDeclarationSyntax Update(
+            this MethodDeclarationSyntax syntax,
+            SyntaxList<AttributeListSyntax> attributeLists,
+            SyntaxList<MetaDecorationSyntax> decorators,
+            SyntaxTokenList modifiers,
+            TypeSyntax returnType,
+            ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier,
+            SyntaxToken identifier,
+            TypeParameterListSyntax typeParameterList,
+            ParameterListSyntax parameterList,
+            SyntaxList<TypeParameterConstraintClauseSyntax> constraintClauses,
+            BlockSyntax block,
+            SyntaxToken semicolonToken)
+        {
+            return syntax.Update(
+                attributeLists,
+                decorators,
+                modifiers,
+                default(SyntaxToken),
                 returnType,
                 explicitInterfaceSpecifier,
                 identifier,

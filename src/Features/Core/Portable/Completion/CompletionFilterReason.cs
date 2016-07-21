@@ -10,7 +10,9 @@ namespace Microsoft.CodeAnalysis.Completion
 {
     internal enum CompletionFilterReason
     {
+        Other,
         TypeChar,
-        BackspaceOrDelete
+        BackspaceOrDelete,
+        ItemFiltersChanged
     }
 }

@@ -14,959 +14,959 @@ namespace Microsoft.CodeAnalysis
 
         static SpecialMembers()
         {
-            ushort[] initializationValues = new ushort[]
+            byte[] initializationValues = new byte[]
             {
                 // System_String__CtorSZArrayChar
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.SZArray, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Char,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.SZArray, (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Char,
 
                 // System_String__ConcatStringString
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
                 // System_String__ConcatStringStringString
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     3,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
                 // System_String__ConcatStringStringStringString
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     4,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
                 // System_String__ConcatStringArray
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.SZArray, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.SZArray, (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
                 // System_String__ConcatObject
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
                 // System_String__ConcatObjectObject
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
                 // System_String__ConcatObjectObjectObject
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     3,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
                 // System_String__ConcatObjectArray
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.SZArray, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.SZArray, (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
                 // System_String__op_Equality
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
                 // System_String__op_Inequality
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
                 // System_String__Length
-                (ushort)MemberFlags.PropertyGet,                                                                            // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)MemberFlags.PropertyGet,                                                                              // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_String__Chars
-                (ushort)MemberFlags.PropertyGet,                                                                            // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)MemberFlags.PropertyGet,                                                                              // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Char,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Char,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_String__Format
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_String,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_String,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
-                    (ushort)SignatureTypeCode.SZArray, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
+                    (byte)SignatureTypeCode.SZArray, (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
                 // System_Delegate__Combine
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Delegate,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Delegate,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
 
                 // System_Delegate__Remove
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Delegate,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Delegate,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
 
                 // System_Delegate__op_Equality
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Delegate,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Delegate,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
 
                 // System_Delegate__op_Inequality
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Delegate,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Delegate,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Delegate,
 
                 // System_Decimal__Zero
-                (ushort)(MemberFlags.Field | MemberFlags.Static),                                                           // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Field | MemberFlags.Static),                                                             // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,                                   // Field Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,                                   // Field Signature
 
                 // System_Decimal__MinusOne
-                (ushort)(MemberFlags.Field | MemberFlags.Static),                                                           // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Field | MemberFlags.Static),                                                             // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,                                   // Field Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,                                   // Field Signature
 
                 // System_Decimal__One
-                (ushort)(MemberFlags.Field | MemberFlags.Static),                                                           // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Field | MemberFlags.Static),                                                             // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,                                   // Field Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,                                   // Field Signature
 
                 // System_Decimal__CtorInt32
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_Decimal__CtorUInt32
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt32,
 
                 // System_Decimal__CtorInt64
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int64,
 
                 // System_Decimal__CtorUInt64
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt64,
 
                 // System_Decimal__CtorSingle
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Single,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Single,
 
                 // System_Decimal__CtorDouble
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Double,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Double,
 
                 // System_Decimal__CtorInt32Int32Int32BooleanByte
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     5,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Byte,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Byte,
 
                 // System_Decimal__op_Addition
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Subtraction
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Multiply
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Division
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Modulus
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_UnaryNegation
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Increment
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Decrement
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__NegateDecimal
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__RemainderDecimalDecimal
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__AddDecimalDecimal
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__SubtractDecimalDecimal
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__MultiplyDecimalDecimal
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__DivideDecimalDecimal
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__ModuloDecimalDecimal
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__CompareDecimalDecimal
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Equality
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Inequality
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_GreaterThan
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_GreaterThanOrEqual
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_LessThan
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_LessThanOrEqual
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Implicit_FromByte
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Byte,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Byte,
 
                 // System_Decimal__op_Implicit_FromChar
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Char,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Char,
 
                 // System_Decimal__op_Implicit_FromInt16
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int16,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int16,
 
                 // System_Decimal__op_Implicit_FromInt32
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_Decimal__op_Implicit_FromInt64
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int64,
 
                 // System_Decimal__op_Implicit_FromSByte
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_SByte,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_SByte,
 
                 // System_Decimal__op_Implicit_FromUInt16
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt16,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt16,
 
                 // System_Decimal__op_Implicit_FromUInt32
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt32,
 
                 // System_Decimal__op_Implicit_FromUInt64
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt64,
 
                 // System_Decimal__op_Explicit_ToByte
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Byte,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Byte,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToUInt16
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt16,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt16,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToSByte
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_SByte,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_SByte,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToInt16
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int16,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int16,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToSingle
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Single,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Single,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToDouble
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Double,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Double,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToChar
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Char,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Char,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToUInt64
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt64,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToInt32
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToUInt32
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_ToInt64
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int64,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
 
                 // System_Decimal__op_Explicit_FromDouble
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Double,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Double,
 
                 // System_Decimal__op_Explicit_FromSingle
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Decimal,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Decimal,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Decimal,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Single,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Decimal,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Single,
 
                 // System_DateTime__MinValue
-                (ushort)(MemberFlags.Field | MemberFlags.Static),                                                           // Flags
-                (ushort)SpecialType.System_DateTime,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Field | MemberFlags.Static),                                                             // Flags
+                (byte)SpecialType.System_DateTime,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,                                  // Field Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,                                  // Field Signature
 
                 // System_DateTime__CtorInt64
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_DateTime,                                                                        // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_DateTime,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int64,
 
                 // System_DateTime__CompareDateTimeDateTime
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_DateTime,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_DateTime,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
 
                 // System_DateTime__op_Equality
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_DateTime,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_DateTime,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
 
                 // System_DateTime__op_Inequality
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_DateTime,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_DateTime,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
 
                 // System_DateTime__op_GreaterThan
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_DateTime,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_DateTime,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
 
                 // System_DateTime__op_GreaterThanOrEqual
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_DateTime,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_DateTime,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
 
                 // System_DateTime__op_LessThan
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_DateTime,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_DateTime,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
 
                 // System_DateTime__op_LessThanOrEqual
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_DateTime,                                                                        // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_DateTime,                                                                          // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_DateTime,
 
                 // System_Collections_IEnumerable__GetEnumerator
-                (ushort)(MemberFlags.Method | MemberFlags.Virtual),                                                         // Flags
-                (ushort)SpecialType.System_Collections_IEnumerable,                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)SpecialType.System_Collections_IEnumerable,                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Collections_IEnumerator,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Collections_IEnumerator,
 
                 // System_Collections_IEnumerator__Current
-                (ushort)(MemberFlags.Property | MemberFlags.Virtual),                                                       // Flags
-                (ushort)SpecialType.System_Collections_IEnumerator,                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)SpecialType.System_Collections_IEnumerator,                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
                 // System_Collections_IEnumerator__get_Current
-                (ushort)(MemberFlags.PropertyGet | MemberFlags.Virtual),                                                    // Flags
-                (ushort)SpecialType.System_Collections_IEnumerator,                                                         // DeclaringTypeId
+                (byte)(MemberFlags.PropertyGet | MemberFlags.Virtual),                                                      // Flags
+                (byte)SpecialType.System_Collections_IEnumerator,                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
                 // System_Collections_IEnumerator__MoveNext
-                (ushort)(MemberFlags.Method | MemberFlags.Virtual),                                                         // Flags
-                (ushort)SpecialType.System_Collections_IEnumerator,                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)SpecialType.System_Collections_IEnumerator,                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
 
                 // System_Collections_IEnumerator__Reset
-                (ushort)(MemberFlags.Method | MemberFlags.Virtual),                                                         // Flags
-                (ushort)SpecialType.System_Collections_IEnumerator,                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)SpecialType.System_Collections_IEnumerator,                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
 
                 // System_Collections_Generic_IEnumerable_T__GetEnumerator
-                (ushort)(MemberFlags.Method | MemberFlags.Virtual),                                                         // Flags
-                (ushort)SpecialType.System_Collections_Generic_IEnumerable_T,                                               // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)SpecialType.System_Collections_Generic_IEnumerable_T,                                                 // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.GenericTypeInstance,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Collections_Generic_IEnumerator_T,
+                    (byte)SignatureTypeCode.GenericTypeInstance,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Collections_Generic_IEnumerator_T,
                     1,
-                    (ushort)SignatureTypeCode.GenericTypeParameter, 0,
+                    (byte)SignatureTypeCode.GenericTypeParameter, 0,
 
                 // System_Collections_Generic_IEnumerator_T__Current
-                (ushort)(MemberFlags.Property | MemberFlags.Virtual),                                                       // Flags
-                (ushort)SpecialType.System_Collections_Generic_IEnumerator_T,                                               // DeclaringTypeId
+                (byte)(MemberFlags.Property | MemberFlags.Virtual),                                                         // Flags
+                (byte)SpecialType.System_Collections_Generic_IEnumerator_T,                                                 // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.GenericTypeParameter, 0,
+                    (byte)SignatureTypeCode.GenericTypeParameter, 0,
 
                 // System_Collections_Generic_IEnumerator_T__get_Current
-                (ushort)(MemberFlags.PropertyGet | MemberFlags.Virtual),                                                    // Flags
-                (ushort)SpecialType.System_Collections_Generic_IEnumerator_T,                                               // DeclaringTypeId
+                (byte)(MemberFlags.PropertyGet | MemberFlags.Virtual),                                                      // Flags
+                (byte)SpecialType.System_Collections_Generic_IEnumerator_T,                                                 // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.GenericTypeParameter, 0,
+                    (byte)SignatureTypeCode.GenericTypeParameter, 0,
 
                 // System_IDisposable__Dispose
-                (ushort)(MemberFlags.Method | MemberFlags.Virtual),                                                         // Flags
-                (ushort)SpecialType.System_IDisposable,                                                                     // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)SpecialType.System_IDisposable,                                                                       // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
 
                 // System_Array__Length
-                (ushort)MemberFlags.Property,                                                                               // Flags
-                (ushort)SpecialType.System_Array,                                                                           // DeclaringTypeId
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)SpecialType.System_Array,                                                                             // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_Array__LongLength
-                (ushort)MemberFlags.Property,                                                                               // Flags
-                (ushort)SpecialType.System_Array,                                                                           // DeclaringTypeId
+                (byte)MemberFlags.Property,                                                                                 // Flags
+                (byte)SpecialType.System_Array,                                                                             // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int64,
 
                 // System_Array__GetLowerBound
-                (ushort)MemberFlags.Method,                                                                                 // Flags
-                (ushort)SpecialType.System_Array,                                                                           // DeclaringTypeId
+                (byte)MemberFlags.Method,                                                                                   // Flags
+                (byte)SpecialType.System_Array,                                                                             // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_Array__GetUpperBound
-                (ushort)MemberFlags.Method,                                                                                 // Flags
-                (ushort)SpecialType.System_Array,                                                                           // DeclaringTypeId
+                (byte)MemberFlags.Method,                                                                                   // Flags
+                (byte)SpecialType.System_Array,                                                                             // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_Object__GetHashCode
-                (ushort)(MemberFlags.Method | MemberFlags.Virtual),                                                         // Flags
-                (ushort)SpecialType.System_Object,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)SpecialType.System_Object,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_Object__Equals
-                (ushort)(MemberFlags.Method | MemberFlags.Virtual),                                                         // Flags
-                (ushort)SpecialType.System_Object,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)SpecialType.System_Object,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
                 // System_Object__ToString
-                (ushort)(MemberFlags.Method | MemberFlags.Virtual),                                                         // Flags
-                (ushort)SpecialType.System_Object,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Virtual),                                                           // Flags
+                (byte)SpecialType.System_Object,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_String,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_String,
 
                 // System_Object__ReferenceEquals
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Object,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Object,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     2,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
 
                 // System_IntPtr__op_Explicit_ToPointer
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_IntPtr,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_IntPtr,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.Pointer, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_IntPtr,
+                    (byte)SignatureTypeCode.Pointer, (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_IntPtr,
 
                 // System_IntPtr__op_Explicit_ToInt32
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_IntPtr,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_IntPtr,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_IntPtr,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_IntPtr,
 
                 // System_IntPtr__op_Explicit_ToInt64
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_IntPtr,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_IntPtr,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int64,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_IntPtr,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_IntPtr,
 
                 // System_IntPtr__op_Explicit_FromPointer
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_IntPtr,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_IntPtr,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_IntPtr,
-                    (ushort)SignatureTypeCode.Pointer, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_IntPtr,
+                    (byte)SignatureTypeCode.Pointer, (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
 
                 // System_IntPtr__op_Explicit_FromInt32
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_IntPtr,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_IntPtr,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_IntPtr,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_IntPtr,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int32,
 
                 // System_IntPtr__op_Explicit_FromInt64
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_IntPtr,                                                                          // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_IntPtr,                                                                            // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_IntPtr,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Int64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_IntPtr,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Int64,
 
                 // System_UIntPtr__op_Explicit_ToPointer
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_UIntPtr,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_UIntPtr,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.Pointer, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UIntPtr,
+                    (byte)SignatureTypeCode.Pointer, (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UIntPtr,
 
                 // System_UIntPtr__op_Explicit_ToUInt32
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_UIntPtr,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_UIntPtr,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt32,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UIntPtr,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UIntPtr,
 
                 // System_UIntPtr__op_Explicit_ToUInt64
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_UIntPtr,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_UIntPtr,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt64,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UIntPtr,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UIntPtr,
 
                 // System_UIntPtr__op_Explicit_FromPointer
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_UIntPtr,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_UIntPtr,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UIntPtr,
-                    (ushort)SignatureTypeCode.Pointer, (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UIntPtr,
+                    (byte)SignatureTypeCode.Pointer, (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
 
                 // System_UIntPtr__op_Explicit_FromUInt32
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_UIntPtr,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_UIntPtr,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UIntPtr,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt32,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UIntPtr,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt32,
 
                 // System_UIntPtr__op_Explicit_FromUInt64
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_UIntPtr,                                                                         // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_UIntPtr,                                                                           // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UIntPtr,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_UInt64,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UIntPtr,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_UInt64,
 
                 // System_Nullable_T_GetValueOrDefault
-                (ushort)MemberFlags.Method,                                                                                 // Flags
-                (ushort)SpecialType.System_Nullable_T,                                                                      // DeclaringTypeId
+                (byte)MemberFlags.Method,                                                                                   // Flags
+                (byte)SpecialType.System_Nullable_T,                                                                        // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.GenericTypeParameter, 0,
+                    (byte)SignatureTypeCode.GenericTypeParameter, 0,
 
                 // System_Nullable_T_get_Value
-                (ushort)MemberFlags.PropertyGet,                                                                            // Flags
-                (ushort)SpecialType.System_Nullable_T,                                                                      // DeclaringTypeId
+                (byte)MemberFlags.PropertyGet,                                                                              // Flags
+                (byte)SpecialType.System_Nullable_T,                                                                        // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.GenericTypeParameter, 0,
+                    (byte)SignatureTypeCode.GenericTypeParameter, 0,
 
                 // System_Nullable_T_get_HasValue
-                (ushort)MemberFlags.PropertyGet,                                                                            // Flags
-                (ushort)SpecialType.System_Nullable_T,                                                                      // DeclaringTypeId
+                (byte)MemberFlags.PropertyGet,                                                                              // Flags
+                (byte)SpecialType.System_Nullable_T,                                                                        // DeclaringTypeId
                 0,                                                                                                          // Arity
                     0,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
 
                 // System_Nullable_T__ctor
-                (ushort)MemberFlags.Constructor,                                                                            // Flags
-                (ushort)SpecialType.System_Nullable_T,                                                                      // DeclaringTypeId
+                (byte)MemberFlags.Constructor,                                                                              // Flags
+                (byte)SpecialType.System_Nullable_T,                                                                        // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Void,
-                    (ushort)SignatureTypeCode.GenericTypeParameter, 0,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Void,
+                    (byte)SignatureTypeCode.GenericTypeParameter, 0,
 
                 // System_Nullable_T__op_Implicit_FromT
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Nullable_T,                                                                      // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Nullable_T,                                                                        // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Nullable_T,
-                    (ushort)SignatureTypeCode.GenericTypeParameter, 0,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Nullable_T,
+                    (byte)SignatureTypeCode.GenericTypeParameter, 0,
 
                 // System_Nullable_T__op_Explicit_ToT
-                (ushort)(MemberFlags.Method | MemberFlags.Static),                                                          // Flags
-                (ushort)SpecialType.System_Nullable_T,                                                                      // DeclaringTypeId
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)SpecialType.System_Nullable_T,                                                                        // DeclaringTypeId
                 0,                                                                                                          // Arity
                     1,                                                                                                      // Method Signature
-                    (ushort)SignatureTypeCode.GenericTypeParameter, 0,
-                    (ushort)SignatureTypeCode.TypeHandle, (ushort)SpecialType.System_Nullable_T,
+                    (byte)SignatureTypeCode.GenericTypeParameter, 0,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Nullable_T,
             };
 
             string[] allNames = new string[(int)SpecialMember.Count]
@@ -1089,15 +1089,8 @@ namespace Microsoft.CodeAnalysis
                 "op_Explicit",                              // System_Nullable_T__op_Explicit_ToT
             };
 
-            using (var memoryStream = new MemoryStream(initializationValues.Length * 2))
+            using (var memoryStream = new MemoryStream(initializationValues))
             {
-                byte[] buffer;
-                for (int i = 0; i < initializationValues.Length; i++)
-                {
-                    buffer = BitConverter.GetBytes(initializationValues[i]);
-                    memoryStream.Write(buffer, 0, 2);
-                }
-                memoryStream.Seek(0, SeekOrigin.Begin);
                 s_descriptors = MemberDescriptor.InitializeFromStream(memoryStream, allNames);
             }
         }

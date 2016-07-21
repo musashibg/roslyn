@@ -864,7 +864,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
         ''' </summary>
         Private Function CheckSymbolLocationsAgainstSyntax(symbol As NamedTypeSymbol, nodeToCheck As VisualBasicSyntaxNode) As NamedTypeSymbol
             For Each location In symbol.Locations
-                If location.SourceTree Is Me.SyntaxTree AndAlso nodeToCheck.Span.Contains(location.SourceSpan.Start) Then
+                If location.SourceTree Is Me.SyntaxTree AndAlso nodeToCheck.Span.Contains(location.SourceSpan) Then
                     Return symbol
                 End If
             Next
@@ -1069,7 +1069,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
                             Case SymbolKind.NamedType
                                 '  check for being delegate 
                                 Dim typeSymbol = DirectCast(symbol, NamedTypeSymbol)
-                                Debug.Assert(typeSymbol.TypeKind = TypeKind.Delegate)
+                                Debug.Assert(typeSymbol.TypeKind = TYPEKIND.Delegate)
                                 If typeSymbol.DelegateInvokeMethod IsNot Nothing Then
                                     Return GetParameterSymbol(typeSymbol.DelegateInvokeMethod.Parameters, parameter)
                                 End If

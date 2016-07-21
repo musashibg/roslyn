@@ -10,10 +10,12 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
-using Roslyn.Reflection.Metadata.Decoding;
+using Microsoft.CodeAnalysis.Debugging;
 
 namespace Roslyn.Test.MetadataUtilities
 {
+    using ImportScope = System.Reflection.Metadata.ImportScope;
+
     [Flags]
     public enum MetadataVisualizerOptions
     {
@@ -142,7 +144,7 @@ namespace Roslyn.Test.MetadataUtilities
             WriteLocalScope();
             WriteLocalVariable();
             WriteLocalConstant();
-            WriteLocalImport();
+            WriteImportScope();
             WriteCustomDebugInformation();
 
             // heaps:
@@ -356,12 +358,12 @@ namespace Roslyn.Test.MetadataUtilities
 
         private string GetCustomDebugInformationKind(Guid guid)
         {
-            if (guid == Microsoft.CodeAnalysis.PortableCustomDebugInfoKinds.AsyncMethodSteppingInformationBlob) return "Async Method Stepping Information";
-            if (guid == Microsoft.CodeAnalysis.PortableCustomDebugInfoKinds.StateMachineHoistedLocalScopes) return "State Machine Hoisted Local Scopes";
-            if (guid == Microsoft.CodeAnalysis.PortableCustomDebugInfoKinds.DynamicLocalVariables) return "Dynamic Local Variables";
-            if (guid == Microsoft.CodeAnalysis.PortableCustomDebugInfoKinds.DefaultNamespace) return "Default Namespace";
-            if (guid == Microsoft.CodeAnalysis.PortableCustomDebugInfoKinds.EncLocalSlotMap) return "EnC Local Slot Map";
-            if (guid == Microsoft.CodeAnalysis.PortableCustomDebugInfoKinds.EncLambdaAndClosureMap) return "EnC Lambda and Closure Map";
+            if (guid == PortableCustomDebugInfoKinds.AsyncMethodSteppingInformationBlob) return "Async Method Stepping Information";
+            if (guid == PortableCustomDebugInfoKinds.StateMachineHoistedLocalScopes) return "State Machine Hoisted Local Scopes";
+            if (guid == PortableCustomDebugInfoKinds.DynamicLocalVariables) return "Dynamic Local Variables";
+            if (guid == PortableCustomDebugInfoKinds.DefaultNamespace) return "Default Namespace";
+            if (guid == PortableCustomDebugInfoKinds.EncLocalSlotMap) return "EnC Local Slot Map";
+            if (guid == PortableCustomDebugInfoKinds.EncLambdaAndClosureMap) return "EnC Lambda and Closure Map";
 
             return "{" + guid + "}";
         }
@@ -624,6 +626,11 @@ namespace Roslyn.Test.MetadataUtilities
             }
 
             return sb.ToString();
+        }
+
+        private string Version(Version version)
+        {
+            return version.Major + "." + version.Minor + "." + version.Build + "." + version.Revision;
         }
 
         private string SequencePoint(SequencePoint sequencePoint)
@@ -1110,7 +1117,7 @@ namespace Roslyn.Test.MetadataUtilities
 
             AddRow(
                 Literal(entry.Name),
-                entry.Version.Major + "." + entry.Version.Minor + "." + entry.Version.Revision + "." + entry.Version.Build,
+                Version(entry.Version),
                 Literal(entry.Culture),
                 Literal(entry.PublicKey, BlobKind.Key),
                 EnumValue<int>(entry.Flags),
@@ -1136,7 +1143,7 @@ namespace Roslyn.Test.MetadataUtilities
 
                 AddRow(
                     Literal(entry.Name),
-                    entry.Version.Major + "." + entry.Version.Minor + "." + entry.Version.Revision + "." + entry.Version.Build,
+                    Version(entry.Version),
                     Literal(entry.Culture),
                     Literal(entry.PublicKeyOrToken, BlobKind.Key),
                     EnumValue<int>(entry.Flags)
@@ -1497,7 +1504,7 @@ namespace Roslyn.Test.MetadataUtilities
 
                 var entry = _reader.GetMethodDebugInformation(handle);
 
-                _writer.WriteLine($"{MetadataTokens.GetRowNumber(handle)}: {Token(() => entry.Document)} #{_reader.GetHeapOffset(entry.SequencePointsBlob):x}");
+                _writer.WriteLine($"{MetadataTokens.GetRowNumber(handle):x}: {Token(() => entry.Document)} #{_reader.GetHeapOffset(entry.SequencePointsBlob):x}");
 
                 if (entry.SequencePointsBlob.IsNil)
                 {
@@ -1711,7 +1718,7 @@ namespace Roslyn.Test.MetadataUtilities
             }
         }
 
-        private void WriteLocalImport()
+        public void WriteImportScope()
         {
             AddHeader(
                 "Parent",

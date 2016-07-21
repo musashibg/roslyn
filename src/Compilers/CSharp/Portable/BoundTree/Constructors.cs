@@ -178,22 +178,15 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// Use MakeConversion helper method in the LocalRewriter instead,
         /// it generates a synthesized conversion in its lowered form.
         /// </remarks>
-        public static BoundConversion SynthesizedNonUserDefined(CSharpSyntaxNode syntax, BoundExpression operand, ConversionKind kind, TypeSymbol type, ConstantValue constantValueOpt = null)
+        public static BoundConversion SynthesizedNonUserDefined(CSharpSyntaxNode syntax, BoundExpression operand, Conversion conversion, TypeSymbol type, ConstantValue constantValueOpt = null)
         {
-            // We need more information than just the conversion kind for creating a synthesized user defined conversion.
-            Debug.Assert(!kind.IsUserDefinedConversion(), "Use the BoundConversion.Synthesized overload that takes a 'Conversion' parameter for generating synthesized user defined conversions.");
-
             return new BoundConversion(
                 syntax,
                 operand,
-                kind,
-                resultKind: LookupResultKind.Viable, //not used
+                conversion,
                 isBaseConversion: false,
-                symbolOpt: null,
                 @checked: false,
                 explicitCastInCode: false,
-                isExtensionMethod: false,
-                isArrayIndex: false,
                 constantValueOpt: constantValueOpt,
                 type: type)
             { WasCompilerGenerated = true };
@@ -240,14 +233,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             : this(
                 syntax,
                 operand,
-                conversion.Kind,
-                resultKind: conversion.ResultKind,
+                conversion,
                 isBaseConversion: false,
-                symbolOpt: conversion.Method,
                 @checked: @checked,
                 explicitCastInCode: explicitCastInCode,
-                isExtensionMethod: conversion.IsExtensionMethod,
-                isArrayIndex: conversion.IsArrayIndex,
                 constantValueOpt: constantValueOpt,
                 type: type,
                 hasErrors: hasErrors || !conversion.IsValid)
@@ -491,9 +480,9 @@ namespace Microsoft.CodeAnalysis.CSharp
 
     internal sealed partial class BoundReturnStatement
     {
-        public static BoundReturnStatement Synthesized(CSharpSyntaxNode syntax, BoundExpression expression, bool hasErrors = false)
+        public static BoundReturnStatement Synthesized(CSharpSyntaxNode syntax, RefKind refKind, BoundExpression expression, bool hasErrors = false)
         {
-            return new BoundReturnStatement(syntax, expression, hasErrors) { WasCompilerGenerated = true };
+            return new BoundReturnStatement(syntax, refKind, expression, hasErrors) { WasCompilerGenerated = true };
         }
     }
 
@@ -513,33 +502,31 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
     }
 
-    internal sealed partial class BoundSwitchLabel
-    {
-        public BoundSwitchLabel(CSharpSyntaxNode syntax, LabelSymbol label, bool hasErrors = false)
-            : this(syntax, label, expressionOpt: null, hasErrors: hasErrors)
-        {
-        }
-    }
-
     internal partial class BoundBlock
     {
         public static BoundBlock SynthesizedNoLocals(CSharpSyntaxNode syntax, BoundStatement statement)
         {
-            return new BoundBlock(syntax, ImmutableArray<LocalSymbol>.Empty,
+            return new BoundBlock(syntax, ImmutableArray<LocalSymbol>.Empty, ImmutableArray<LocalFunctionSymbol>.Empty,
                 ImmutableArray.Create(statement))
             { WasCompilerGenerated = true };
         }
 
         public static BoundBlock SynthesizedNoLocals(CSharpSyntaxNode syntax, ImmutableArray<BoundStatement> statements)
         {
-            Debug.Assert(statements.Length > 0);
-            return new BoundBlock(syntax, ImmutableArray<LocalSymbol>.Empty, statements) { WasCompilerGenerated = true };
+            return new BoundBlock(syntax, ImmutableArray<LocalSymbol>.Empty, ImmutableArray<LocalFunctionSymbol>.Empty, statements) { WasCompilerGenerated = true };
         }
 
         public static BoundBlock SynthesizedNoLocals(CSharpSyntaxNode syntax, params BoundStatement[] statements)
         {
-            Debug.Assert(statements.Length > 0);
-            return new BoundBlock(syntax, ImmutableArray<LocalSymbol>.Empty, statements.AsImmutableOrNull()) { WasCompilerGenerated = true };
+            return new BoundBlock(syntax, ImmutableArray<LocalSymbol>.Empty, ImmutableArray<LocalFunctionSymbol>.Empty, statements.AsImmutableOrNull()) { WasCompilerGenerated = true };
+        }
+    }
+
+    internal partial class BoundIfStatement
+    {
+        public BoundIfStatement(CSharpSyntaxNode syntax, BoundExpression condition, BoundStatement consequence, BoundStatement alternativeOpt, bool hasErrors = false)
+            : this(syntax, ImmutableArray<LocalSymbol>.Empty, condition, consequence, alternativeOpt, hasErrors)
+        {
         }
     }
 

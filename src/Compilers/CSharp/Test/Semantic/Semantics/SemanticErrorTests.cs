@@ -2232,7 +2232,7 @@ public class MyClass {
         return 1;
     }
 
-}")
+}", parseOptions: TestOptions.Regular6)
                 .VerifyDiagnostics(
                 // (7,22): error CS0118: 'myTest' is a 'variable' but is used like a 'type'
                 Diagnostic(ErrorCode.ERR_BadSKknown, "myTest").WithArguments("myTest", "variable", "type"));
@@ -4038,8 +4038,10 @@ public class iii
       }
    }
 }";
-            DiagnosticsUtils.VerifyErrorsAndGetCompilationWithMscorlib(text,
-                new ErrorDescription[] { new ErrorDescription { Code = (int)ErrorCode.ERR_SwitchGoverningTypeValueExpected, Line = 18, Column = 15 } });
+            var comp = CreateCompilationWithMscorlib(text, parseOptions: TestOptions.Regular6);
+            DiagnosticsUtils.VerifyErrorCodes(
+                comp,
+                new ErrorDescription[] { new ErrorDescription { Code = (int)ErrorCode.ERR_V6SwitchGoverningTypeValueExpected, Line = 18, Column = 15 } });
         }
 
         [Fact]
@@ -4069,9 +4071,10 @@ namespace x
 }";
 
             CreateCompilationWithMscorlib(text).VerifyDiagnostics(
-    // (16,13): error CS0152: The switch statement contains multiple cases with the label value '1'
-    //             case 1:   // CS0152, two case 1 statements
-    Diagnostic(ErrorCode.ERR_DuplicateCaseLabel, "case 1:").WithArguments("1").WithLocation(16, 13));
+                // (16,13): error CS0152: The switch statement contains multiple cases with the label value '1'
+                //             case 1:   // CS0152, two case 1 statements
+                Diagnostic(ErrorCode.ERR_DuplicateCaseLabel, "case 1:").WithArguments("1").WithLocation(16, 13)
+                );
         }
 
         [Fact]
@@ -7160,30 +7163,71 @@ public class MyList<T>
         [Fact, WorkItem(536863, "http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/536863")]
         public void CS0201ERR_IllegalStatement2()
         {
+            var text = @"
+class A
+{
+    public static int Main()
+    {
+        (a) => a;
+        (a, b) => { };
+        int x = 0; int y = 0;
+        x + y; x == 1;
+    }
+}";
+            CreateCompilationWithMscorlib(text, parseOptions: TestOptions.Regular.WithTuplesFeature()).VerifyDiagnostics(
+    // (6,9): error CS0201: Only assignment, call, increment, decrement, and new object expressions can be used as a statement
+    //         (a) => a;
+    Diagnostic(ErrorCode.ERR_IllegalStatement, "(a) => a").WithLocation(6, 9),
+    // (7,9): error CS0201: Only assignment, call, increment, decrement, and new object expressions can be used as a statement
+    //         (a, b) => { };
+    Diagnostic(ErrorCode.ERR_IllegalStatement, "(a, b) => { }").WithLocation(7, 9),
+    // (9,9): error CS0201: Only assignment, call, increment, decrement, and new object expressions can be used as a statement
+    //         x + y; x == 1;
+    Diagnostic(ErrorCode.ERR_IllegalStatement, "x + y").WithLocation(9, 9),
+    // (9,16): error CS0201: Only assignment, call, increment, decrement, and new object expressions can be used as a statement
+    //         x + y; x == 1;
+    Diagnostic(ErrorCode.ERR_IllegalStatement, "x == 1").WithLocation(9, 16),
+    // (4,23): error CS0161: 'A.Main()': not all code paths return a value
+    //     public static int Main()
+    Diagnostic(ErrorCode.ERR_ReturnExpected, "Main").WithArguments("A.Main()").WithLocation(4, 23)
+    );
+        }
+
+        [Fact, WorkItem(536863, "http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/536863")]
+        public void CS0201ERR_IllegalStatement2WithCSharp6()
+        {
             var test = @"
 class A
 {
     public static int Main()
     {
         (a) => a;
-        (a, b) =>
-        {
-        };
+        (a, b) => { };
         int x = 0; int y = 0;
         x + y; x == 1;
     }
 }";
-            DiagnosticsUtils.VerifyErrorsAndGetCompilationWithMscorlib(test,
-                new ErrorDescription[] {
-                    new ErrorDescription { Code = (int)ErrorCode.ERR_IllegalStatement, Line = 6, Column = 9 },
-                    new ErrorDescription { Code = (int)ErrorCode.ERR_IllegalStatement, Line = 7, Column = 9 },
-                    new ErrorDescription { Code = (int)ErrorCode.ERR_IllegalStatement, Line = 11, Column = 9 },
-                    new ErrorDescription { Code = (int)ErrorCode.ERR_IllegalStatement, Line = 11, Column = 16 },
-                    new ErrorDescription { Code = (int)ErrorCode.ERR_ReturnExpected, Line = 4, Column = 23 }
-                });
+            var comp = CreateCompilationWithMscorlib(new[] { Parse(test, options: TestOptions.Regular6) }, new MetadataReference[] { });
+            comp.VerifyDiagnostics(
+    // (6,9): error CS0201: Only assignment, call, increment, decrement, and new object expressions can be used as a statement
+    //         (a) => a;
+    Diagnostic(ErrorCode.ERR_IllegalStatement, "(a) => a").WithLocation(6, 9),
+    // (7,9): error CS0201: Only assignment, call, increment, decrement, and new object expressions can be used as a statement
+    //         (a, b) => { };
+    Diagnostic(ErrorCode.ERR_IllegalStatement, "(a, b) => { }").WithLocation(7, 9),
+    // (9,9): error CS0201: Only assignment, call, increment, decrement, and new object expressions can be used as a statement
+    //         x + y; x == 1;
+    Diagnostic(ErrorCode.ERR_IllegalStatement, "x + y").WithLocation(9, 9),
+    // (9,16): error CS0201: Only assignment, call, increment, decrement, and new object expressions can be used as a statement
+    //         x + y; x == 1;
+    Diagnostic(ErrorCode.ERR_IllegalStatement, "x == 1").WithLocation(9, 16),
+    // (4,23): error CS0161: 'A.Main()': not all code paths return a value
+    //     public static int Main()
+    Diagnostic(ErrorCode.ERR_ReturnExpected, "Main").WithArguments("A.Main()").WithLocation(4, 23)
+    );
         }
 
-        [Fact()]
+        [Fact]
         public void CS0202ERR_BadGetEnumerator()
         {
             var text = @"
@@ -14637,8 +14681,10 @@ class D
 }
 ";
             CreateCompilationWithMscorlib(text).VerifyDiagnostics(
-                // (21,15): error CS1649: Members of readonly field 'Outer.inner' cannot be passed ref or out (except in a constructor)
-                Diagnostic(ErrorCode.ERR_RefReadonly2, "outer.inner.i").WithArguments("Outer.inner"));
+    // (21,15): error CS1649: Members of readonly field 'Outer.inner' cannot be used as a ref or out value (except in a constructor)
+    //         f(ref outer.inner.i);  // CS1649
+    Diagnostic(ErrorCode.ERR_RefReadonly2, "outer.inner.i").WithArguments("Outer.inner").WithLocation(21, 15)
+);
         }
 
         [Fact]
@@ -14867,8 +14913,10 @@ class C
 }
 ";
             CreateCompilationWithMscorlib(text).VerifyDiagnostics(
-                // (12,19): error CS1657: Cannot pass 'a' as a ref or out argument because it is a 'foreach iteration variable'
-                Diagnostic(ErrorCode.ERR_RefReadonlyLocalCause, "a").WithArguments("a", "foreach iteration variable"));
+    // (12,19): error CS1657: Cannot use 'a' as a ref or out value because it is a 'foreach iteration variable'
+    //             F(ref a); //CS1657
+    Diagnostic(ErrorCode.ERR_RefReadonlyLocalCause, "a").WithArguments("a", "foreach iteration variable").WithLocation(12, 19)
+                );
         }
 
         [Fact]
@@ -22419,9 +22467,10 @@ class Program
 ";
 
             CreateCompilationWithMscorlib(source).VerifyDiagnostics(
-                // (11,58): error CS0199: A static readonly field cannot be passed ref or out (except in a static constructor)
-                //         static readonly Program Field3 = new Program(ref Program.Field2);
-                Diagnostic(ErrorCode.ERR_RefReadonlyStatic, "Program.Field2"));
+    // (11,58): error CS0199: A static readonly field cannot be used as a ref or out value (except in a static constructor)
+    //         static readonly Program Field3 = new Program(ref Program.Field2);
+    Diagnostic(ErrorCode.ERR_RefReadonlyStatic, "Program.Field2").WithLocation(11, 58)
+);
         }
 
         [Fact]
@@ -22667,7 +22716,7 @@ class Program
     }
 }
 ";
-            CreateExperimentalCompilationWithMscorlib45(text).VerifyDiagnostics(
+            CreateCompilationWithMscorlib45(text).VerifyDiagnostics(
     // (13,21): error CS0023: Operator '?' cannot be applied to operand of type 'int'
     //         var x = 123 ?.ToString();
     Diagnostic(ErrorCode.ERR_BadUnaryOp, "?").WithArguments("?", "int").WithLocation(13, 21),
@@ -22736,7 +22785,7 @@ class Program
     }
 }
 ";
-            CreateExperimentalCompilationWithMscorlib45(text).VerifyDiagnostics(
+            CreateCompilationWithMscorlib45(text).VerifyDiagnostics(
     // (14,23): error CS0023: Operator '?' cannot be applied to operand of type 'method group'
     //         var x1 = p.P1 ?.ToString;
     Diagnostic(ErrorCode.ERR_BadUnaryOp, "?").WithArguments("?", "method group").WithLocation(14, 23)
@@ -22774,7 +22823,7 @@ class Program
     }
 }
 ";
-            CreateExperimentalCompilationWithMscorlib45(text).VerifyDiagnostics(
+            CreateCompilationWithMscorlib45(text).VerifyDiagnostics(
     // (11,18): error CS0175: Use of keyword 'base' is not valid in this context
     //         var x6 = base?.ToString();
     Diagnostic(ErrorCode.ERR_BaseIllegal, "base").WithLocation(11, 18),
@@ -22817,7 +22866,7 @@ class Program
 }
 
 ";
-            CreateExperimentalCompilationWithMscorlib45(text, options: TestOptions.UnsafeReleaseDll).VerifyDiagnostics(
+            CreateCompilationWithMscorlib45(text, options: TestOptions.UnsafeReleaseDll).VerifyDiagnostics(
     // (9,23): error CS0023: Operator '?' cannot be applied to operand of type 'void*'
     //         var p = intPtr?.ToPointer();
     Diagnostic(ErrorCode.ERR_BadUnaryOp, "?").WithArguments("?", "void*").WithLocation(9, 23)
@@ -23039,7 +23088,7 @@ class Program
     }
 }
 ";
-            CreateExperimentalCompilationWithMscorlib45(text, options: TestOptions.ReleaseDll).VerifyDiagnostics(
+            CreateCompilationWithMscorlib45(text, options: TestOptions.ReleaseDll).VerifyDiagnostics(
     // (8,9): error CS0201: Only assignment, call, increment, decrement, and new object expressions can be used as a statement
     //         x?.Length;
     Diagnostic(ErrorCode.ERR_IllegalStatement, "x?.Length").WithLocation(8, 9),

@@ -104,7 +104,7 @@ public delegate dynamic[] MyDelegate(dynamic[] x);
             DynamicAttributeValidator.ValidateDynamicAttributes(comp);
         }
 
-        private struct DynamicAttributeValidator
+        internal struct DynamicAttributeValidator
         {
             private readonly SourceAssemblySymbol _srcAssembly;
             private readonly CSharpCompilation _comp;
@@ -171,55 +171,6 @@ public delegate dynamic[] MyDelegate(dynamic[] x);
                 var dynamicAttributeCtorNoArgs = (MethodSymbol)comp.GetWellKnownTypeMember(WellKnownMember.System_Runtime_CompilerServices_DynamicAttribute__ctor);
                 var dynamicAttributeCtorTransformFlags = (MethodSymbol)comp.GetWellKnownTypeMember(WellKnownMember.System_Runtime_CompilerServices_DynamicAttribute__ctorTransformFlags);
                 ValidateDynamicAttribute(symbol, comp, dynamicAttributeCtorNoArgs, dynamicAttributeCtorTransformFlags, expectedDynamicAttribute, expectedTransformFlags, forReturnType);
-            }
-
-            internal static void ValidateDynamicAttribute(Symbol symbol, CSharpCompilation comp, MethodSymbol dynamicAttributeCtorNoArgs,
-                 MethodSymbol dynamicAttributeCtorTransformFlags, bool expectedDynamicAttribute, bool[] expectedTransformFlags = null, bool forReturnType = false)
-            {
-                Assert.True(!forReturnType || symbol.Kind == SymbolKind.Method, "Incorrect usage of ValidateDynamicAttribute");
-
-                var synthesizedDynamicAttributes = symbol.GetSynthesizedAttributes(forReturnType).Where((attr) => string.Equals(attr.AttributeClass.Name, "DynamicAttribute", StringComparison.Ordinal));
-
-                if (!expectedDynamicAttribute)
-                {
-                    Assert.Empty(synthesizedDynamicAttributes);
-                }
-                else
-                {
-                    Assert.Equal(1, synthesizedDynamicAttributes.Count());
-
-                    var dynamicAttribute = synthesizedDynamicAttributes.First();
-                    var expectedCtor = expectedTransformFlags == null ? dynamicAttributeCtorNoArgs : dynamicAttributeCtorTransformFlags;
-                    Assert.NotNull(expectedCtor);
-                    Assert.Equal(expectedCtor, dynamicAttribute.AttributeConstructor);
-
-                    if (expectedTransformFlags == null)
-                    {
-                        // Dynamic()
-                        Assert.Equal(0, dynamicAttribute.CommonConstructorArguments.Length);
-                    }
-                    else
-                    {
-                        // Dynamic(bool[] transformFlags)
-                        Assert.Equal(1, dynamicAttribute.CommonConstructorArguments.Length);
-
-                        TypedConstant argument = dynamicAttribute.CommonConstructorArguments[0];
-                        Assert.Equal(TypedConstantKind.Array, argument.Kind);
-
-                        ImmutableArray<TypedConstant> actualTransformFlags = argument.Values;
-                        Assert.Equal(expectedTransformFlags.Length, actualTransformFlags.Length);
-                        TypeSymbol booleanType = comp.GetSpecialType(SpecialType.System_Boolean);
-
-                        for (int i = 0; i < actualTransformFlags.Length; i++)
-                        {
-                            TypedConstant actualTransformFlag = actualTransformFlags[i];
-
-                            Assert.Equal(TypedConstantKind.Primitive, actualTransformFlag.Kind);
-                            Assert.Equal(booleanType, actualTransformFlag.Type);
-                            Assert.Equal(expectedTransformFlags[i], (bool)actualTransformFlag.Value);
-                        }
-                    }
-                }
             }
 
             private void ValidateAttributesOnNamedTypes()
@@ -567,6 +518,55 @@ public delegate dynamic[] MyDelegate(dynamic[] x);
                 //.custom instance void [System.Core]System.Runtime.CompilerServices.DynamicAttribute::.ctor(bool[]) = ( 01 00 02 00 00 00 * 00 01 * 00 00 ) 
                 ValidateDynamicAttribute(endInvokeMethod, forReturnType: true, expectedDynamicAttribute: true, expectedTransformFlags: expectedTransformFlags);
                 ValidateDynamicAttribute(endInvokeMethod.Parameters[0], expectedDynamicAttribute: false);
+            }
+
+            private static void ValidateDynamicAttribute(Symbol symbol, CSharpCompilation comp, MethodSymbol dynamicAttributeCtorNoArgs,
+                 MethodSymbol dynamicAttributeCtorTransformFlags, bool expectedDynamicAttribute, bool[] expectedTransformFlags = null, bool forReturnType = false)
+            {
+                Assert.True(!forReturnType || symbol.Kind == SymbolKind.Method, "Incorrect usage of ValidateDynamicAttribute");
+
+                var synthesizedDynamicAttributes = symbol.GetSynthesizedAttributes(forReturnType).Where((attr) => string.Equals(attr.AttributeClass.Name, "DynamicAttribute", StringComparison.Ordinal));
+
+                if (!expectedDynamicAttribute)
+                {
+                    Assert.Empty(synthesizedDynamicAttributes);
+                }
+                else
+                {
+                    Assert.Equal(1, synthesizedDynamicAttributes.Count());
+
+                    var dynamicAttribute = synthesizedDynamicAttributes.First();
+                    var expectedCtor = expectedTransformFlags == null ? dynamicAttributeCtorNoArgs : dynamicAttributeCtorTransformFlags;
+                    Assert.NotNull(expectedCtor);
+                    Assert.Equal(expectedCtor, dynamicAttribute.AttributeConstructor);
+
+                    if (expectedTransformFlags == null)
+                    {
+                        // Dynamic()
+                        Assert.Equal(0, dynamicAttribute.CommonConstructorArguments.Length);
+                    }
+                    else
+                    {
+                        // Dynamic(bool[] transformFlags)
+                        Assert.Equal(1, dynamicAttribute.CommonConstructorArguments.Length);
+
+                        TypedConstant argument = dynamicAttribute.CommonConstructorArguments[0];
+                        Assert.Equal(TypedConstantKind.Array, argument.Kind);
+
+                        ImmutableArray<TypedConstant> actualTransformFlags = argument.Values;
+                        Assert.Equal(expectedTransformFlags.Length, actualTransformFlags.Length);
+                        TypeSymbol booleanType = comp.GetSpecialType(SpecialType.System_Boolean);
+
+                        for (int i = 0; i < actualTransformFlags.Length; i++)
+                        {
+                            TypedConstant actualTransformFlag = actualTransformFlags[i];
+
+                            Assert.Equal(TypedConstantKind.Primitive, actualTransformFlag.Kind);
+                            Assert.Equal(booleanType, actualTransformFlag.Type);
+                            Assert.Equal(expectedTransformFlags[i], (bool)actualTransformFlag.Value);
+                        }
+                    }
+                }
             }
         }
 
@@ -1263,6 +1263,95 @@ class C
             comp.VerifyDiagnostics();
             // Make sure we emit without errors when System.Boolean is missing.
             CompileAndVerify(comp, verify: false);
+        }
+
+        [Fact]
+        [WorkItem(7840, "https://github.com/dotnet/roslyn/issues/7840")]
+        public void DynamicDisplayClassFieldMissingBoolean()
+        {
+            var source0 =
+@"namespace System
+{
+    public class Object { }
+    public struct Int32 { }
+    public class ValueType { }
+    public class Attribute { }
+    public struct Void { }
+    public struct IntPtr { }
+    public class MulticastDelegate { }
+}";
+            var source1 =
+@"delegate void D();
+class C
+{
+    static void Main()
+    {
+        dynamic x = 1;
+        D d = () => { dynamic y = x; };
+    }
+}";
+            var comp = CreateCompilation(source0);
+            comp.VerifyDiagnostics();
+            var ref0 = comp.EmitToImageReference();
+            comp = CreateCompilation(source1, references: new[] { ref0, SystemCoreRef });
+            comp.VerifyDiagnostics();
+            // Make sure we emit without errors when System.Boolean is missing.
+            CompileAndVerify(comp, verify: false);
+        }
+
+        [Fact]
+        public void BackingField()
+        {
+            var source =
+@"class C
+{
+    static dynamic[] P { get; set; }
+}";
+            CompileAndVerify(source, additionalRefs: new[] { CSharpRef, SystemCoreRef }, expectedSignatures: new[]
+            {
+                Signature(
+                    "C",
+                    "<P>k__BackingField",
+                    ".field [System.Runtime.CompilerServices.CompilerGeneratedAttribute()] [System.Runtime.CompilerServices.DynamicAttribute(System.Collections.ObjectModel.ReadOnlyCollection`1[System.Reflection.CustomAttributeTypedArgument])] private static System.Object[] <P>k__BackingField")
+            });
+        }
+
+        [Fact]
+        [WorkItem(1095613, "http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/1095613")]
+        public void DisplayClassField()
+        {
+            var source =
+@"using System;
+class C
+{
+    static void F(dynamic[] a)
+    {
+        H(() => G(a));
+        dynamic d = a;
+        H(() => G(d));
+    }
+    static void G(object a)
+    {
+    }
+    static void H(Action a)
+    {
+    }
+    static void Main()
+    {
+        F(new object[0]);
+    }
+}";
+            CompileAndVerify(source, additionalRefs: new[] { CSharpRef, SystemCoreRef }, expectedSignatures: new[]
+            {
+                Signature(
+                    "C+<>c__DisplayClass0_0",
+                    "a",
+                    ".field [System.Runtime.CompilerServices.DynamicAttribute(System.Collections.ObjectModel.ReadOnlyCollection`1[System.Reflection.CustomAttributeTypedArgument])] public instance System.Object[] a"),
+                Signature(
+                    "C+<>c__DisplayClass0_0",
+                    "d",
+                    ".field [System.Runtime.CompilerServices.DynamicAttribute()] public instance System.Object d")
+            });
         }
     }
 }

@@ -18,6 +18,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Organizing.Organizers
                 syntax.AttributeLists,
                 syntax.Decorators,
                 ModifiersOrganizer.Organize(syntax.Modifiers),
+                syntax.RefKeyword,
                 syntax.Type,
                 syntax.ExplicitInterfaceSpecifier,
                 syntax.ThisKeyword,

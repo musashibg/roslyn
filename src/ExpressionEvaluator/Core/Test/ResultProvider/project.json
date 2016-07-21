@@ -1,9 +1,8 @@
 ﻿{
   "dependencies": {
-    "System.Collections.Immutable": "1.1.37",
-    "xunit": "2.1.0"
+    "Microsoft.VisualStudio.Debugger.Metadata": "14.3.25420"
   },
   "frameworks": {
-    "net45": {}
+    "net46": {}
   }
 }

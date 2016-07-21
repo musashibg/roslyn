@@ -23,7 +23,6 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
         Private ReadOnly _emittingPdb As Boolean
         Private ReadOnly _diagnostics As DiagnosticBag
         Private ReadOnly _hasDeclarationErrors As Boolean
-        Private ReadOnly _namespaceScopeBuilder As NamespaceScopeBuilder
         Private ReadOnly _moduleBeingBuiltOpt As PEModuleBuilder ' Nothing if compiling for diagnostics
         Private ReadOnly _filterOpt As Predicate(Of Symbol)      ' If not Nothing, limit analysis to specific symbols
         Private ReadOnly _debugDocumentProvider As DebugDocumentProvider
@@ -626,7 +625,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
                         If method.IsPartial() Then
                             Dim impl = method.PartialImplementationPart
                             If impl IsNot method Then
-                                If CType(method, SourceMethodSymbol).SetDiagnostics(ImmutableArray(Of Diagnostic).Empty) Then
+                                If CType(method, SourceMethodSymbol).SetDiagnostics(ImmutableArray(Of Diagnostic).Empty) AndAlso impl Is Nothing Then
                                     method.DeclaringCompilation.SymbolDeclaredEvent(method)
                                 End If
 
@@ -1042,7 +1041,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
         End Sub
 
         ''' <summary> All the constructors in the cycle will be reported </summary>
-        Private Sub ReportConstructorCycles(startsAt As Integer, endsAt As Integer,
+        Private Shared Sub ReportConstructorCycles(startsAt As Integer, endsAt As Integer,
                                             path As ArrayBuilder(Of MethodSymbol),
                                             diagnostics As DiagnosticBag)
 
@@ -1139,6 +1138,8 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
 
             _cancellationToken.ThrowIfCancellationRequested()
 
+            Debug.Assert(Not (method.IsPartial AndAlso method.PartialImplementationPart Is Nothing))
+
             Dim sourceMethod = TryCast(method, SourceMethodSymbol)
             'get cached diagnostics if not building and we have 'em
             If Not DoEmitPhase AndAlso (sourceMethod IsNot Nothing) Then
@@ -1193,7 +1194,8 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
                                 End If
                                 Return semanticModel
                             End Function)
-                        compilation.EventQueue.Enqueue(New SymbolDeclaredCompilationEvent(compilation, method, lazySemanticModel))
+                        Dim symbolToProduce = If(method.PartialDefinitionPart, method)
+                        compilation.EventQueue.TryEnqueue(New SymbolDeclaredCompilationEvent(compilation, symbolToProduce, lazySemanticModel))
                     End If
                 End If
             End If

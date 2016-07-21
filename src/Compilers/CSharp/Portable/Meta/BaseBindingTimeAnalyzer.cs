@@ -24,12 +24,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             get { return _variableBindingTimes; }
         }
 
-        protected BaseBindingTimeAnalyzer(CSharpCompilation compilation, DiagnosticBag diagnostics, CancellationToken cancellationToken, Location sourceLocation)
+        protected BaseBindingTimeAnalyzer(CSharpCompilation compilation, DiagnosticBag diagnostics, Location sourceLocation, CancellationToken cancellationToken)
         {
             Compilation = compilation;
             _diagnostics = diagnostics;
-            _cancellationToken = cancellationToken;
             _sourceLocation = sourceLocation;
+            _cancellationToken = cancellationToken;
             _encapsulatingStatements = new List<EncapsulatingStatementKind>();
         }
 
@@ -769,7 +769,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         {
             InterruptionKind oldDynamicInterruptionKind = _currentDynamicInterruption;
             _currentDynamicInterruption = InterruptionKind.None;
-            LocalSymbol iterationVariable = node.IterationVariable;
+            LocalSymbol iterationVariableOpt = node.IterationVariableOpt;
             int encapsulatingStatementIndex = _encapsulatingStatements.Count;
             _encapsulatingStatements.Add(EncapsulatingStatementKind.Loop);
 
@@ -779,7 +779,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 BindingTimeAnalysisResult expressionResult = Visit(node.Expression, flags);
                 if (expressionResult.BindingTime == BindingTime.Dynamic)
                 {
-                    MakeSymbolDynamic(iterationVariable);
+                    if (iterationVariableOpt != null)
+                    {
+                        MakeSymbolDynamic(iterationVariableOpt);
+                    }
                     flags |= BindingTimeAnalyzerFlags.InDynamicallyControlledLoop;
                     _encapsulatingStatements[encapsulatingStatementIndex] = EncapsulatingStatementKind.Loop | EncapsulatingStatementKind.DynamicallyControlled;
                 }
@@ -788,7 +791,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (!flags.HasFlag(BindingTimeAnalyzerFlags.InDynamicallyControlledLoop) && _currentDynamicInterruption != InterruptionKind.None)
                 {
                     // If there is a dynamically-reachable break or continue statement, we make the entire loop dynamic and repeat the traversal
-                    MakeSymbolDynamic(iterationVariable);
+                    if (iterationVariableOpt != null)
+                    {
+                        MakeSymbolDynamic(iterationVariableOpt);
+                    }
                     flags |= BindingTimeAnalyzerFlags.InDynamicallyControlledLoop;
                     _encapsulatingStatements[encapsulatingStatementIndex] = EncapsulatingStatementKind.Loop | EncapsulatingStatementKind.DynamicallyControlled;
                 }
@@ -1400,7 +1406,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitSwitchSection(BoundSwitchSection node, BindingTimeAnalyzerFlags flags)
         {
-            VisitList(node.BoundSwitchLabels, flags);
+            VisitList(node.SwitchLabels, flags);
             VisitList(node.Statements, flags);
             return null;
         }
@@ -1410,7 +1416,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             InterruptionKind oldDynamicInterruptionKind = _currentDynamicInterruption;
             _currentDynamicInterruption = InterruptionKind.None;
             int encapsulatingStatementIndex = _encapsulatingStatements.Count;
-            BindingTimeAnalysisResult expressionResult = Visit(node.BoundExpression, flags);
+            BindingTimeAnalysisResult expressionResult = Visit(node.Expression, flags);
             if (expressionResult.BindingTime == BindingTime.StaticSimpleValue)
             {
                 _encapsulatingStatements.Add(EncapsulatingStatementKind.Switch);

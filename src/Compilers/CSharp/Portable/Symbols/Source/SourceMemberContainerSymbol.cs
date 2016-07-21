@@ -1,11 +1,5 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
-using Microsoft.CodeAnalysis.Collections;
-using Microsoft.CodeAnalysis.CSharp.Meta;
-using Microsoft.CodeAnalysis.CSharp.Symbols;
-using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Roslyn.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -13,6 +7,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Collections;
+using Microsoft.CodeAnalysis.CSharp.Meta;
+using Microsoft.CodeAnalysis.CSharp.Symbols;
+using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp.Symbols
 {
@@ -104,7 +105,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 var maxSpecialType = (int)specialTypes.Aggregate((s1, s2) => s1 | s2);
                 Debug.Assert((maxSpecialType & SpecialTypeMask) == maxSpecialType);
 
-                // 1) Verify that the range of declaration modifiers doesn't fall outside the bounds of
+                // 2) Verify that the range of declaration modifiers doesn't fall outside the bounds of
                 // the declaration modifier mask.
                 var declarationModifiers = EnumExtensions.GetValues<DeclarationModifiers>();
                 var maxDeclarationModifier = (int)declarationModifiers.Aggregate((d1, d2) => d1 | d2);
@@ -156,7 +157,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private Dictionary<string, ImmutableArray<Symbol>> _lazyMembersDictionary;
         private Dictionary<string, ImmutableArray<Symbol>> _lazyEarlyAttributeDecodingMembersDictionary;
 
-        private static readonly Dictionary<string, ImmutableArray<NamedTypeSymbol>> s_emptyTypeMembers = new Dictionary<string, ImmutableArray<NamedTypeSymbol>>();
+        private static readonly Dictionary<string, ImmutableArray<NamedTypeSymbol>> s_emptyTypeMembers = new Dictionary<string, ImmutableArray<NamedTypeSymbol>>(EmptyComparer.Instance);
         private Dictionary<string, ImmutableArray<NamedTypeSymbol>> _lazyTypeMembers;
         private ImmutableArray<Symbol> _lazyMembersFlattened;
         private ImmutableArray<SynthesizedExplicitImplementationForwardingMethod> _lazySynthesizedExplicitImplementations;
@@ -1504,7 +1505,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 }
 
                 Debug.Assert(s_emptyTypeMembers.Count == 0);
-                return symbols.Count > 0 ? symbols.ToDictionary(s => s.Name) : s_emptyTypeMembers;
+                return symbols.Count > 0 ? 
+                    symbols.ToDictionary(s => s.Name, StringOrdinalComparer.Instance) : 
+                    s_emptyTypeMembers;
             }
             finally
             {
@@ -1651,12 +1654,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 // NOTE: members were added in a single pass over the syntax, so they're already
                 // in lexical order.
 
-                // TODO: Can we move ToDictionary() off ArrayBuilder<T> so that we don't need a temp here?
-                var temp = ArrayBuilder<Symbol>.GetInstance();
-                temp.AddRange(membersAndInitializers.NonTypeNonIndexerMembers);
-                var membersByName = temp.ToDictionary(s => s.Name);
-                temp.Free();
-
+                var membersByName = membersAndInitializers.NonTypeNonIndexerMembers.ToDictionary(s => s.Name);
                 AddNestedTypesToDictionary(membersByName, GetTypeMembersDictionary());
 
                 Interlocked.CompareExchange(ref _lazyEarlyAttributeDecodingMembersDictionary, membersByName, null);
@@ -1711,7 +1709,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 var membersDictionary = MakeAllMembers(diagnostics);
                 if (Interlocked.CompareExchange(ref _lazyMembersDictionary, membersDictionary, null) == null)
                 {
-                    MergePartialMethods(_lazyMembersDictionary, diagnostics);
+                    var memberNames = ArrayBuilder<string>.GetInstance(membersDictionary.Count);
+                    memberNames.AddRange(membersDictionary.Keys);
+                    MergePartialMembers(memberNames, membersDictionary, diagnostics);
+                    memberNames.Free();
                     AddDeclarationDiagnostics(diagnostics);
                     state.NotePartComplete(CompletionPart.Members);
                 }
@@ -1721,6 +1722,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
             state.SpinWaitComplete(CompletionPart.Members, default(CancellationToken));
             return _lazyMembersDictionary;
+        }
+
+        internal override IEnumerable<Symbol> GetInstanceFieldsAndEvents()
+        {
+            var membersAndInitializers = this.GetMembersAndInitializers();
+            return membersAndInitializers.NonTypeNonIndexerMembers.Where(IsInstanceFieldOrEvent);
         }
 
         protected void AfterMembersChecks(DiagnosticBag diagnostics, CancellationToken cancellationToken)
@@ -1793,7 +1800,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             // key and value will be the same object in these dictionaries.
             var methodsBySignature = new Dictionary<SourceMethodSymbol, SourceMethodSymbol>(MemberSignatureComparer.DuplicateSourceComparer);
             var conversionsAsMethods = new Dictionary<SourceMethodSymbol, SourceMethodSymbol>(MemberSignatureComparer.DuplicateSourceComparer);
-            var conversionsAsConversions = new Dictionary<SourceUserDefinedConversionSymbol, SourceUserDefinedConversionSymbol>(ConversionSignatureComparer.Comparer);
+            var conversionsAsConversions = new HashSet<SourceUserDefinedConversionSymbol>(ConversionSignatureComparer.Comparer);
 
             // SPEC: The signature of an operator must differ from the signatures of all other
             // SPEC: operators declared in the same class.
@@ -1829,16 +1836,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             // "non-method, non-conversion, non-type member", rather than spelling out 
             // "field, property or event...")
 
-            //
-
-            foreach (var name in membersByName.Keys)
+            foreach (var pair in membersByName)
             {
+                var name = pair.Key;
                 Symbol lastSym = GetTypeMembers(name).FirstOrDefault();
                 methodsBySignature.Clear();
-                conversionsAsMethods.Clear();
                 // Conversion collisions do not consider the name of the conversion,
                 // so do not clear that dictionary.
-                foreach (var symbol in membersByName[name])
+                foreach (var symbol in pair.Value)
                 {
                     if (symbol.Kind == SymbolKind.NamedType ||
                         symbol.IsAccessor() ||
@@ -1885,11 +1890,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     {
                         if (symbol.Kind != SymbolKind.Method || lastSym.Kind != SymbolKind.Method)
                         {
-                            if (symbol.Kind != SymbolKind.Field || !symbol.IsImplicitlyDeclared || !(symbol is SynthesizedBackingFieldSymbol)) // don't report duplicate errors on backing fields
+                            if (symbol.Kind != SymbolKind.Field || !symbol.IsImplicitlyDeclared)
                             {
                                 // The type '{0}' already contains a definition for '{1}'
                                 if (Locations.Length == 1 || IsPartial)
+                                {
                                     diagnostics.Add(ErrorCode.ERR_DuplicateNameInClass, symbol.Locations[0], this, symbol.Name);
+                                }
                             }
 
                             if (lastSym.Kind == SymbolKind.Method)
@@ -1913,23 +1920,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                         // Does this conversion collide *as a conversion* with any previously-seen
                         // conversion?
 
-                        SourceUserDefinedConversionSymbol previousConversion;
-                        if (conversionsAsConversions.TryGetValue(conversion, out previousConversion))
+                        if (!conversionsAsConversions.Add(conversion))
                         {
                             // CS0557: Duplicate user-defined conversion in type 'C'
                             diagnostics.Add(ErrorCode.ERR_DuplicateConversionInClass, conversion.Locations[0], this);
                         }
                         else
                         {
-                            // We haven't seen this conversion before; make a note of it in case we
-                            // see it again later, either as a conversion or as a method.
-                            conversionsAsConversions[conversion] = conversion;
-
                             // The other set might already contain a conversion which would collide
                             // *as a method* with the current conversion.
                             if (!conversionsAsMethods.ContainsKey(conversion))
                             {
-                                conversionsAsMethods[conversion] = conversion;
+                                conversionsAsMethods.Add(conversion, conversion);
                             }
                         }
 
@@ -1943,11 +1945,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                         }
                         // Do not add the conversion to the set of previously-seen methods; that set
                         // is only non-conversion methods.
-
                     }
                     else if ((object)method != null)
                     {
-                        // Does this method collide *as a method* with any previously-seen 
+                        // Does this method collide *as a method* with any previously-seen
                         // conversion?
 
                         SourceMethodSymbol previousConversion;
@@ -1969,7 +1970,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                         {
                             // We haven't seen this method before. Make a note of it in case
                             // we see a colliding method later.
-                            methodsBySignature[method] = method;
+                            methodsBySignature.Add(method, method);
                         }
                     }
                 }
@@ -1994,16 +1995,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     ErrorCode.ERR_OverloadRefOut;
                 diagnostics.Add(errorCode, method1.Locations[0], this);
             }
-            else if (method1.MethodKind == MethodKind.Destructor && method2.MethodKind == MethodKind.Destructor)
-            {
-                // Special case: if there are two destructors, use the destructor syntax instead of "Finalize"
-                // Type '{1}' already defines a member called '{0}' with the same parameter types
-                diagnostics.Add(ErrorCode.ERR_MemberAlreadyExists, method1.Locations[0], "~" + this.Name, this);
-            }
             else
             {
+                // Special case: if there are two destructors, use the destructor syntax instead of "Finalize"
+                var methodName = (method1.MethodKind == MethodKind.Destructor && method2.MethodKind == MethodKind.Destructor) ?
+                    "~" + this.Name :
+                    method1.Name;
                 // Type '{1}' already defines a member called '{0}' with the same parameter types
-                diagnostics.Add(ErrorCode.ERR_MemberAlreadyExists, method1.Locations[0], method1.Name, this);
+                diagnostics.Add(ErrorCode.ERR_MemberAlreadyExists, method1.Locations[0], methodName, this);
             }
         }
 
@@ -2019,16 +2018,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 }
             }
 
-
             var indexersBySignature = new Dictionary<PropertySymbol, PropertySymbol>(MemberSignatureComparer.DuplicateSourceComparer);
 
             // Note: Can't assume that all indexers are called WellKnownMemberNames.Indexer because 
             // they may be explicit interface implementations.
-            foreach (string name in membersByName.Keys)
+            foreach (var members in membersByName.Values)
             {
                 string lastIndexerName = null;
                 indexersBySignature.Clear();
-                foreach (var symbol in membersByName[name])
+                foreach (var symbol in members)
                 {
                     if (symbol.IsIndexer())
                     {
@@ -2227,7 +2225,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     var type = field.Type;
                     if (((object)type != null) &&
                         (type.TypeKind == TypeKind.Struct) &&
-                        BaseTypeAnalysis.StructDependsOn(type, this) &&
+                        BaseTypeAnalysis.StructDependsOn((NamedTypeSymbol)type, this) &&
                         !type.IsPrimitiveRecursiveStruct()) // allow System.Int32 to contain a field of its own type
                     {
                         // If this is a backing field, report the error on the associated property.
@@ -2681,7 +2679,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         /// <summary>
         /// Merge (already ordered) non-type, non-indexer members with (already ordered) indexer members.
         /// </summary>
-        private Dictionary<string, ImmutableArray<Symbol>> MergeIndexersAndNonIndexers(ImmutableArray<Symbol> nonIndexerMembers, ArrayBuilder<Symbol> indexerMembers)
+        private static Dictionary<string, ImmutableArray<Symbol>> MergeIndexersAndNonIndexers(ImmutableArray<Symbol> nonIndexerMembers, ArrayBuilder<Symbol> indexerMembers)
         {
             int nonIndexerCount = nonIndexerMembers.Length;
             int indexerCount = indexerMembers.Count;
@@ -2717,7 +2715,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 merged.Add(indexerMembers[indexerPos]);
             }
 
-            var membersByName = merged.ToDictionary(s => s.Name);
+            var membersByName = merged.ToDictionary(s => s.Name, StringOrdinalComparer.Instance);
             merged.Free();
 
             return membersByName;
@@ -2875,14 +2873,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return this.DeclaringCompilation.GetBinder(syntaxNode);
         }
 
-        private static void MergePartialMethods(
+        private static void MergePartialMembers(
+            ArrayBuilder<string> memberNames,
             Dictionary<string, ImmutableArray<Symbol>> membersByName,
             DiagnosticBag diagnostics)
         {
             //key and value will be the same object
             var methodsBySignature = new Dictionary<MethodSymbol, SourceMethodSymbol>(MemberSignatureComparer.DuplicateSourceComparer);
 
-            foreach (var name in membersByName.Keys.ToArray())
+            foreach (var name in memberNames)
             {
                 methodsBySignature.Clear();
                 foreach (var symbol in membersByName[name])
@@ -2960,15 +2959,19 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             SourceMemberMethodSymbol.InitializePartialMethodParts(definition, implementation);
 
             // a partial method is represented in the member list by its definition part:
+            return Remove(symbols, implementation);
+        }
+
+        private static ImmutableArray<Symbol> Remove(ImmutableArray<Symbol> symbols, Symbol symbol)
+        {
             var builder = ArrayBuilder<Symbol>.GetInstance();
             foreach (var s in symbols)
             {
-                if (!ReferenceEquals(s, implementation))
+                if (!ReferenceEquals(s, symbol))
                 {
                     builder.Add(s);
                 }
             }
-
             return builder.ToImmutableAndFree();
         }
 
@@ -3243,6 +3246,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                         case MethodKind.ExplicitInterfaceImplementation:
                         //CS0541 is handled in SourcePropertySymbol
                         case MethodKind.Ordinary:
+                        case MethodKind.LocalFunction:
                         case MethodKind.PropertyGet:
                         case MethodKind.PropertySet:
                         case MethodKind.EventAdd:

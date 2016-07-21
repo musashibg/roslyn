@@ -25,6 +25,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             _metaclassArguments = metaclassArguments;
             _variableValues = variableValues;
             _compilation = compilation;
+            _diagnostics = diagnostics;
         }
 
         public override BoundNode VisitAssignmentOperator(BoundAssignmentOperator node)

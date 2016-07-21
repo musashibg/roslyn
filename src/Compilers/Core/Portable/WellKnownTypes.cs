@@ -36,16 +36,12 @@ namespace Microsoft.CodeAnalysis
         System_Type,
         System_Reflection_AssemblyKeyFileAttribute,
         System_Reflection_AssemblyKeyNameAttribute,
-        System_Reflection_BindingFlags,
         System_Reflection_MethodInfo,
         System_Reflection_ConstructorInfo,
         System_Reflection_MethodBase,
         System_Reflection_FieldInfo,
         System_Reflection_MemberInfo,
-        System_Reflection_ParameterInfo,
-        System_Reflection_PropertyInfo,
         System_Reflection_Missing,
-        System_Reflection_CustomAttributeExtensions,
         System_Runtime_CompilerServices_FormattableStringFactory,
         System_Runtime_CompilerServices_RuntimeHelpers,
         System_Runtime_ExceptionServices_ExceptionDispatchInfo,
@@ -250,15 +246,35 @@ namespace Microsoft.CodeAnalysis
         System_Runtime_GCLatencyMode,
         System_IFormatProvider,
 
-        // Decorators
+        CSharp7Sentinel = System_IFormatProvider, // all types that were known before CSharp7 should remain above this sentinel
+
+        System_ValueTuple_T1,
+        System_ValueTuple_T2,
+        System_ValueTuple_T3,
+        System_ValueTuple_T4,
+        System_ValueTuple_T5,
+        System_ValueTuple_T6,
+
+        ExtSentinel, // Not a real type, just a marker for types above 255 and strictly below 512
+
+        System_ValueTuple_T7,
+        System_ValueTuple_TRest,
+
+        System_Runtime_CompilerServices_TupleElementNamesAttribute,
+
+        System_Reflection_BindingFlags,
+        System_Reflection_ParameterInfo,
+        System_Reflection_PropertyInfo,
+        System_Reflection_CustomAttributeExtensions,
+
+        // Metaprogramming
         CSharp_Meta_Decorator,
         CSharp_Meta_Metaclass,
         CSharp_Meta_MetaExtensions,
         CSharp_Meta_MetaPrimitives,
         CSharp_Meta_Trait,
 
-        Available,
-        Last = Available - 1,
+        NextAvailable,
     }
 
     internal static class WellKnownTypes
@@ -266,7 +282,7 @@ namespace Microsoft.CodeAnalysis
         /// <summary>
         /// Number of well known types in WellKnownType enum
         /// </summary>
-        internal const int Count = WellKnownType.Last - WellKnownType.First + 1;
+        internal const int Count = WellKnownType.NextAvailable - WellKnownType.First;
 
         /// <summary>
         /// Array of names for types.
@@ -293,16 +309,12 @@ namespace Microsoft.CodeAnalysis
             "System.Type",
             "System.Reflection.AssemblyKeyFileAttribute",
             "System.Reflection.AssemblyKeyNameAttribute",
-            "System.Reflection.BindingFlags",
             "System.Reflection.MethodInfo",
             "System.Reflection.ConstructorInfo",
             "System.Reflection.MethodBase",
             "System.Reflection.FieldInfo",
             "System.Reflection.MemberInfo",
-            "System.Reflection.ParameterInfo",
-            "System.Reflection.PropertyInfo",
             "System.Reflection.Missing",
-            "System.Reflection.CustomAttributeExtensions",
             "System.Runtime.CompilerServices.FormattableStringFactory",
             "System.Runtime.CompilerServices.RuntimeHelpers",
             "System.Runtime.ExceptionServices.ExceptionDispatchInfo",
@@ -502,6 +514,25 @@ namespace Microsoft.CodeAnalysis
             "System.Runtime.GCLatencyMode",
             "System.IFormatProvider",
 
+            "System.ValueTuple`1",
+            "System.ValueTuple`2",
+            "System.ValueTuple`3",
+            "System.ValueTuple`4",
+            "System.ValueTuple`5",
+            "System.ValueTuple`6",
+
+            "", // extension marker
+
+            "System.ValueTuple`7",
+            "System.ValueTuple`8",
+
+            "System.Runtime.CompilerServices.TupleElementNamesAttribute",
+
+            "System.Reflection.BindingFlags",
+            "System.Reflection.ParameterInfo",
+            "System.Reflection.PropertyInfo",
+            "System.Reflection.CustomAttributeExtensions",
+
             "CSharp.Meta.Decorator",
             "CSharp.Meta.Metaclass",
             "CSharp.Meta.MetaExtensions",
@@ -532,23 +563,49 @@ namespace Microsoft.CodeAnalysis
                 var typeId = (WellKnownType)(i + WellKnownType.First);
 
                 string typeIdName;
-                if (typeId == WellKnownType.First)
+                switch (typeId)
                 {
-                    typeIdName = "System.Math";
-                }
-                else if (typeId == WellKnownType.Last)
-                {
-                    typeIdName = "CSharp.Meta.Trait";
-                }
-                else
-                {
-                    typeIdName = typeId.ToString().Replace("__", "+").Replace('_', '.');
+                    case WellKnownType.First:
+                        typeIdName = "System.Math";
+                        break;
+                    case WellKnownType.Microsoft_VisualBasic_CompilerServices_ObjectFlowControl_ForLoopControl:
+                        typeIdName = "Microsoft.VisualBasic.CompilerServices.ObjectFlowControl+ForLoopControl";
+                        break;
+                    case WellKnownType.CSharp7Sentinel:
+                        typeIdName = "System.IFormatProvider";
+                        break;
+                    case WellKnownType.ExtSentinel:
+                        typeIdName = "";
+                        continue;
+                    default:
+                        typeIdName = typeId.ToString().Replace("__", "+").Replace('_', '.');
+                        break;
                 }
 
-                Debug.Assert(name == "Microsoft.VisualBasic.CompilerServices.ObjectFlowControl+ForLoopControl"
-                          || name.IndexOf('`') > 0 // a generic type
-                          || name == typeIdName);
+                int separator = name.IndexOf('`');
+                if (separator >= 0)
+                {
+                    // Ignore type parameter qualifier for generic types.
+                    name = name.Substring(0, separator);
+                    typeIdName = typeIdName.Substring(0, separator);
+                }
+
+                Debug.Assert(name == typeIdName);
             }
+
+            Debug.Assert((int)WellKnownType.ExtSentinel == 255);
+            Debug.Assert((int)WellKnownType.NextAvailable <= 512);
+        }
+
+        public static bool IsWellKnownType(this WellKnownType typeId)
+        {
+            Debug.Assert(typeId != WellKnownType.ExtSentinel);
+            return typeId >= WellKnownType.First && typeId < WellKnownType.NextAvailable;
+        }
+
+        public static bool IsValid(this WellKnownType typeId)
+        {
+            return typeId >= WellKnownType.First && typeId < WellKnownType.NextAvailable && typeId != WellKnownType.ExtSentinel;
         }
 
         public static string GetMetadataName(this WellKnownType id)

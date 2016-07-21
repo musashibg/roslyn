@@ -66,7 +66,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.Venus
         private readonly IComponentModel _componentModel;
         private readonly Workspace _workspace;
         private readonly ITextDifferencingSelectorService _differenceSelectorService;
-        private readonly IOptionService _optionService;
         private readonly HostType _hostType;
         private readonly ReiteratedVersionSnapshotTracker _snapshotTracker;
         private readonly IFormattingRule _vbHelperFormattingRule;
@@ -95,7 +94,6 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.Venus
             _sourceCodeKind = sourceCodeKind;
             _componentModel = componentModel;
             _workspace = workspace;
-            _optionService = _workspace.Services.GetService<IOptionService>();
             _hostType = GetHostType();
 
             string filePath;
@@ -810,7 +808,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.Venus
             var originalText = document.GetTextAsync(CancellationToken.None).WaitAndGetResult(CancellationToken.None);
             Contract.Requires(object.ReferenceEquals(originalText, snapshot.AsText()));
 
-            var root = document.GetSyntaxRootAsync(CancellationToken.None).WaitAndGetResult(CancellationToken.None);
+            var root = document.GetSyntaxRootSynchronously(CancellationToken.None);
 
             var editorOptionsFactory = _componentModel.GetService<IEditorOptionsFactoryService>();
             var editorOptions = editorOptionsFactory.GetOptions(_containedLanguage.DataBuffer);
@@ -842,7 +840,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.Venus
         private void AdjustIndentationForSpan(
             Document document, ITextEdit edit, TextSpan visibleSpan, IFormattingRule baseIndentationRule, OptionSet options)
         {
-            var root = document.GetSyntaxRootAsync(CancellationToken.None).WaitAndGetResult(CancellationToken.None);
+            var root = document.GetSyntaxRootSynchronously(CancellationToken.None);
 
             using (var rulePool = SharedPools.Default<List<IFormattingRule>>().GetPooledObject())
             using (var spanPool = SharedPools.Default<List<TextSpan>>().GetPooledObject())
@@ -1008,7 +1006,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.Venus
         {
             if (_hostType == HostType.HTML)
             {
-                return _optionService.GetOption(FormattingOptions.IndentationSize, this.Project.Language);
+                return _workspace.Options.GetOption(FormattingOptions.IndentationSize, this.Project.Language);
             }
 
             if (_hostType == HostType.Razor)
@@ -1066,7 +1064,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.Venus
                         }
                     }
 
-                    return _optionService.GetOption(FormattingOptions.IndentationSize, this.Project.Language);
+                    return _workspace.Options.GetOption(FormattingOptions.IndentationSize, this.Project.Language);
                 }
             }
 

@@ -1,10 +1,10 @@
-﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using Roslyn.Utilities;
 using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Reflection.Metadata;
-using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.RuntimeMembers
 {
@@ -42,7 +42,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         /// (either for the VB runtime classes, or types like System.Task etc.) will need 
         /// to use IDs that are all mutually disjoint. 
         /// </summary>
-        public readonly ushort DeclaringTypeId;
+        public readonly short DeclaringTypeId;
 
         public string DeclaringTypeMetadataName
         {
@@ -68,13 +68,13 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
         ///    5) modifiers are not included.
         ///    6) (CLASS | VALUETYPE) are omitted after GENERICINST
         /// </summary>
-        public readonly ImmutableArray<ushort> Signature;
+        public readonly ImmutableArray<byte> Signature;
 
         public MemberDescriptor(
             MemberFlags Flags,
-            ushort DeclaringTypeId,
+            short DeclaringTypeId,
             string Name,
-            ImmutableArray<ushort> Signature,
+            ImmutableArray<byte> Signature,
             ushort Arity = 0)
         {
             this.Flags = Flags;
@@ -89,26 +89,22 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
             int count = nameTable.Length;
 
             var builder = ImmutableArray.CreateBuilder<MemberDescriptor>(count);
-            var signatureBuilder = ImmutableArray.CreateBuilder<ushort>();
+            var signatureBuilder = ImmutableArray.CreateBuilder<byte>();
 
-            var buffer = new byte[2];
             for (int i = 0; i < count; i++)
             {
-                stream.Read(buffer, 0, 2);
-                MemberFlags flags = (MemberFlags)BitConverter.ToUInt16(buffer, 0);
-                stream.Read(buffer, 0, 2);
-                ushort declaringTypeId = BitConverter.ToUInt16(buffer, 0);
-                stream.Read(buffer, 0, 2);
-                ushort arity = BitConverter.ToUInt16(buffer, 0);
+                MemberFlags flags = (MemberFlags)stream.ReadByte();
+                short declaringTypeId = ReadTypeId(stream);
+                ushort arity = (ushort)stream.ReadByte();
 
                 if ((flags & MemberFlags.Field) != 0)
                 {
-                    ParseType(signatureBuilder, stream, buffer);
+                    ParseType(signatureBuilder, stream);
                 }
                 else
                 {
                     // Property, PropertyGet, Method or Constructor
-                    ParseMethodOrPropertySignature(signatureBuilder, stream, buffer);
+                    ParseMethodOrPropertySignature(signatureBuilder, stream);
                 }
 
                 builder.Add(new MemberDescriptor(flags, declaringTypeId, nameTable[i], signatureBuilder.ToImmutable(), arity));
@@ -118,29 +114,46 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
             return builder.ToImmutable();
         }
 
-        private static void ParseMethodOrPropertySignature(ImmutableArray<ushort>.Builder builder, Stream stream, byte[] buffer)
+        /// <summary>
+        /// The type Id may be:
+        ///     (1) encoded in a single byte (for types below 255)
+        ///     (2) encoded in two bytes (255 + extension byte) for types below 512
+        /// </summary>
+        private static short ReadTypeId(Stream stream)
         {
-            stream.Read(buffer, 0, 2);
-            ushort paramCount = BitConverter.ToUInt16(buffer, 0);
-            builder.Add(paramCount);
+            var firstByte = (byte)stream.ReadByte();
+
+            if (firstByte == (byte)WellKnownType.ExtSentinel)
+            {
+                return (short)(stream.ReadByte() + WellKnownType.ExtSentinel);
+            }
+            else
+            {
+                return firstByte;
+            }
+        }
+
+        private static void ParseMethodOrPropertySignature(ImmutableArray<byte>.Builder builder, Stream stream)
+        {
+            int paramCount = stream.ReadByte();
+            builder.Add((byte)paramCount);
 
             // Return type
-            ParseType(builder, stream, buffer);
+            ParseType(builder, stream);
 
             // Parameters
             for (int i = 0; i < paramCount; i++)
             {
-                ParseType(builder, stream, buffer, allowByRef: true);
+                ParseType(builder, stream, allowByRef: true);
             }
         }
 
-        private static void ParseType(ImmutableArray<ushort>.Builder builder, Stream stream, byte[] buffer, bool allowByRef = false)
+        private static void ParseType(ImmutableArray<byte>.Builder builder, Stream stream, bool allowByRef = false)
         {
             while (true)
             {
-                stream.Read(buffer, 0, 2);
-                var typeCode = (SignatureTypeCode)BitConverter.ToUInt16(buffer, 0);
-                builder.Add((ushort)typeCode);
+                var typeCode = (SignatureTypeCode)stream.ReadByte();
+                builder.Add((byte)typeCode);
 
                 switch (typeCode)
                 {
@@ -148,10 +161,12 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
                         throw ExceptionUtilities.UnexpectedValue(typeCode);
 
                     case SignatureTypeCode.TypeHandle:
+                        ParseTypeHandle(builder, stream);
+                        return;
+
                     case SignatureTypeCode.GenericTypeParameter:
                     case SignatureTypeCode.GenericMethodParameter:
-                        stream.Read(buffer, 0, 2);
-                        builder.Add(BitConverter.ToUInt16(buffer, 0));
+                        builder.Add((byte)stream.ReadByte());
                         return;
 
                     case SignatureTypeCode.ByReference:
@@ -165,7 +180,7 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
                         break;
 
                     case SignatureTypeCode.GenericTypeInstance:
-                        ParseGenericTypeInstance(builder, stream, buffer);
+                        ParseGenericTypeInstance(builder, stream);
                         return;
                 }
 
@@ -173,17 +188,32 @@ namespace Microsoft.CodeAnalysis.RuntimeMembers
             }
         }
 
-        private static void ParseGenericTypeInstance(ImmutableArray<ushort>.Builder builder, Stream stream, byte[] buffer)
+        /// <summary>
+        /// Read a type Id from the stream and copy it into the builder.
+        /// This may copy one or two bytes depending on the first one.
+        /// </summary>
+        private static void ParseTypeHandle(ImmutableArray<byte>.Builder builder, Stream stream)
         {
-            ParseType(builder, stream, buffer);
+            var firstByte = (byte)stream.ReadByte();
+            builder.Add(firstByte);
+
+            if (firstByte == (byte)WellKnownType.ExtSentinel)
+            {
+                var secondByte = (byte)stream.ReadByte();
+                builder.Add(secondByte);
+            }
+        }
+
+        private static void ParseGenericTypeInstance(ImmutableArray<byte>.Builder builder, Stream stream)
+        {
+            ParseType(builder, stream);
 
             // Generic type parameters
-            stream.Read(buffer, 0, 2);
-            ushort argumentCount = BitConverter.ToUInt16(buffer, 0);
-            builder.Add(argumentCount);
+            int argumentCount = stream.ReadByte();
+            builder.Add((byte)argumentCount);
             for (int i = 0; i < argumentCount; i++)
             {
-                ParseType(builder, stream, buffer);
+                ParseType(builder, stream);
             }
         }
     }

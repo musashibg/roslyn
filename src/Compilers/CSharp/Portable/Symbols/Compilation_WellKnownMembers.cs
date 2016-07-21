@@ -77,7 +77,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         internal NamedTypeSymbol GetWellKnownType(WellKnownType type)
         {
-            Debug.Assert(type >= WellKnownType.First && type <= WellKnownType.Last);
+            Debug.Assert(type.IsValid());
 
             int index = (int)type - (int)WellKnownType.First;
             if (_lazyWellKnownTypes == null || (object)_lazyWellKnownTypes[index] == null)
@@ -97,8 +97,11 @@ namespace Microsoft.CodeAnalysis.CSharp
                 }
                 else
                 {
+                    // well-known types introduced before CSharp7 allow lookup ambiguity and report a warning
+                    DiagnosticBag legacyWarnings = (type <= WellKnownType.CSharp7Sentinel) ? warnings : null;
+
                     result = this.Assembly.GetTypeByMetadataName(
-                        mdName, includeReferences: true, useCLSCompliantNameArityEncoding: true, isWellKnownType: true, warnings: warnings);
+                        mdName, includeReferences: true, useCLSCompliantNameArityEncoding: true, isWellKnownType: true, warnings: legacyWarnings);
                 }
 
                 if ((object)result == null)
@@ -301,7 +304,9 @@ namespace Microsoft.CodeAnalysis.CSharp
             ImmutableArray<TypedConstant> arguments = default(ImmutableArray<TypedConstant>),
             ImmutableArray<KeyValuePair<WellKnownMember, TypedConstant>> namedArguments = default(ImmutableArray<KeyValuePair<WellKnownMember, TypedConstant>>))
         {
-            var ctorSymbol = (MethodSymbol)GetWellKnownTypeMember(constructor);
+            DiagnosticInfo diagnosticInfo;
+            var ctorSymbol = (MethodSymbol)Binder.GetWellKnownTypeMember(this, constructor, out diagnosticInfo, isOptional: true);
+
             if ((object)ctorSymbol == null)
             {
                 // if this assert fails, UseSiteErrors for "member" have not been checked before emitting ...
@@ -324,7 +329,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 var builder = new ArrayBuilder<KeyValuePair<string, TypedConstant>>(namedArguments.Length);
                 foreach (var arg in namedArguments)
                 {
-                    var wellKnownMember = GetWellKnownTypeMember(arg.Key);
+                    var wellKnownMember = Binder.GetWellKnownTypeMember(this, arg.Key, out diagnosticInfo, isOptional: true);
                     if (wellKnownMember == null || wellKnownMember is ErrorTypeSymbol)
                     {
                         // if this assert fails, UseSiteErrors for "member" have not been checked before emitting ...
@@ -487,6 +492,72 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
         }
 
+        internal SynthesizedAttributeData SynthesizeTupleNamesAttributeOpt(TypeSymbol type)
+        {
+            Debug.Assert((object)type != null);
+            Debug.Assert(type.ContainsTuple());
+
+            var stringType = GetSpecialType(SpecialType.System_String);
+            Debug.Assert((object)stringType != null);
+            var names = TupleNamesEncoder.Encode(type, stringType);
+
+            // If there are no names, elide the attribute entirely
+            if (names.IsDefault)
+            {
+                return null;
+            }
+
+            var stringArray = ArrayTypeSymbol.CreateSZArray(stringType.ContainingAssembly, stringType, customModifiers: ImmutableArray<CustomModifier>.Empty);
+            var args = ImmutableArray.Create(new TypedConstant(stringArray, names));
+            return TrySynthesizeAttribute(WellKnownMember.System_Runtime_CompilerServices_TupleElementNamesAttribute__ctorTransformNames, args);
+        }
+
+        private static class TupleNamesEncoder
+        {
+            public static ImmutableArray<TypedConstant> Encode(TypeSymbol type, TypeSymbol stringType)
+            {
+                var namesBuilder = ArrayBuilder<string>.GetInstance();
+                type.VisitType((t, builder, _ignore) => AddNames(t, builder), namesBuilder);
+                Debug.Assert(namesBuilder.Any());
+
+                // If none of the tuples have names, return a default array
+                if (namesBuilder.All(name => name == null))
+                {
+                    namesBuilder.Free();
+                    return default(ImmutableArray<TypedConstant>);
+                }
+
+                var names = namesBuilder.SelectAsArray((name, constantType) =>
+                    new TypedConstant(constantType, TypedConstantKind.Primitive, name), stringType);
+                namesBuilder.Free();
+                return names;
+            }
+
+            private static bool AddNames(TypeSymbol type, ArrayBuilder<string> namesBuilder)
+            {
+                if (type.IsTupleType)
+                {
+                    if (type.TupleElementNames.IsDefaultOrEmpty)
+                    {
+                        // If none of the tuple elements have names, put
+                        // null placeholders in.
+                        // TODO(https://github.com/dotnet/roslyn/issues/12347):
+                        // A possible optimization could be to emit an empty attribute
+                        // if all the names are missing, but that has to be true
+                        // recursively.
+                        namesBuilder.AddMany(null, type.TupleElementTypes.Length);
+                    }
+                    else
+                    {
+                        Debug.Assert(!type.TupleElementNames.Contains(null));
+                        namesBuilder.AddRange(type.TupleElementNames);
+                    }
+                }
+                // Always recur into nested types
+                return false;
+            }
+        }
+
         /// <summary>
         /// Used to generate the dynamic attributes for the required typesymbol.
         /// </summary>
@@ -537,11 +608,11 @@ namespace Microsoft.CodeAnalysis.CSharp
                 {
                     // Native compiler encodes an extra transform flag, always false, for each custom modifier.
                     HandleCustomModifiers(customModifiersCount, transformFlagsBuilder);
-                    type.VisitType((typeSymbol, builder, isNested) => AddFlags(typeSymbol, builder, isNested, addCustomModifierFlags:true), transformFlagsBuilder);
+                    type.VisitType((typeSymbol, builder, isNested) => AddFlags(typeSymbol, builder, isNested, addCustomModifierFlags: true), transformFlagsBuilder);
                 }
                 else
                 {
-                    type.VisitType((typeSymbol, builder, isNested) => AddFlags(typeSymbol, builder, isNested, addCustomModifierFlags:false), transformFlagsBuilder);
+                    type.VisitType((typeSymbol, builder, isNested) => AddFlags(typeSymbol, builder, isNested, addCustomModifierFlags: false), transformFlagsBuilder);
                 }
             }
 
@@ -774,7 +845,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             protected override bool MatchTypeToTypeId(TypeSymbol type, int typeId)
             {
                 WellKnownType wellKnownId = (WellKnownType)typeId;
-                if (wellKnownId >= WellKnownType.First && wellKnownId <= WellKnownType.Last)
+                if (wellKnownId.IsWellKnownType())
                 {
                     return (type == _compilation.GetWellKnownType(wellKnownId));
                 }

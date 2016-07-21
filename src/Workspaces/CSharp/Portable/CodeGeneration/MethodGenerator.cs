@@ -80,6 +80,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
                 attributeLists: GenerateAttributes(method, options, explicitInterfaceSpecifier != null),
                 decorators: default(SyntaxList<MetaDecorationSyntax>),
                 modifiers: GenerateModifiers(method, destination, options),
+                refKeyword: method.ReturnsByRef ? SyntaxFactory.Token(SyntaxKind.RefKeyword) : default(SyntaxToken),
                 returnType: method.ReturnType.GenerateTypeSyntax(),
                 explicitInterfaceSpecifier: explicitInterfaceSpecifier,
                 identifier: method.Name.ToIdentifierToken(),
@@ -87,6 +88,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGeneration
                 parameterList: ParameterGenerator.GenerateParameterList(method.Parameters, explicitInterfaceSpecifier != null, options),
                 constraintClauses: GenerateConstraintClauses(method),
                 body: hasNoBody ? null : StatementGenerator.GenerateBlock(method),
+                expressionBody: default(ArrowExpressionClauseSyntax),
                 semicolonToken: hasNoBody ? SyntaxFactory.Token(SyntaxKind.SemicolonToken) : new SyntaxToken()));
         }
 

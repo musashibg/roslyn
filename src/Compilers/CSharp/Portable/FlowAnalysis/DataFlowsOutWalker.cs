@@ -104,6 +104,11 @@ namespace Microsoft.CodeAnalysis.CSharp
             {
                 switch (node.Kind)
                 {
+                    case BoundKind.DeclarationPattern:
+                        {
+                            return ((BoundDeclarationPattern)node).LocalSymbol;
+                        }
+
                     case BoundKind.FieldAccess:
                         {
                             var fieldAccess = (BoundFieldAccess)node;
@@ -138,14 +143,13 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                     case BoundKind.CatchBlock:
                         {
-                            var local = ((BoundCatchBlock)node).LocalOpt;
-                            Debug.Assert((object)local == null || local.DeclarationKind == LocalDeclarationKind.CatchVariable);
-                            return (object)local != null ? local : null;
+                            var local = ((BoundCatchBlock)node).Locals.FirstOrDefault();
+                            return local?.DeclarationKind == LocalDeclarationKind.CatchVariable ? local : null;
                         }
 
                     case BoundKind.ForEachStatement:
                         {
-                            return ((BoundForEachStatement)node).IterationVariable;
+                            return ((BoundForEachStatement)node).IterationVariableOpt;
                         }
 
                     case BoundKind.RangeVariable:
@@ -166,6 +170,11 @@ namespace Microsoft.CodeAnalysis.CSharp
                                 }
                             }
                             return null;
+                        }
+
+                    case BoundKind.LocalFunctionStatement:
+                        {
+                            return ((BoundLocalFunctionStatement)node).Symbol;
                         }
 
                     default:

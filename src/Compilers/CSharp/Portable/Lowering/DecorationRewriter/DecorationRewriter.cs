@@ -28,7 +28,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly VariableNameGenerator _variableNameGenerator;
 
         private DecorationRewriterFlags _flags;
-        private ImmutableDictionary<Symbol, LocalSymbol> _replacementSymbols;
+        private LambdaSymbol _containingLambda;
+        private ImmutableDictionary<Symbol, Symbol> _replacementSymbols;
         private ImmutableArray<BoundStatement>.Builder _splicedStatementsBuilder;
         private ImmutableArray<LocalSymbol>.Builder _blockLocalsBuilder;
         private LabelSymbol _staticSwitchEndLabel;
@@ -86,7 +87,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             _encapsulatingStatements = new List<EncapsulatingStatementKind>();
             _variableNameGenerator = new VariableNameGenerator(_targetMethod.Parameters.Select(p => p.Name));
             _flags = DecorationRewriterFlags.None;
-            _replacementSymbols = ImmutableDictionary<Symbol, LocalSymbol>.Empty;
+            _replacementSymbols = ImmutableDictionary<Symbol, Symbol>.Empty;
             _spliceOrdinal = 0;
         }
 
@@ -131,11 +132,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             var bindingTimeAnalyzer = new DecorationBindingTimeAnalyzer(
                 compilation,
                 diagnostics,
-                cancellationToken,
                 decoratorData.ApplicationSyntaxReference.GetLocation(),
                 targetMemberKind,
                 decoratorMethod,
-                decoratorArguments);
+                decoratorArguments,
+                cancellationToken);
             if (!bindingTimeAnalyzer.PerformAnalysis())
             {
                 return targetMethodBody;
@@ -596,6 +597,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override DecorationRewriteResult VisitBlock(BoundBlock node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.LocalFunctions.IsEmpty, "DecorationRewriter is not compatible with local functions.");
             ImmutableArray<LocalSymbol>.Builder outerBlockLocalsBuilder = _blockLocalsBuilder;
             _blockLocalsBuilder = ImmutableArray.CreateBuilder<LocalSymbol>();
 
@@ -620,7 +622,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
 
             return new DecorationRewriteResult(
-                node.Update(locals, rewrittenStatements),
+                node.Update(locals, node.LocalFunctions, rewrittenStatements),
                 variableValues,
                 !statementsResults.IsEmpty,
                 possibleContinuations);
@@ -673,8 +675,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             int encapsulatingStatementIndex = _encapsulatingStatements.Count;
             _encapsulatingStatements.Add(EncapsulatingStatementKind.CatchBlock | EncapsulatingStatementKind.DynamicallyControlled);
 
-            LocalSymbol localOpt = node.LocalOpt == null ? null : GetReplacementSymbol(node.LocalOpt);
-
             DecorationRewriteResult exceptionSourceResult = Visit(node.ExceptionSourceOpt, variableValues);
             if (exceptionSourceResult != null)
             {
@@ -694,7 +694,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             return new DecorationRewriteResult(
                 node.Update(
-                    localOpt,
+                    node.Locals.SelectAsArray(ls => (LocalSymbol)GetReplacementSymbol(ls)),
                     (BoundExpression)exceptionSourceResult?.Node,
                     node.ExceptionTypeOpt,
                     (BoundExpression)exceptionFilterResult?.Node,
@@ -958,13 +958,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             BoundExpression rewrittenNode = null;
             CompileTimeValue value;
-            if (operandValue.Kind == CompileTimeValueKind.Simple && !node.ConversionKind.IsUserDefinedConversion())
+            if (operandValue.Kind == CompileTimeValueKind.Simple && !node.Conversion.IsUserDefined)
             {
                 value = StaticValueUtils.FoldConversion(node.Syntax, operandValue, node.ConversionKind, node.Type, _diagnostics);
                 rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
             }
             else if (operandValue.Kind == CompileTimeValueKind.Complex
-                     && (node.ConversionKind == ConversionKind.Boxing || node.ConversionKind == ConversionKind.ImplicitReference))
+                     && (node.Conversion.IsBoxing || node.ConversionKind == ConversionKind.ImplicitReference))
             {
                 value = operandValue;
             }
@@ -977,14 +977,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 rewrittenNode = node.Update(
                     (BoundExpression)operandResult.Node,
-                    node.ConversionKind,
-                    node.ResultKind,
+                    node.Conversion,
                     node.IsBaseConversion,
-                    node.SymbolOpt,
                     node.Checked,
                     node.ExplicitCastInCode,
-                    node.IsExtensionMethod,
-                    node.IsArrayIndex,
                     node.ConstantValueOpt,
                     node.Type);
             }
@@ -1385,7 +1381,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override DecorationRewriteResult VisitForEachStatement(BoundForEachStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
-            LocalSymbol iterationVariable = node.IterationVariable;
+            Debug.Assert(node.DeconstructionOpt == null, "DecorationRewriter is not compatible with foreach loops with a deconstruction step.");
+
+            LocalSymbol iterationVariableOpt = node.IterationVariableOpt;
             DecorationRewriteResult expressionResult = Visit(node.Expression, variableValues);
             CompileTimeValue expressionValue = expressionResult.Value;
             Debug.Assert(expressionValue.Kind != CompileTimeValueKind.ArgumentArray);
@@ -1429,8 +1427,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         node.EnumeratorInfoOpt,
                         node.ElementConversion,
                         node.IterationVariableType,
-                        GetReplacementSymbol(iterationVariable),
+                        iterationVariableOpt == null ? null : (LocalSymbol)GetReplacementSymbol(iterationVariableOpt),
                         (BoundExpression)expressionResult.Node,
+                        node.DeconstructionOpt,
                         (BoundStatement)bodyResult.Node,
                         node.Checked,
                         node.BreakLabel,
@@ -1451,7 +1450,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     var arrayValue = (ArrayValue)expressionValue;
                     if (iterationIndex < arrayValue.Array.Length)
                     {
-                        DecorationRewriteResult bodyResult = Visit(node.Body, variableValues.SetItem(iterationVariable, arrayValue.Array[iterationIndex]));
+                        if (iterationVariableOpt != null)
+                        {
+                            variableValues = variableValues.SetItem(iterationVariableOpt, arrayValue.Array[iterationIndex]);
+                        }
+                        DecorationRewriteResult bodyResult = Visit(node.Body, variableValues);
 
                         if (bodyResult.HasNextStatementContinuation || bodyResult.HasContinueContinuation)
                         {
@@ -1675,7 +1678,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
             else
             {
-                rewrittenNode = new BoundBlock(node.Syntax, _blockLocalsBuilder.ToImmutable(), statementsBuilder.ToImmutable()) { WasCompilerGenerated = true };
+                rewrittenNode = new BoundBlock(
+                    node.Syntax,
+                    _blockLocalsBuilder.ToImmutable(),
+                    ImmutableArray<LocalFunctionSymbol>.Empty,
+                    statementsBuilder.ToImmutable())
+                {
+                    WasCompilerGenerated = true,
+                };
                 mustEmit = true;
             }
 
@@ -1729,6 +1739,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 Debug.Assert(conditionResult.Value.Kind == CompileTimeValueKind.Dynamic);
 
+                ImmutableArray<LocalSymbol>.Builder outerBlockLocalsBuilder = _blockLocalsBuilder;
+                _blockLocalsBuilder = ImmutableArray.CreateBuilder<LocalSymbol>();
+
                 _encapsulatingStatements.Add(EncapsulatingStatementKind.Conditional | EncapsulatingStatementKind.DynamicallyControlled);
 
                 DecorationRewriteResult consequenceResult = Visit(node.Consequence, conditionResult.UpdatedVariableValues);
@@ -1749,8 +1762,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 _encapsulatingStatements.RemoveAt(encapsulatingStatementIndex);
                 Debug.Assert(_encapsulatingStatements.Count == encapsulatingStatementIndex);
 
+                ImmutableArray<LocalSymbol> locals = _blockLocalsBuilder.ToImmutable();
+                _blockLocalsBuilder = outerBlockLocalsBuilder;
+
                 return new DecorationRewriteResult(
-                    node.Update((BoundExpression)conditionResult.Node, (BoundStatement)consequenceResult.Node, (BoundStatement)alternativeResult?.Node),
+                    node.Update(
+                        locals,
+                        (BoundExpression)conditionResult.Node,
+                        (BoundStatement)consequenceResult.Node,
+                        (BoundStatement)alternativeResult?.Node),
                     variableValues,
                     true,
                     possibleContinuations);
@@ -2021,10 +2041,35 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override DecorationRewriteResult VisitLambda(BoundLambda node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            LambdaSymbol lambda = node.Symbol;
+
+            var replacementLambda = new LambdaSymbol(
+                _containingLambda ?? _targetMethod,
+                lambda.Parameters,
+                lambda.RefKind,
+                lambda.ReturnType,
+                lambda.MessageID,
+                node.Syntax,
+                true,
+                lambda.IsAsync);
+
+            // Creating a new lambda symbol automatically creates fresh parameter symbols so we need to populate the replacement symbols collection with them
+            int parameterCount = lambda.ParameterCount;
+            for (int i = 0; i < parameterCount; i++)
+            {
+                Debug.Assert(!_replacementSymbols.ContainsKey(lambda.Parameters[i]));
+                _replacementSymbols = _replacementSymbols.Add(lambda.Parameters[i], replacementLambda.Parameters[i]);
+            }
+
+            LambdaSymbol outerContainingLambda = _containingLambda;
+            _containingLambda = replacementLambda;
+
             DecorationRewriteResult bodyResult = VisitWithExtraFlags(DecorationRewriterFlags.InNestedLambdaBody, node.Body, variableValues);
 
+            _containingLambda = outerContainingLambda;
+
             return new DecorationRewriteResult(
-                node.Update(node.Symbol, GetBlock(bodyResult.Node, node.Body.Syntax), node.Diagnostics, node.Binder, node.Type),
+                node.Update(replacementLambda, GetBlock(bodyResult.Node, node.Body.Syntax), node.Diagnostics, node.Binder, node.Type),
                 bodyResult.UpdatedVariableValues,
                 true,
                 CompileTimeValue.Dynamic);
@@ -2072,7 +2117,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
                 case CompileTimeValueKind.Dynamic:
                     Debug.Assert(bindingTime == BindingTime.Dynamic);
-                    LocalSymbol replacementSymbol = GetReplacementSymbol(localSymbol);
+                    var replacementSymbol = (LocalSymbol)GetReplacementSymbol(localSymbol);
                     // We need a conversion here, in case the original local variable was a result-holding variable and its type was changed from object to something else
                     rewrittenNode = MetaUtils.ConvertIfNeeded(
                         node.Type,
@@ -2124,7 +2169,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             if (rewrittenNode == null)
             {
-                LocalSymbol replacementSymbol = GetReplacementSymbol(localSymbol);
+                var replacementSymbol = (LocalSymbol)GetReplacementSymbol(localSymbol);
                 _blockLocalsBuilder.Add(replacementSymbol);
                 BoundTypeExpression rewrittenDeclaredType;
                 if (replacementSymbol.Type == node.DeclaredType.Type)
@@ -2462,15 +2507,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         else
                         {
                             // Replace the parameter from the decorator with a local
-                            rewrittenNode = new BoundLocal(node.Syntax, GetReplacementSymbol(node.ParameterSymbol), null, node.Type) { WasCompilerGenerated = true };
+                            rewrittenNode = new BoundLocal(node.Syntax, (LocalSymbol)GetReplacementSymbol(node.ParameterSymbol), null, node.Type) { WasCompilerGenerated = true };
                         }
                         break;
                 }
             }
             else
             {
-                // This must be a lambda parameter - keep it intact
-                rewrittenNode = node;
+                // This must be a lambda parameter
+                var replacementSymbol = (ParameterSymbol)GetReplacementSymbol(parameterSymbol);
+                rewrittenNode = node.Update(replacementSymbol, node.Type);
             }
 
             // A lone parameter should never be a stand-alone expression, so we return MustEmit = false
@@ -2537,7 +2583,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             else if (_flags.HasFlag(DecorationRewriterFlags.InNestedLambdaBody))
             {
                 return new DecorationRewriteResult(
-                    node.Update((BoundExpression)expressionResult.Node),
+                    node.Update(node.RefKind, (BoundExpression)expressionResult.Node),
                     expressionResult.UpdatedVariableValues,
                     true,
                     ExecutionContinuation.Return);
@@ -2551,7 +2597,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 {
                     if (MetaUtils.StripConversions(rewrittenExpression).Kind == BoundKind.Literal)
                     {
-                        rewrittenNode = node.Update(null);
+                        rewrittenNode = node.Update(node.RefKind, null);
                     }
                     else
                     {
@@ -2573,14 +2619,21 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         {
                             WasCompilerGenerated = true,
                         };
-                        statements[1] = node.Update(null);
+                        statements[1] = node.Update(node.RefKind, null);
 
-                        rewrittenNode = new BoundBlock(syntax, ImmutableArray.Create(dummyLocal), statements.ToImmutableArray()) { WasCompilerGenerated = true };
+                        rewrittenNode = new BoundBlock(
+                            syntax,
+                            ImmutableArray.Create(dummyLocal),
+                            ImmutableArray<LocalFunctionSymbol>.Empty,
+                            statements.ToImmutableArray())
+                        {
+                            WasCompilerGenerated = true,
+                        };
                     }
                 }
                 else
                 {
-                    rewrittenNode = node.Update(MetaUtils.ConvertIfNeeded(_targetMethod.ReturnType, rewrittenExpression, _compilation));
+                    rewrittenNode = node.Update(node.RefKind, MetaUtils.ConvertIfNeeded(_targetMethod.ReturnType, rewrittenExpression, _compilation));
                 }
                 return new DecorationRewriteResult(rewrittenNode, expressionResult.UpdatedVariableValues, true, ExecutionContinuation.Return);
             }
@@ -2667,7 +2720,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
 
             return new DecorationRewriteResult(
-                node.Update(node.Label, (BoundExpression)expressionResult?.Node),
+                node.Update(node.Label, (BoundExpression)expressionResult?.Node, node.ConstantValueOpt),
                 variableValues,
                 true,
                 ExecutionContinuation.NextStatement);
@@ -2675,7 +2728,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override DecorationRewriteResult VisitSwitchSection(BoundSwitchSection node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
-            ImmutableArray<DecorationRewriteResult> boundSwitchLabelsResults = VisitSequentialList(node.BoundSwitchLabels, ref variableValues);
+            ImmutableArray<DecorationRewriteResult> switchLabelsResults = VisitSequentialList(node.SwitchLabels, ref variableValues);
 
             ImmutableHashSet<ExecutionContinuation> possibleContinuations;
             ImmutableArray<DecorationRewriteResult> statementsResults = VisitAndTrimStatements(node.Statements, ref variableValues, out possibleContinuations);
@@ -2683,7 +2736,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             Debug.Assert(!possibleContinuations.Contains(ExecutionContinuation.NextStatement));
 
             return new DecorationRewriteResult(
-                node.Update(boundSwitchLabelsResults.SelectAsArray(r => (BoundSwitchLabel)r.Node), statementsResults.SelectAsArray(r => (BoundStatement)r.Node)),
+                node.Update(switchLabelsResults.SelectAsArray(r => (BoundSwitchLabel)r.Node), statementsResults.SelectAsArray(r => (BoundStatement)r.Node)),
                 variableValues,
                 true,
                 possibleContinuations);
@@ -2691,11 +2744,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override DecorationRewriteResult VisitSwitchStatement(BoundSwitchStatement node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.LoweredPreambleOpt == null, "DecorationRewriter is not compatible with switch statements with a lowered preamble.");
+            Debug.Assert(node.InnerLocalFunctions == null, "DecorationRewriter is not compatible with switch statements with local functions.");
+
             ImmutableArray<LocalSymbol>.Builder outerBlockLocalsBuilder = _blockLocalsBuilder;
             _blockLocalsBuilder = ImmutableArray.CreateBuilder<LocalSymbol>();
 
             int encapsulatingStatementIndex = _encapsulatingStatements.Count;
-            DecorationRewriteResult expressionResult = Visit(node.BoundExpression, variableValues);
+            DecorationRewriteResult expressionResult = Visit(node.Expression, variableValues);
             CompileTimeValue expressionValue = expressionResult.Value;
             variableValues = expressionResult.UpdatedVariableValues;
             BoundStatement rewrittenNode;
@@ -2709,7 +2765,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 foreach (BoundSwitchSection switchSection in node.SwitchSections)
                 {
                     bool hasMatchingLabel = false;
-                    foreach (BoundSwitchLabel switchLabel in switchSection.BoundSwitchLabels)
+                    foreach (BoundSwitchLabel switchLabel in switchSection.SwitchLabels)
                     {
                         DecorationRewriteResult labelExpressionResult = Visit(switchLabel.ExpressionOpt, variableValues);
                         if (labelExpressionResult != null)
@@ -2736,7 +2792,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     foreach (BoundSwitchSection switchSection in node.SwitchSections)
                     {
                         bool hasMatchingLabel = false;
-                        foreach (BoundSwitchLabel switchLabel in switchSection.BoundSwitchLabels)
+                        foreach (BoundSwitchLabel switchLabel in switchSection.SwitchLabels)
                         {
                             if (switchLabel.ExpressionOpt == null)
                             {
@@ -2779,6 +2835,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         rewrittenNode = new BoundBlock(
                             node.Syntax,
                             _blockLocalsBuilder.ToImmutable(),
+                            ImmutableArray<LocalFunctionSymbol>.Empty,
                             results.SelectAsArray(r => (BoundStatement)r.Node).Add(new BoundLabelStatement(node.Syntax, _staticSwitchEndLabel) { WasCompilerGenerated = true }))
                         {
                             WasCompilerGenerated = true,
@@ -2803,7 +2860,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
                 ImmutableArray<DecorationRewriteResult> switchSectionsResults = VisitIndependentList(node.SwitchSections, ref variableValues);
                 possibleContinuations = ImmutableHashSet.Create<ExecutionContinuation>();
-                if (!node.SwitchSections.Any(ss => ss.BoundSwitchLabels.Any(sl => sl.ExpressionOpt == null)))
+                if (!node.SwitchSections.Any(ss => ss.SwitchLabels.Any(sl => sl.ExpressionOpt == null)))
                 {
                     // If there is no default section, we assume that control can flow to the statement following the switch statement
                     possibleContinuations = possibleContinuations.Add(ExecutionContinuation.NextStatement);
@@ -2814,9 +2871,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 }
 
                 rewrittenNode = node.Update(
+                    node.LoweredPreambleOpt,
                     (BoundExpression)expressionResult.Node,
                     node.ConstantTargetOpt,
                     _blockLocalsBuilder.ToImmutable(),
+                    ImmutableArray<LocalFunctionSymbol>.Empty,
                     switchSectionsResults.SelectAsArray(r => (BoundSwitchSection)r.Node),
                     node.BreakLabel,
                     node.StringEquality);
@@ -3380,7 +3439,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         {
             _encapsulatingStatements.Clear();
             _flags = DecorationRewriterFlags.None;
-            _replacementSymbols = ImmutableDictionary<Symbol, LocalSymbol>.Empty;
+            _replacementSymbols = ImmutableDictionary<Symbol, Symbol>.Empty;
             _splicedStatementsBuilder = null;
             _blockLocalsBuilder = null;
             _spliceOrdinal = 0;
@@ -3461,7 +3520,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     Debug.Assert(_bindingTimeAnalyzer.VariableBindingTimes[memberParameter] == BindingTime.Dynamic);
 
                     // Assign the target method's info to the corresponding decorator method parameter's replacement local variable in the prologue
-                    LocalSymbol methodLocal = GetReplacementSymbol(memberParameter);
+                    var methodLocal = (LocalSymbol)GetReplacementSymbol(memberParameter);
                     prologueLocals.Add(methodLocal);
 
                     BoundExpression memberInfoExpression;
@@ -3510,7 +3569,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     Debug.Assert(_bindingTimeAnalyzer.VariableBindingTimes[argumentsParameter] == BindingTime.Dynamic);
 
                     // Assign an array containing all target method arguments to the dynamic-valued decorator method parameter's replacement local variable in the prologue
-                    LocalSymbol argumentsLocal = GetReplacementSymbol(argumentsParameter);
+                    var argumentsLocal = (LocalSymbol)GetReplacementSymbol(argumentsParameter);
                     prologueLocals.Add(argumentsLocal);
 
                     var boundsExpression = new BoundLiteral(
@@ -3596,7 +3655,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
                 if (_targetMethod.ReturnsVoid && bodyRewriteResult.PossibleContinuations.Contains(ExecutionContinuation.NextStatement))
                 {
-                    epilogueStatements.Add(new BoundReturnStatement(methodSyntax, null) { WasCompilerGenerated = true, });
+                    epilogueStatements.Add(new BoundReturnStatement(methodSyntax, RefKind.None, null) { WasCompilerGenerated = true, });
                 }
 
                 // If a prologue was generated, prepend it to the decorated body and append any epilogue after the decorated body
@@ -3609,7 +3668,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     ImmutableArray<LocalSymbol> newLocals =
                         prologueLocals.ToImmutable()
                         .AddRange(decoratedBody.Locals);
-                    decoratedBody = decoratedBody.Update(newLocals, newStatements);
+                    decoratedBody = decoratedBody.Update(newLocals, decoratedBody.LocalFunctions, newStatements);
                 }
 
                 return decoratedBody;
@@ -3617,7 +3676,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             catch (SyntheticBoundNodeFactory.MissingPredefinedMember ex)
             {
                 _diagnostics.Add(ex.Diagnostic);
-                return new BoundBlock(_targetBody.Syntax, ImmutableArray<LocalSymbol>.Empty, ImmutableArray.Create<BoundStatement>(_targetBody), hasErrors: true) { WasCompilerGenerated = true };
+                return new BoundBlock(
+                    _targetBody.Syntax,
+                    ImmutableArray<LocalSymbol>.Empty,
+                    ImmutableArray<LocalFunctionSymbol>.Empty,
+                    ImmutableArray.Create<BoundStatement>(_targetBody),
+                    hasErrors: true)
+                {
+                    WasCompilerGenerated = true,
+                };
             }
         }
 
@@ -3818,14 +3885,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return values1;
         }
 
-        private LocalSymbol GetReplacementSymbol(Symbol originalSymbol)
+        private Symbol GetReplacementSymbol(Symbol originalSymbol)
         {
-            LocalSymbol replacementSymbol;
+            Symbol replacementSymbol;
             if (!_replacementSymbols.TryGetValue(originalSymbol, out replacementSymbol))
             {
                 if (originalSymbol.Kind == SymbolKind.Parameter)
                 {
                     var parameter = (ParameterSymbol)originalSymbol;
+                    // Lambda parameters must already have been added to the collection
+                    Debug.Assert(parameter.ContainingSymbol == _decoratorMethod);
                     replacementSymbol = _factory.SynthesizedLocal(
                         parameter.Type,
                         syntax: parameter.DeclaringSyntaxReferences[0].GetSyntax(),
@@ -3984,7 +4053,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             else
             {
                 Debug.Assert(node is BoundStatement);
-                return new BoundBlock(syntax, ImmutableArray<LocalSymbol>.Empty, ImmutableArray.Create((BoundStatement)node)) { WasCompilerGenerated = true, };
+                return new BoundBlock(
+                    syntax,
+                    ImmutableArray<LocalSymbol>.Empty,
+                    ImmutableArray<LocalFunctionSymbol>.Empty,
+                    ImmutableArray.Create((BoundStatement)node))
+                {
+                    WasCompilerGenerated = true,
+                };
             }
         }
     }

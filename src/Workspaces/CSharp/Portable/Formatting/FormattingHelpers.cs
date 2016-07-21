@@ -321,6 +321,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Formatting
                 return usingStatement.CloseParenToken.Equals(token);
             }
 
+            var fixedStatement = statement as FixedStatementSyntax;
+            if (fixedStatement != null)
+            {
+                return fixedStatement.CloseParenToken.Equals(token);
+            }
+
             return false;
         }
 
@@ -386,6 +392,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Formatting
                    node is ForStatementSyntax ||
                    node is ForEachStatementSyntax ||
                    node is UsingStatementSyntax ||
+                   node is FixedStatementSyntax ||
                    node is LockStatementSyntax;
         }
 
@@ -564,6 +571,24 @@ namespace Microsoft.CodeAnalysis.CSharp.Formatting
         public static bool IsInterpolation(this SyntaxToken currentToken)
         {
             return currentToken.Parent.IsKind(SyntaxKind.Interpolation);
+        }
+
+        /// <summary>
+        /// Checks whether currentToken is the opening paren of a deconstruction-declaration in var form, such as `var (x, y) = ...`
+        /// </summary>
+        public static bool IsOpenParenInVarDeconstructionDeclaration(this SyntaxToken currentToken)
+        {
+            SyntaxNode parent;
+            if (currentToken.Kind() == SyntaxKind.OpenParenToken
+                && (parent = currentToken.Parent)?.Kind() == SyntaxKind.VariableDeconstructionDeclarator
+                && (parent = parent.Parent)?.Kind() == SyntaxKind.VariableDeclaration)
+            {
+                var declaration = ((VariableDeclarationSyntax)parent);
+
+                return (declaration.IsDeconstructionDeclaration) && (declaration.Type != null);
+            }
+
+            return false;
         }
     }
 }

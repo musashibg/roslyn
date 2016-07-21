@@ -435,7 +435,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 else
                 {
                     Debug.Assert(argumentsArrayValue.Kind == CompileTimeValueKind.Dynamic);
-                    LocalSymbol argumentsArrayLocal = GetReplacementSymbol(argumentsArraySymbol);
+                    var argumentsArrayLocal = (LocalSymbol)GetReplacementSymbol(argumentsArraySymbol);
                     argumentsArrayLocalNode = new BoundLocal(syntax, argumentsArrayLocal, null, argumentsArrayLocal.Type) { WasCompilerGenerated = true };
 
                     // Declare fresh variables that will replace the spliced method body's parameters and generate assignments for them
@@ -960,7 +960,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
 
             BoundExpression rewrittenNode;
-            bool mustEmit;
             if (receiverValue.Kind == CompileTimeValueKind.Complex)
             {
                 Debug.Assert(receiverValue is PropertyInfoValue);

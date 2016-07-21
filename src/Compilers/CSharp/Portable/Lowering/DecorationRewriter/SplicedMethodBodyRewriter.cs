@@ -15,6 +15,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly DiagnosticBag _diagnostics;
 
         private SplicedMethodBodyRewriterFlags _flags;
+        private LambdaSymbol _containingLambda;
         private ImmutableDictionary<Symbol, Symbol> _replacementSymbols;
         private ImmutableArray<LocalSymbol>.Builder _blockLocalsBuilder;
 
@@ -61,6 +62,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BoundNode VisitBlock(BoundBlock node)
         {
+            Debug.Assert(node.LocalFunctions.IsEmpty, "SplicedMethodBodyRewriter is not compatible with local functions.");
             ImmutableArray<LocalSymbol>.Builder outerBlockLocalsBuilder = _blockLocalsBuilder;
             _blockLocalsBuilder = ImmutableArray.CreateBuilder<LocalSymbol>();
 
@@ -69,16 +71,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<LocalSymbol> locals = _blockLocalsBuilder.ToImmutable();
             _blockLocalsBuilder = outerBlockLocalsBuilder;
 
-            return node.Update(locals, FlattenStatementList(statements));
+            return node.Update(locals, node.LocalFunctions, FlattenStatementList(statements));
         }
 
         public override BoundNode VisitCatchBlock(BoundCatchBlock node)
         {
-            var localOpt = node.LocalOpt == null ? null : (LocalSymbol)GetReplacementSymbol(node.LocalOpt);
+            ImmutableArray<LocalSymbol> locals = node.Locals.SelectAsArray(ls => (LocalSymbol)GetReplacementSymbol(ls));
             var exceptionSourceOpt = (BoundExpression)Visit(node.ExceptionSourceOpt);
             var exceptionFilterOpt = (BoundExpression)Visit(node.ExceptionFilterOpt);
             var body = (BoundBlock)Visit(node.Body);
-            return node.Update(localOpt, exceptionSourceOpt, node.ExceptionTypeOpt, exceptionFilterOpt, body, node.IsSynthesizedAsyncCatchAll);
+            return node.Update(locals, exceptionSourceOpt, node.ExceptionTypeOpt, exceptionFilterOpt, body, node.IsSynthesizedAsyncCatchAll);
         }
 
         public override BoundNode VisitForStatement(BoundForStatement node)
@@ -99,8 +101,34 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BoundNode VisitLambda(BoundLambda node)
         {
+            LambdaSymbol lambda = node.Symbol;
+
+            var replacementLambda = new LambdaSymbol(
+                _containingLambda ?? _factory.CurrentMethod,
+                lambda.Parameters,
+                lambda.RefKind,
+                lambda.ReturnType,
+                lambda.MessageID,
+                node.Syntax,
+                true,
+                lambda.IsAsync);
+
+            // Creating a new lambda symbol automatically creates fresh parameter symbols so we need to populate the replacement symbols collection with them
+            int parameterCount = lambda.ParameterCount;
+            for (int i = 0; i < parameterCount; i++)
+            {
+                Debug.Assert(!_replacementSymbols.ContainsKey(lambda.Parameters[i]));
+                _replacementSymbols = _replacementSymbols.Add(lambda.Parameters[i], replacementLambda.Parameters[i]);
+            }
+
+            LambdaSymbol outerContainingLambda = _containingLambda;
+            _containingLambda = replacementLambda;
+
             var body = (BoundBlock)VisitWithExtraFlags(SplicedMethodBodyRewriterFlags.InNestedLambdaBody, node.Body);
-            return node.Update(node.Symbol, body, node.Diagnostics, node.Binder, node.Type);
+
+            _containingLambda = outerContainingLambda;
+
+            return node.Update(replacementLambda, body, node.Diagnostics, node.Binder, node.Type);
         }
 
         public override BoundNode VisitLocal(BoundLocal node)
@@ -141,7 +169,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (_flags.HasFlag(SplicedMethodBodyRewriterFlags.InNestedLambdaBody))
             {
                 var expressionOpt = (BoundExpression)Visit(node.ExpressionOpt);
-                return node.Update(expressionOpt);
+                return node.Update(node.RefKind, expressionOpt);
             }
 
             var gotoStatement = new BoundGotoStatement(node.Syntax, _postSpliceLabel);
@@ -178,16 +206,19 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BoundNode VisitSwitchStatement(BoundSwitchStatement node)
         {
+            Debug.Assert(node.LoweredPreambleOpt == null, "SplicedMethodBodyRewriter is not compatible with switch statements with a lowered preamble.");
+            Debug.Assert(node.InnerLocalFunctions.IsEmpty, "SplicedMethodBodyRewriter is not compatible with switch statements with local functions.");
+
             ImmutableArray<LocalSymbol>.Builder outerBlockLocalsBuilder = _blockLocalsBuilder;
             _blockLocalsBuilder = ImmutableArray.CreateBuilder<LocalSymbol>();
 
-            var expression = (BoundExpression)Visit(node.BoundExpression);
+            var expression = (BoundExpression)Visit(node.Expression);
             ImmutableArray<BoundSwitchSection> switchSections = VisitList(node.SwitchSections);
 
             ImmutableArray<LocalSymbol> locals = _blockLocalsBuilder.ToImmutable();
             _blockLocalsBuilder = outerBlockLocalsBuilder;
 
-            return node.Update(expression, node.ConstantTargetOpt, locals, switchSections, node.BreakLabel, node.StringEquality);
+            return node.Update(node.LoweredPreambleOpt, expression, node.ConstantTargetOpt, locals, node.InnerLocalFunctions, switchSections, node.BreakLabel, node.StringEquality);
         }
 
         public override BoundNode VisitUsingStatement(BoundUsingStatement node)
@@ -259,21 +290,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             Symbol replacementSymbol;
             if (!_replacementSymbols.TryGetValue(originalSymbol, out replacementSymbol))
             {
-                if (originalSymbol.Kind == SymbolKind.Parameter)
-                {
-                    // This must be a nested lambda parameter, and we want to preserve it intact
-                    replacementSymbol = (ParameterSymbol)originalSymbol;
-                }
-                else
-                {
-                    Debug.Assert(originalSymbol.Kind == SymbolKind.Local);
-                    var local = (LocalSymbol)originalSymbol;
-                    replacementSymbol = _factory.SynthesizedLocal(
-                        local.Type,
-                        syntax: local.GetDeclaratorSyntax(),
-                        kind: SynthesizedLocalKind.DecoratorLocal,
-                        name: _variableNamesGenerator.GenerateFreshName(local.Name));
-                }
+                // Target method and lambda parameters must already have been added to the collection
+                Debug.Assert(originalSymbol.Kind == SymbolKind.Local);
+                var local = (LocalSymbol)originalSymbol;
+                replacementSymbol = _factory.SynthesizedLocal(
+                    local.Type,
+                    syntax: local.GetDeclaratorSyntax(),
+                    kind: SynthesizedLocalKind.DecoratorLocal,
+                    name: _variableNamesGenerator.GenerateFreshName(local.Name));
                 Debug.Assert(replacementSymbol != null);
                 _replacementSymbols = _replacementSymbols.Add(originalSymbol, replacementSymbol);
             }

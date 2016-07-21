@@ -168,10 +168,11 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.BlockCommentEditing
                 return false;
             }
 
-            var syntaxTree = document.GetSyntaxTreeAsync().WaitAndGetResult(CancellationToken.None);
+            var syntaxTree = document.GetSyntaxTreeSynchronously(CancellationToken.None);
             var trivia = syntaxTree.FindTriviaAndAdjustForEndOfFile(caretPosition, CancellationToken.None);
 
-            return trivia.IsKind(SyntaxKind.MultiLineCommentTrivia) || trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia);
+            var isBlockComment = trivia.IsKind(SyntaxKind.MultiLineCommentTrivia) || trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia);
+            return isBlockComment && trivia.FullSpan.Start < caretPosition;
         }
     }
 }

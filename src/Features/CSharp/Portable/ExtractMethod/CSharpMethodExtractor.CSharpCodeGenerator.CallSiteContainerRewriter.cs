@@ -61,9 +61,13 @@ namespace Microsoft.CodeAnalysis.CSharp.ExtractMethod
                 {
                     node = (LocalDeclarationStatementSyntax)base.VisitLocalDeclarationStatement(node);
 
+                    if (node.Declaration.IsDeconstructionDeclaration)
+                    {
+                        return node;
+                    }
+
                     var list = new List<VariableDeclaratorSyntax>();
                     var triviaList = new List<SyntaxTrivia>();
-
                     // go through each var decls in decl statement
                     foreach (var variable in node.Declaration.Variables)
                     {
@@ -119,6 +123,7 @@ namespace Microsoft.CodeAnalysis.CSharp.ExtractMethod
                     return
                         SyntaxFactory.LocalDeclarationStatement(
                             node.Modifiers,
+                            node.RefKeyword,
                                 SyntaxFactory.VariableDeclaration(
                                     node.Declaration.Type,
                                     SyntaxFactory.SeparatedList(list)),

@@ -16,12 +16,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         public DecorationBindingTimeAnalyzer(
             CSharpCompilation compilation,
             DiagnosticBag diagnostics,
-            CancellationToken cancellationToken,
             Location sourceLocation,
             DecoratedMemberKind targetMemberKind,
             SourceMemberMethodSymbol decoratorMethod,
-            ImmutableDictionary<Symbol, BoundExpression> decoratorArguments)
-            : base(compilation, diagnostics, cancellationToken, sourceLocation)
+            ImmutableDictionary<Symbol, BoundExpression> decoratorArguments,
+            CancellationToken cancellationToken)
+            : base(compilation, diagnostics, sourceLocation, cancellationToken)
         {
             _targetMemberKind = targetMemberKind;
             _decoratorMethod = decoratorMethod;

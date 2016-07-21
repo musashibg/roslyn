@@ -15,11 +15,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         public MetaclassBindingTimeAnalyzer(
             CSharpCompilation compilation,
             DiagnosticBag diagnostics,
-            CancellationToken cancellationToken,
             Location sourceLocation,
             SourceMemberMethodSymbol applicationMethod,
-            ImmutableDictionary<Symbol, BoundExpression> metaclassArguments)
-            : base(compilation, diagnostics, cancellationToken, sourceLocation)
+            ImmutableDictionary<Symbol, BoundExpression> metaclassArguments,
+            CancellationToken cancellationToken)
+            : base(compilation, diagnostics, sourceLocation, cancellationToken)
         {
             _applicationMethod = applicationMethod;
             _metaclassArguments = metaclassArguments;

@@ -4,8 +4,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
     internal abstract class StaticOnlyBindingTimeAnalyzer : BaseBindingTimeAnalyzer
     {
-        protected StaticOnlyBindingTimeAnalyzer(CSharpCompilation compilation, DiagnosticBag diagnostics, CancellationToken cancellationToken, Location sourceLocation)
-            : base(compilation, diagnostics, cancellationToken, sourceLocation)
+        protected StaticOnlyBindingTimeAnalyzer(CSharpCompilation compilation, DiagnosticBag diagnostics, Location sourceLocation, CancellationToken cancellationToken)
+            : base(compilation, diagnostics, sourceLocation, cancellationToken)
         {
         }
 
