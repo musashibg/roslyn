@@ -9936,13 +9936,11 @@ tryAgain:
                 {
                     TypeSyntax typeSyntax = ParseType(parentIsParameter: false);
                     SyntaxToken identifier = CheckFeatureAvailability(this.ParseIdentifierToken(), MessageID.IDS_FeatureOutVar);
-
-                    return _syntaxFactory.Argument(nameColon, refOrOutKeyword, 
-                               _syntaxFactory.VariableDeclaration(typeSyntax,
+                    var declarationSyntax = _syntaxFactory.VariableDeclaration(typeSyntax,
                                    new SeparatedSyntaxList<VariableDeclaratorSyntax>(
                                        new SyntaxList<CSharpSyntaxNode>(
-                                           _syntaxFactory.VariableDeclarator(identifier, null, null))),
-                                   null));
+                                           _syntaxFactory.VariableDeclarator(identifier, null, null))), null);
+                    expression = _syntaxFactory.DeclarationExpression(declarationSyntax);
                 }
                 else
                 {
@@ -10236,7 +10234,7 @@ tryAgain:
                     //  ( <expr>,    must be a tuple
                     if (this.CurrentToken.Kind == SyntaxKind.CommaToken)
                     {
-                        var firstArg = _syntaxFactory.Argument(nameColon: null, refOrOutKeyword: default(SyntaxToken), expressionOrDeclaration: expression);
+                        var firstArg = _syntaxFactory.Argument(nameColon: null, refOrOutKeyword: default(SyntaxToken), expression: expression);
                         return ParseTupleExpressionTail(openParen, firstArg);
                     }
 
@@ -10247,7 +10245,7 @@ tryAgain:
                         var nameColon = _syntaxFactory.NameColon((IdentifierNameSyntax)expression, EatToken());
                         expression = ParseSubExpression(0);
 
-                        var firstArg = _syntaxFactory.Argument(nameColon, refOrOutKeyword: default(SyntaxToken), expressionOrDeclaration: expression);
+                        var firstArg = _syntaxFactory.Argument(nameColon, refOrOutKeyword: default(SyntaxToken), expression: expression);
                         return ParseTupleExpressionTail(openParen, firstArg);
                     }
 
@@ -10282,11 +10280,11 @@ tryAgain:
                         var nameColon = _syntaxFactory.NameColon((IdentifierNameSyntax)expression, EatToken());
                         expression = ParseSubExpression(0);
 
-                        arg = _syntaxFactory.Argument(nameColon, refOrOutKeyword: default(SyntaxToken), expressionOrDeclaration: expression);
+                        arg = _syntaxFactory.Argument(nameColon, refOrOutKeyword: default(SyntaxToken), expression: expression);
                     }
                     else
                     {
-                        arg = _syntaxFactory.Argument(nameColon: null, refOrOutKeyword: default(SyntaxToken), expressionOrDeclaration: expression);
+                        arg = _syntaxFactory.Argument(nameColon: null, refOrOutKeyword: default(SyntaxToken), expression: expression);
                     }
 
                     list.Add(arg);

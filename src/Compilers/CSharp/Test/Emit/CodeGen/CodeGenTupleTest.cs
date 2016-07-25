@@ -250,8 +250,7 @@ public class C3 : IEnumerable<(int key, int val)>
 
         public void Dispose() { }
 
-        public bool MoveNext() =>
-            ++index < _backing.Length ? true : false;
+        public bool MoveNext() => ++index < _backing.Length;
 
         public void Reset()
         {
@@ -370,6 +369,189 @@ y: 0
 (key: 1, val: 1)
 (key: 2, val: 2)
 (key: 3, val: 3)");
+        }
+
+        [Fact]
+        public void GenericConstraintAttributes()
+        {
+            var comp = CreateCompilationWithMscorlib(@"
+using System;
+using System.Collections;
+using System.Collections.Generic;
+
+public interface ITest<T> 
+{ 
+    T Get { get; }
+}
+
+public class Test : ITest<(int key, int val)>
+{
+    public (int key, int val) Get => (0, 0);
+}
+
+public class Base<T> : ITest<T>
+{
+    public T Get { get; }
+    protected Base(T t)
+    {
+        Get = t;
+    }
+}
+
+public class C<T> where T : ITest<(int key, int val)>
+{
+    public T Get { get; }
+
+    public C(T t)
+    {
+        Get = t;
+    }
+}
+
+public class C2<T> where T : Base<(int key, int val)>
+{
+    public T Get { get; }
+    public C2(T t)
+    {
+        Get = t;
+    }
+}
+
+public sealed class Test2 : Base<(int key, int val)>
+{
+    public Test2() : base((-1, -2)) {}
+}
+
+public class C3<T> where T : IEnumerable<(int key, int val)>
+{
+    public T Get { get; }
+    public C3(T t)
+    {
+        Get = t;
+    }
+}
+
+public struct TestEnumerable : IEnumerable<(int key, int val)>
+{
+    private readonly (int, int)[] _backing;
+
+    public TestEnumerable((int, int)[] backing)
+    {
+        _backing = backing;
+    }
+
+    private class Inner : IEnumerator<(int key, int val)>, IEnumerator
+    {
+        private int index = -1;
+        private readonly (int, int)[] _backing;
+
+        public Inner((int, int)[] backing)
+        {
+            _backing = backing;
+        }
+
+        public (int key, int val) Current => _backing[index];
+
+        object IEnumerator.Current => Current;
+
+        public void Dispose() { }
+
+        public bool MoveNext() => ++index < _backing.Length;
+
+        public void Reset()
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    IEnumerator<(int key, int val)> IEnumerable<(int key, int val)>.GetEnumerator() =>
+        new Inner(_backing);
+
+    IEnumerator IEnumerable.GetEnumerator() => new Inner(_backing);
+}
+",
+            references: s_valueTupleRefs);
+            CompileAndVerify(comp, symbolValidator: m =>
+            {
+                var c = m.GlobalNamespace.GetTypeMember("C");
+                Assert.Equal(1, c.TypeParameters.Length);
+                var param = c.TypeParameters[0];
+                Assert.Equal(1, param.ConstraintTypes.Length);
+                var constraint = Assert.IsAssignableFrom<NamedTypeSymbol>(param.ConstraintTypes[0]);
+                Assert.True(constraint.IsGenericType);
+                Assert.Equal(1, constraint.TypeArguments.Length);
+                TypeSymbol typeArg = constraint.TypeArguments[0];
+                Assert.True(typeArg.IsTupleType);
+                Assert.Equal(2, typeArg.TupleElementTypes.Length);
+                Assert.All(typeArg.TupleElementTypes,
+                   t => Assert.Equal(SpecialType.System_Int32, t.SpecialType));
+                Assert.False(typeArg.TupleElementNames.IsDefault);
+                Assert.Equal(2, typeArg.TupleElementNames.Length);
+                Assert.Equal(new[] { "key", "val" }, typeArg.TupleElementNames);
+
+                var c2 = m.GlobalNamespace.GetTypeMember("C2");
+                Assert.Equal(1, c2.TypeParameters.Length);
+                param = c2.TypeParameters[0];
+                Assert.Equal(1, param.ConstraintTypes.Length);
+                constraint = Assert.IsAssignableFrom<NamedTypeSymbol>(param.ConstraintTypes[0]);
+                Assert.True(constraint.IsGenericType);
+                Assert.Equal(1, constraint.TypeArguments.Length);
+                typeArg = constraint.TypeArguments[0];
+                Assert.True(typeArg.IsTupleType);
+                Assert.Equal(2, typeArg.TupleElementTypes.Length);
+                Assert.All(typeArg.TupleElementTypes,
+                   t => Assert.Equal(SpecialType.System_Int32, t.SpecialType));
+                Assert.False(typeArg.TupleElementNames.IsDefault);
+                Assert.Equal(2, typeArg.TupleElementNames.Length);
+                Assert.Equal(new[] { "key", "val" }, typeArg.TupleElementNames);
+            });
+
+            CompileAndVerify(@"
+using System;
+
+class D
+{
+    public static void Main(string[] args)
+    {
+        var c = new C<Test>(new Test());
+        var temp = c.Get.Get;
+        Console.WriteLine(temp);
+        Console.WriteLine(""key: "" + temp.key);
+        Console.WriteLine(""val: "" + temp.val);
+
+        var c2 = new C2<Test2>(new Test2());
+        var temp2 = c2.Get.Get;
+        Console.WriteLine(temp2);
+        Console.WriteLine(""key: "" + temp2.key);
+        Console.WriteLine(""val: "" + temp2.val);
+
+        var backing = new[] { (1, 2), (3, 4), (5, 6) };
+        var c3 = new C3<TestEnumerable>(new TestEnumerable(backing));
+        foreach (var kvp in c3.Get)
+        {
+            Console.WriteLine($""key: {kvp.key}, val: {kvp.val}"");
+        }
+
+        var c4 = new C<Test2>(new Test2());
+        var temp4 = c4.Get.Get;
+        Console.WriteLine(temp4);
+        Console.WriteLine(""key: "" + temp4.key);
+        Console.WriteLine(""val: "" + temp4.val);
+    }
+}", additionalRefs: s_valueTupleRefs.Concat(new[] { comp.EmitToImageReference() }),
+    expectedOutput: @"(0, 0)
+key: 0
+val: 0
+(-1, -2)
+key: -1
+val: -2
+key: 1, val: 2
+key: 3, val: 4
+key: 5, val: 6
+(-1, -2)
+key: -1
+val: -2
+");
         }
 
         [Fact]
@@ -4492,33 +4674,190 @@ class C
 {
     static void Main()
     {
-        (dynamic, dynamic) t = (1, 2);
-        System.Console.WriteLine(t);
+        (dynamic, dynamic) d1 = (1, 1); // implicit to dynamic
+        System.Console.WriteLine(d1);
 
-        t = M();
-        System.Console.WriteLine(t);
+        (dynamic, dynamic) d2 = M();
+        System.Console.WriteLine(d2);
 
-        (int, int) t2 = (3, 4);
-        t = t2;
-        System.Console.WriteLine(t);
+        (int, int) t3 = (3, 3);
+        (dynamic, dynamic) d3 = t3;
+        System.Console.WriteLine(d3);
 
-        (int, int) t3 = (5, 6);
-        t = ((dynamic, dynamic))t3;
-        System.Console.WriteLine(t);
+        (int, int) t4 = (4, 4);
+        (dynamic, dynamic) d4 = ((dynamic, dynamic))t4; // explicit to dynamic
+        System.Console.WriteLine(d4);
+
+        dynamic d5 = 5;
+        (int, int) t5 = (d5, d5); // implicit from dynamic
+        System.Console.WriteLine(t5);
+
+        (dynamic, dynamic) d6 = (6, 6);
+        (int, int) t6 = ((int, int))d6; // explicit from dynamic
+        System.Console.WriteLine(t6);
+
+        (dynamic, dynamic) d7;
+        (int, int) t7 = (7, 7);
+        d7 = t7;
+        System.Console.WriteLine(d7);
     }
     static (dynamic, dynamic) M()
     {
-        return (""hello"", ""world"");
+        return (2, 2);
     }
 }
 ";
             string expectedOutput =
-@"(1, 2)
-(hello, world)
-(3, 4)
-(5, 6)
+@"(1, 1)
+(2, 2)
+(3, 3)
+(4, 4)
+(5, 5)
+(6, 6)
+(7, 7)
 ";
-            var comp = CompileAndVerify(source, additionalRefs: new[] { ValueTupleRef, SystemRuntimeFacadeRef, SystemCoreRef }, expectedOutput: expectedOutput);
+            var comp = CompileAndVerify(source, additionalRefs: new[] { ValueTupleRef, SystemRuntimeFacadeRef, SystemCoreRef, CSharpRef }, expectedOutput: expectedOutput);
+            comp.VerifyDiagnostics();
+        }
+
+        [Fact]
+        [WorkItem(12082, "https://github.com/dotnet/roslyn/issues/12082")]
+        public void TupleWithDynamic2()
+        {
+            var source = @"
+class C
+{
+    static void Main()
+    {
+        (dynamic, dynamic) d = (1, 1);
+        (int, int) t = d;
+    }
+}
+";
+            var comp = CreateCompilationWithMscorlib(source, references: new[] { ValueTupleRef, SystemRuntimeFacadeRef, SystemCoreRef, CSharpRef });
+            comp.VerifyDiagnostics(
+                // (7,24): error CS0266: Cannot implicitly convert type '(dynamic, dynamic)' to '(int, int)'. An explicit conversion exists (are you missing a cast?)
+                //         (int, int) t = d;
+                Diagnostic(ErrorCode.ERR_NoImplicitConvCast, "d").WithArguments("(dynamic, dynamic)", "(int, int)").WithLocation(7, 24)
+                );
+        }
+
+        [Fact]
+        public void TupleWithDynamic3()
+        {
+            var source = @"
+class C
+{
+    public static void Main()
+    {
+        dynamic longTuple = (a: 2, b: 2, c: 2, d: 2, e: 2, f: 2, g: 2, h: 2, i: 2);
+        System.Console.Write($""Item1: {longTuple.Item1}  Rest: {longTuple.Rest}"");
+
+        try
+        {
+            System.Console.Write(longTuple.a);
+            System.Console.Write(""unreachable"");
+        }
+        catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) {}
+
+        try
+        {
+            System.Console.Write(longTuple.i);
+            System.Console.Write(""unreachable"");
+        }
+        catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) {}
+
+        try
+        {
+            System.Console.Write(longTuple.Item9);
+            System.Console.Write(""unreachable"");
+        }
+        catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) {}
+    }
+}
+";
+            var comp = CompileAndVerify(source, expectedOutput: "Item1: 2  Rest: (2, 2)", additionalRefs: new[] { ValueTupleRef, SystemRuntimeFacadeRef, SystemCoreRef, CSharpRef });
+            comp.VerifyDiagnostics( );
+        }
+
+        [Fact]
+        public void TupleWithDynamic4()
+        {
+            var source = @"
+class C
+{
+    public static void Main()
+    {
+        dynamic x = (1, 2, 3, 4, 5, 6, 7, 8, 9);
+        M(x);
+    }
+
+    public static void M((int a, int, int, int, int, int, int, int h, int i) t)
+    {
+        System.Console.Write($""a:{t.a}, h:{t.h}, i:{t.i}, Item9:{t.Item9}, Rest:{t.Rest}"");
+    }
+}
+";
+            var comp = CompileAndVerify(source, expectedOutput: "a:1, h:8, i:9, Item9:9, Rest:(8, 9)", additionalRefs: new[] { ValueTupleRef, SystemRuntimeFacadeRef, SystemCoreRef, CSharpRef });
+            comp.VerifyDiagnostics();
+        }
+
+        [Fact]
+        public void TupleWithDynamic5()
+        {
+            var source = @"
+class C
+{
+    public static void Main()
+    {
+        dynamic d = (1, 2);
+        try
+        {
+            (string, string) t = d;
+            System.Console.Write(""unreachable"");
+        }
+        catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) {}
+
+        System.Console.Write(""done"");
+    }
+}
+";
+            var comp = CompileAndVerify(source, expectedOutput: "done", additionalRefs: new[] { ValueTupleRef, SystemRuntimeFacadeRef, SystemCoreRef, CSharpRef });
+            comp.VerifyDiagnostics();
+        }
+
+        [Fact]
+        public void TupleWithDynamic6()
+        {
+            var source = @"
+class C
+{
+    public static void Main()
+    {
+        (int, int) t1 = (1, 1);
+        M(t1, ""int"");
+
+        (byte, byte) t2 = (2, 2);
+        M(t2, ""byte"");
+
+        (dynamic, dynamic) t3 = (3, 3);
+        M(t3, ""dynamic"");
+
+        (string, string) t4 = (""4"", ""4"");
+        M(t4, ""string"");
+    }
+
+    public static void M((int, int) t, string type) { System.Console.WriteLine($""int overload with value {t} and type {type}""); }
+    public static void M((dynamic, dynamic) t, string type) { System.Console.WriteLine($""dynamic overload with value {t} and type {type}""); }
+}
+";
+            string expectedOutput =
+@"int overload with value (1, 1) and type int
+int overload with value (2, 2) and type byte
+dynamic overload with value (3, 3) and type dynamic
+dynamic overload with value (4, 4) and type string";
+
+            var comp = CompileAndVerify(source, expectedOutput: expectedOutput, additionalRefs: new[] { ValueTupleRef, SystemRuntimeFacadeRef, SystemCoreRef, CSharpRef });
             comp.VerifyDiagnostics();
         }
 
@@ -12166,7 +12505,7 @@ class C
 }
 " + trivial2uple;
 
-            var comp = CreateCompilationWithMscorlib(source, parseOptions: TestOptions.RegularWithPatterns);
+            var comp = CreateCompilationWithMscorlib(source);
             comp.VerifyDiagnostics(
                 // (7,19): error CS1525: Invalid expression term 'int'
                 //             case (int, int) tuple: return;
@@ -12201,7 +12540,7 @@ class C
 }
 " + trivial2uple;
 
-            var comp = CreateCompilationWithMscorlib(source, parseOptions: TestOptions.RegularWithPatterns);
+            var comp = CreateCompilationWithMscorlib(source);
             comp.VerifyDiagnostics(
                 // (7,18): error CS0150: A constant value is expected
                 //             case (1, 1): return;
@@ -12224,7 +12563,7 @@ class C
 }
 " + trivial2uple;
 
-            var comp = CreateCompilationWithMscorlib(source, parseOptions: TestOptions.RegularWithPatterns);
+            var comp = CreateCompilationWithMscorlib(source);
             comp.VerifyDiagnostics(
                 // (7,25): error CS1003: Syntax error, ':' expected
                 //             case (1, 1) t: return;
@@ -12580,6 +12919,41 @@ class C
                 //         var y = new (int, int, int, int, int, int, int, int, int)(1, 2, 3, 4, 5, 6, 7, 8, 9);
                 Diagnostic(ErrorCode.ERR_BadCtorArgCount, "(int, int, int, int, int, int, int, int, int)").WithArguments("(int, int, int, int, int, int, int, int, int)", "9").WithLocation(7, 21)
                 );
+        }
+
+        [Fact]
+        public void TupleWithDynamicInSeparateCompilations()
+        {
+            var lib_cs = @"
+public class C
+{
+    public static (dynamic, dynamic) M((dynamic, dynamic) x)
+    {
+        return x;
+    }
+}
+";
+
+            var source = @"
+class D
+{
+    static void Main()
+    {
+        var x = C.M((1, ""hello""));
+        x.Item1.DynamicMethod1();
+        x.Item2.DynamicMethod2();
+    }
+}
+";
+
+            var libComp = CreateCompilationWithMscorlib(lib_cs, assemblyName: "lib", references: new[] { ValueTupleRef, SystemRuntimeFacadeRef, SystemCoreRef });
+            libComp.VerifyDiagnostics();
+
+            var comp1 = CreateCompilationWithMscorlib(source, references: new[] { libComp.ToMetadataReference(), ValueTupleRef, SystemRuntimeFacadeRef });
+            comp1.VerifyDiagnostics();
+
+            var comp2 = CreateCompilationWithMscorlib(source, references: new[] { libComp.EmitToImageReference(), ValueTupleRef, SystemRuntimeFacadeRef });
+            comp2.VerifyDiagnostics();
         }
 
         [Fact]
@@ -14925,7 +15299,6 @@ class Derived : Base
 
             // Metadata
             var comp4 = CreateCompilationWithMscorlib45(source2, references: new[] { comp2.EmitToImageReference() });
-
             comp4.VerifyDiagnostics();
         }
     }
