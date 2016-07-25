@@ -56,6 +56,18 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 return VisitApplyDecoratorCall(node, argumentValues);
             }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsImplicitlyDeclared))
+            {
+                return VisitIsImplicitlyDeclaredCall(node, argumentValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsIterator))
+            {
+                return VisitIsIteratorCall(node, argumentValues);
+            }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsPropertyAccessor))
+            {
+                return VisitIsPropertyAccessorCall(node, argumentValues);
+            }
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsReadOnly))
             {
                 return VisitIsReadOnlyCall(node, argumentValues);
@@ -79,12 +91,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitGetConstructors(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             Debug.Assert(receiverValue != null && argumentValues.Length <= 1);
 
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -107,12 +120,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitGetMethods(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             Debug.Assert(receiverValue != null && argumentValues.Length <= 1);
 
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -135,12 +149,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitGetProperties(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             Debug.Assert(receiverValue != null && argumentValues.Length <= 1);
 
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -163,6 +178,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitIsAssignableFromCall(BoundCall node, CompileTimeValue receiverValue, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
+
             CompileTimeValue targetTypeValue;
             CompileTimeValue sourceTypeValue;
             bool isExtensionMethod;
@@ -186,14 +203,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (targetTypeValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)targetTypeValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[0] : node.ReceiverOpt).Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[0] : node.ReceiverOpt).Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
             if (sourceTypeValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)sourceTypeValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[1] : node.Arguments[0]).Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[1] : node.Arguments[0]).Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -210,7 +227,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -236,7 +253,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -259,13 +276,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitGetCustomAttributesCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
+
             Debug.Assert(argumentValues.Length == 1 && node.Method.TypeArguments.Length == 1);
             CompileTimeValue argumentValue = argumentValues[0];
 
             if (argumentValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)argumentValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -277,7 +296,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 Debug.Assert(argumentValue is TypeValue
                              && invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
                 TypeSymbol type = ((TypeValue)argumentValue).Type;
-                return StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, type.GetAttributes(), _diagnostics, out candidateAttribute);
+                return StaticValueUtils.LookupCustomAttributeValue(
+                    node.Syntax,
+                    requestedAttributeType,
+                    type.GetAttributes(),
+                    _diagnostics,
+                    ImmutableArray.Create(_applicationLocation),
+                    out candidateAttribute);
             }
             else
             {
@@ -286,32 +311,57 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 {
                     Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
                     MethodSymbol method = ((MethodInfoValue)argumentValue).Method;
-                    return StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, method.GetAttributes(), _diagnostics, out candidateAttribute);
+                    return StaticValueUtils.LookupCustomAttributeValue(
+                        node.Syntax,
+                        requestedAttributeType,
+                        method.GetAttributes(),
+                        _diagnostics,
+                        ImmutableArray.Create(_applicationLocation),
+                        out candidateAttribute);
                 }
                 else if (argumentValue is ConstructorInfoValue)
                 {
                     Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
                     MethodSymbol constructor = ((ConstructorInfoValue)argumentValue).Constructor;
-                    return StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, constructor.GetAttributes(), _diagnostics, out candidateAttribute);
+                    return StaticValueUtils.LookupCustomAttributeValue(
+                        node.Syntax,
+                        requestedAttributeType,
+                        constructor.GetAttributes(),
+                        _diagnostics,
+                        ImmutableArray.Create(_applicationLocation),
+                        out candidateAttribute);
                 }
                 else if (argumentValue is PropertyInfoValue)
                 {
                     Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
                     PropertySymbol property = ((PropertyInfoValue)argumentValue).Property;
-                    return StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, property.GetAttributes(), _diagnostics, out candidateAttribute);
+                    return StaticValueUtils.LookupCustomAttributeValue(
+                        node.Syntax,
+                        requestedAttributeType,
+                        property.GetAttributes(),
+                        _diagnostics,
+                        ImmutableArray.Create(_applicationLocation),
+                        out candidateAttribute);
                 }
                 else
                 {
                     Debug.Assert(argumentValue is ParameterInfoValue
                                  && invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T2));
                     ParameterSymbol parameter = ((ParameterInfoValue)argumentValue).Parameter;
-                    return StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, parameter.GetAttributes(), _diagnostics, out candidateAttribute);
+                    return StaticValueUtils.LookupCustomAttributeValue(
+                        node.Syntax,
+                        requestedAttributeType,
+                        parameter.GetAttributes(),
+                        _diagnostics,
+                        ImmutableArray.Create(_applicationLocation),
+                        out candidateAttribute);
                 }
             }
         }
 
         private CompileTimeValue VisitAddTraitCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             Debug.Assert(argumentValues.Length >= 1);
 
             CompileTimeValue hostTypeValue = argumentValues[0];
@@ -319,7 +369,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (hostTypeValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)hostTypeValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -328,7 +378,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             if (hostType != _targetType)
             {
-                _diagnostics.Add(ErrorCode.ERR_MetaclassModificationOnNonTargetType, node.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_MetaclassModificationOnNonTargetType, node.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -342,7 +392,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (traitTypeValue is ConstantStaticValue)
                 {
                     Debug.Assert(((ConstantStaticValue)traitTypeValue).Value.IsNull);
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[1].Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[1].Syntax.Location);
                     throw new ExecutionInterruptionException(InterruptionKind.Throw);
                 }
 
@@ -357,7 +407,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             if (traitType.BaseType != _compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Trait))
             {
-                _diagnostics.Add(ErrorCode.ERR_NotATrait, node.Syntax.Location, traitType.Name);
+                AddDiagnostic(ErrorCode.ERR_NotATrait, node.Syntax.Location, traitType.Name);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -367,12 +417,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             var traitSourceType = traitType as SourceMemberContainerTypeSymbol;
             if (traitSourceType == null)
             {
-                _diagnostics.Add(ErrorCode.ERR_NonSourceTrait, node.Syntax.Location, traitType.Name);
+                AddDiagnostic(ErrorCode.ERR_NonSourceTrait, node.Syntax.Location, traitType.Name);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
             else if (traitSourceType.IsGenericType)
             {
-                _diagnostics.Add(ErrorCode.ERR_GenericTraitTypesNotSupported, node.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_GenericTraitTypesNotSupported, node.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -382,7 +432,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitApplyDecoratorCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             Debug.Assert(argumentValues.Length == 2);
+
             CompileTimeValue memberInfoValue = argumentValues[0];
             var decoratorValue = argumentValues[1] as DecoratorValue;
 
@@ -405,38 +457,121 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             if (member.ContainingType != _targetType)
             {
-                _diagnostics.Add(ErrorCode.ERR_MetaclassModificationOnNonTargetType, node.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_MetaclassModificationOnNonTargetType, node.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
             else if (member is SourcePropertyAccessorSymbol)
             {
-                _diagnostics.Add(ErrorCode.ERR_DecoratedPropertyAccessor, node.Syntax.Location, member);
+                AddDiagnostic(ErrorCode.ERR_DecoratedPropertyAccessor, node.Syntax.Location, member);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
+
+            var decoratorData = decoratorValue.CreateDecoratorData(new SimpleSyntaxReference(node.Syntax));
+            if (member is SourceMethodSymbol)
             {
-                var decoratorData = decoratorValue.CreateDecoratorData(new SimpleSyntaxReference(node.Syntax));
-                if (member is SourceMethodSymbol)
-                {
-                    ((SourceMethodSymbol)member).ApplyDecorator(decoratorData);
-                }
-                else
-                {
-                    Debug.Assert(member is SourcePropertySymbol);
-                    ((SourcePropertySymbol)member).ApplyDecorator(decoratorData);
-                }
-                return new ConstantStaticValue(ConstantValue.Null);
+                ((SourceMethodSymbol)member).ApplyDecorator(decoratorData);
             }
+            else if (member is SourcePropertySymbol)
+            {
+                ((SourcePropertySymbol)member).ApplyDecorator(decoratorData);
+            }
+            else
+            {
+                Debug.Assert(member.IsImplicitlyDeclared);
+                AddDiagnostic(ErrorCode.ERR_DecoratedImplicitlyDeclaredMember, node.Syntax.Location, member);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+            return new ConstantStaticValue(ConstantValue.Null);
+        }
+
+        private CompileTimeValue VisitIsImplicitlyDeclaredCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
+        {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
+            Debug.Assert(argumentValues.Length == 1);
+
+            CompileTimeValue memberInfoValue = argumentValues[0];
+
+            if (memberInfoValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)memberInfoValue).Value.IsNull);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            Symbol member;
+            if (memberInfoValue is TypeValue)
+            {
+                member = ((TypeValue)memberInfoValue).Type;
+            }
+            else if (memberInfoValue is MethodInfoValue)
+            {
+                member = ((MethodInfoValue)memberInfoValue).Method;
+            }
+            else if (memberInfoValue is ConstructorInfoValue)
+            {
+                member = ((ConstructorInfoValue)memberInfoValue).Constructor;
+            }
+            else
+            {
+                Debug.Assert(memberInfoValue is PropertyInfoValue);
+                member = ((PropertyInfoValue)memberInfoValue).Property;
+            }
+
+            return new ConstantStaticValue(ConstantValue.Create(member.IsImplicitlyDeclared));
+        }
+
+        private CompileTimeValue VisitIsIteratorCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
+        {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
+            Debug.Assert(argumentValues.Length == 1);
+
+            CompileTimeValue methodInfoValue = argumentValues[0];
+
+            if (methodInfoValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)methodInfoValue).Value.IsNull);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            Debug.Assert(methodInfoValue is MethodInfoValue);
+            MethodSymbol method = ((MethodInfoValue)methodInfoValue).Method;
+
+            return new ConstantStaticValue(ConstantValue.Create(method.IsIterator));
+        }
+
+        private CompileTimeValue VisitIsPropertyAccessorCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
+        {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
+            Debug.Assert(argumentValues.Length == 1);
+
+            CompileTimeValue methodInfoValue = argumentValues[0];
+
+            if (methodInfoValue is ConstantStaticValue)
+            {
+                Debug.Assert(((ConstantStaticValue)methodInfoValue).Value.IsNull);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                throw new ExecutionInterruptionException(InterruptionKind.Throw);
+            }
+
+            Debug.Assert(methodInfoValue is MethodInfoValue);
+            MethodSymbol method = ((MethodInfoValue)methodInfoValue).Method;
+
+            bool isPropertyAccessor = (method.MethodKind == MethodKind.PropertyGet || method.MethodKind == MethodKind.PropertySet);
+            return new ConstantStaticValue(ConstantValue.Create(isPropertyAccessor));
         }
 
         private CompileTimeValue VisitIsReadOnlyCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             Debug.Assert(argumentValues.Length == 1);
+
             CompileTimeValue propertyInfoValue = argumentValues[0];
 
             if (propertyInfoValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)propertyInfoValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -449,13 +584,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitIsWriteOnlyCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             Debug.Assert(argumentValues.Length == 1);
+
             CompileTimeValue propertyInfoValue = argumentValues[0];
 
             if (propertyInfoValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)propertyInfoValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -468,14 +605,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitParameterTypeCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             Debug.Assert(argumentValues.Length == 2);
+
             CompileTimeValue memberInfoValue = argumentValues[0];
             CompileTimeValue parameterIndexValue = argumentValues[1];
 
             if (memberInfoValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)memberInfoValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -512,7 +651,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             if (parameterIndex < 0 || parameterIndex >= parameterCount)
             {
-                _diagnostics.Add(ErrorCode.ERR_StaticIndexOutOfBounds, node.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticIndexOutOfBounds, node.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
             else
@@ -534,13 +673,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         private CompileTimeValue VisitThisObjectTypeCall(BoundCall node, ImmutableArray<CompileTimeValue> argumentValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             Debug.Assert(argumentValues.Length == 1);
+
             CompileTimeValue memberInfoValue = argumentValues[0];
 
             if (memberInfoValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)memberInfoValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 

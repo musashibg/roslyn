@@ -287,8 +287,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 return syntaxOffset;
             }
 
-            // we haven't found the constructor part that declares the variable:
-            throw ExceptionUtilities.Unreachable;
+            // We haven't found the constructor part that corresponds to the position and the syntax tree, so it must refer to
+            // a fragment of code woven into the constructor body by a decorator; we return a default offset -1
+            return -1;
         }
 
         internal ImmutableDictionary<Symbol, SimpleConstructorAssignmentOperand> SimpleConstructorAssignments { get; set; }

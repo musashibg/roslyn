@@ -1,4 +1,6 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Symbols;
+﻿// Copyright (c) Aleksandar Dalemski.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+
+using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
 using Roslyn.Utilities;
 using System.Collections.Immutable;
@@ -31,7 +33,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         public override BindingTimeAnalysisResult VisitCall(BoundCall node, BindingTimeAnalyzerFlags flags)
         {
             if (!flags.HasFlag(BindingTimeAnalyzerFlags.InMetaDecorationArgument)
-                && (CheckIsSpliceLocation(node) || CheckIsBaseDecoratorMethodCall(node)))
+                && (MetaUtils.CheckIsSpliceLocation(node, Compilation, _targetMemberKind, _decoratorMethod, AddDiagnostic)
+                    || MetaUtils.CheckIsBaseMethodCall(node, _decoratorMethod)))
             {
                 return new BindingTimeAnalysisResult(BindingTime.Dynamic);
             }
@@ -123,15 +126,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return symbol.Kind == SymbolKind.Parameter && _decoratorMethod.Parameters.Contains((ParameterSymbol)symbol);
         }
 
-        private static bool CheckIsSpecificParameter(BoundExpression node, ParameterSymbol parameter)
-        {
-            while (node.Kind == BoundKind.Conversion)
-            {
-                node = ((BoundConversion)node).Operand;
-            }
-            return node.Kind == BoundKind.Parameter && ((BoundParameter)node).ParameterSymbol == parameter;
-        }
-
         private BindingTimeAnalysisResult VisitDecoratorArgument(BoundExpression node, Symbol decoratorMember, BindingTimeAnalyzerFlags flags)
         {
             BoundExpression decoratorArgument;
@@ -147,161 +141,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         ? new BindingTimeAnalysisResult(BindingTime.StaticSimpleValue)
                         : new BindingTimeAnalysisResult(BindingTime.Dynamic);
             }
-        }
-
-        private bool CheckIsSpliceLocation(BoundCall call)
-        {
-            MethodSymbol method = call.Method;
-            switch (_targetMemberKind)
-            {
-                case DecoratedMemberKind.Constructor:
-                case DecoratedMemberKind.Method:
-                    if (call.Method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
-                    {
-                        // This is a call to MethodBase.Invoke(object obj, object[] parameters)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
-                            Error(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.Destructor:
-                    if (call.Method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
-                    {
-                        // This is a call to MethodBase.Invoke(object obj, object[] parameters) with null as a second argument (destructors never have arguments)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && call.Arguments[1].Kind == BoundKind.Literal
-                            && ((BoundLiteral)call.Arguments[1]).ConstantValue.IsNull)
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
-                            Error(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.IndexerGet:
-                    if (call.Method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetValue2))
-                    {
-                        // This is a call to PropertyInfo.GetValue(object obj, object[] index)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.GetValue(object obj, object[] parameters) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this indexer through a different local variable, leading to infinite recursion)
-                            Error(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.IndexerSet:
-                    if (call.Method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__SetValue2))
-                    {
-                        // This is a call to PropertyInfo.SetValue(object obj, object value, object[] index)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && (call.Arguments[2].Kind == BoundKind.Parameter || call.Arguments[2].Kind == BoundKind.Local))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.SetValue(object obj, object value, object[] index) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this indexer through a different local variable, leading to infinite recursion)
-                            Error(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.PropertyGet:
-                    if (call.Method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetValue))
-                    {
-                        // This is a call to PropertyInfo.GetValue(object obj)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1]))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.GetValue(object obj) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this property through a different local variable, leading to infinite recursion)
-                            Error(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.PropertySet:
-                    if (call.Method == Compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__SetValue))
-                    {
-                        // This is a call to PropertyInfo.SetValue(object obj, object value)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1]))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.SetValue(object obj, object value) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this property through a different local variable, leading to infinite recursion)
-                            Error(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                default:
-                    throw ExceptionUtilities.Unreachable;
-            }
-            return false;
-        }
-
-        private bool CheckIsBaseDecoratorMethodCall(BoundCall call)
-        {
-            MethodSymbol method = call.Method;
-            if (method.Name != _decoratorMethod.Name
-                || method.ParameterCount != _decoratorMethod.ParameterCount)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < method.ParameterCount; i++)
-            {
-                ParameterSymbol methodParameter = method.Parameters[i];
-                ParameterSymbol decoratorMethodParameter = _decoratorMethod.Parameters[i];
-                if (methodParameter.Type != decoratorMethodParameter.Type
-                    || methodParameter.RefKind != decoratorMethodParameter.RefKind)
-                {
-                    return false;
-                }
-            }
-
-            BoundExpression receiverOpt = call.ReceiverOpt;
-            return receiverOpt != null && receiverOpt.Kind == BoundKind.BaseReference;
         }
     }
 }

@@ -21,6 +21,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private readonly bool _isPinned;
         private readonly RefKind _refKind;
         private readonly string _name;
+        private readonly LocalDeclarationKind _declarationKind;
+        private readonly ConstantValue _constantValue;
 
 #if DEBUG
         private readonly int _createdAtLineNumber;
@@ -34,6 +36,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             bool isPinned = false,
             RefKind refKind = RefKind.None,
             string name = null,
+            LocalDeclarationKind declarationKind = LocalDeclarationKind.None,
+            ConstantValue constantValue = null,
             [CallerLineNumber]int createdAtLineNumber = 0,
             [CallerFilePath]string createdAtFilePath = null)
         {
@@ -47,6 +51,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             _isPinned = isPinned;
             _refKind = refKind;
             _name = name;
+            _declarationKind = declarationKind;
+            _constantValue = constantValue;
 
             _createdAtLineNumber = createdAtLineNumber;
             _createdAtFilePath = createdAtFilePath;
@@ -59,7 +65,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             SyntaxNode syntaxOpt = null,
             bool isPinned = false,
             RefKind refKind = RefKind.None,
-            string name = null)
+            string name = null,
+            LocalDeclarationKind declarationKind = LocalDeclarationKind.None,
+            ConstantValue constantValue = null)
         {
             _containingMethodOpt = containingMethodOpt;
             _type = type;
@@ -68,6 +76,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             _isPinned = isPinned;
             _refKind = refKind;
             _name = name;
+            _declarationKind = declarationKind;
+            _constantValue = constantValue;
         }
 #endif
         public SyntaxNode SyntaxOpt
@@ -98,7 +108,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override LocalDeclarationKind DeclarationKind
         {
-            get { return LocalDeclarationKind.None; }
+            get { return _declarationKind; }
         }
 
         internal override SynthesizedLocalKind SynthesizedKind
@@ -159,7 +169,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override ConstantValue GetConstantValue(SyntaxNode node, LocalSymbol inProgress, DiagnosticBag diagnostics)
         {
-            return null;
+            return _constantValue;
         }
 
         internal override ImmutableArray<Diagnostic> GetConstantValueDiagnostics(BoundExpression boundInitValue)

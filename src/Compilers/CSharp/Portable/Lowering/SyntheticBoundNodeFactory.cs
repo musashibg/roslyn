@@ -1,4 +1,5 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Modified by Aleksandar Dalemski
 
 using System;
 using System.Collections.Generic;
@@ -458,10 +459,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             RefKind refKind = RefKind.None,
             SynthesizedLocalKind kind = SynthesizedLocalKind.LoweringTemp,
             string name = null,
+            LocalDeclarationKind declarationKind = LocalDeclarationKind.None,
+            ConstantValue constantValue = null,
             [CallerLineNumber]int createdAtLineNumber = 0,
             [CallerFilePath]string createdAtFilePath = null)
         {
-            return new SynthesizedLocal(CurrentMethod, type, kind, syntax, isPinned, refKind, name, createdAtLineNumber, createdAtFilePath);
+            return new SynthesizedLocal(CurrentMethod, type, kind, syntax, isPinned, refKind, name, declarationKind, constantValue, createdAtLineNumber, createdAtFilePath);
         }
 #else
         public LocalSymbol SynthesizedLocal(
@@ -470,9 +473,11 @@ namespace Microsoft.CodeAnalysis.CSharp
             bool isPinned = false,
             RefKind refKind = RefKind.None,
             SynthesizedLocalKind kind = SynthesizedLocalKind.LoweringTemp,
-            string name = null)
+            string name = null,
+            LocalDeclarationKind declarationKind = LocalDeclarationKind.None,
+            ConstantValue constantValue = null)
         {
-            return new SynthesizedLocal(CurrentMethod, type, kind, syntax, isPinned, refKind, name);
+            return new SynthesizedLocal(CurrentMethod, type, kind, syntax, isPinned, refKind, name, declarationKind, constantValue);
         }
 #endif
 

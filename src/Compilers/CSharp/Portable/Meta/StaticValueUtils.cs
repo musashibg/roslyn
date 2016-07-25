@@ -1,4 +1,6 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Symbols;
+﻿// Copyright (c) Aleksandar Dalemski.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+
+using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Roslyn.Utilities;
 using System;
 using System.Collections.Generic;
@@ -14,11 +16,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CompileTimeValue sourceValue,
             ConversionKind conversionKind,
             TypeSymbol destination,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(sourceValue.Kind == CompileTimeValueKind.Simple);
 
-            if (conversionKind == ConversionKind.NoConversion || conversionKind == ConversionKind.Boxing || conversionKind == ConversionKind.Unboxing)
+            if (conversionKind == ConversionKind.NoConversion || conversionKind == ConversionKind.Boxing || conversionKind == ConversionKind.Unboxing
+                || conversionKind == ConversionKind.ImplicitReference)
             {
                 return sourceValue;
             }
@@ -28,10 +32,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 innerValue = ((ConstantStaticValue)sourceValue).Value;
             }
+            else if (sourceValue is EnumValue)
+            {
+                innerValue = ((EnumValue)sourceValue).UnderlyingValue;
+            }
             else
             {
-                Debug.Assert(sourceValue is EnumValue);
-                innerValue = ((EnumValue)sourceValue).UnderlyingValue;
+                Debug.Assert(sourceValue is TypeValue);
+                return sourceValue;
             }
 
             TypeSymbol innerDestination;
@@ -49,7 +57,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 innerValue,
                 conversionKind,
                 innerDestination,
-                diagnostics);
+                diagnostics,
+                additionalDiagnosticLocations);
 
             if (innerDestination != destination)
             {
@@ -67,14 +76,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CompileTimeValue staticValue,
             SpecialType resultType,
             CSharpCompilation compilation,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(staticValue != null && staticValue.Kind == CompileTimeValueKind.Simple);
 
             if (kind.IsEnum())
             {
                 Debug.Assert(staticValue is EnumValue);
-                return FoldEnumUnaryOperator(syntax, kind, (EnumValue)staticValue, compilation, diagnostics);
+                return FoldEnumUnaryOperator(syntax, kind, (EnumValue)staticValue, compilation, diagnostics, additionalDiagnosticLocations);
             }
             else
             {
@@ -84,7 +94,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     kind,
                     ((ConstantStaticValue)staticValue).Value,
                     resultType,
-                    diagnostics);
+                    diagnostics,
+                    additionalDiagnosticLocations);
                 return new ConstantStaticValue(resultValue);
             }
         }
@@ -96,14 +107,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CompileTimeValue rightStaticValue,
             SpecialType resultType,
             CSharpCompilation compilation,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(leftStaticValue != null && rightStaticValue != null);
 
             if (kind.IsEnum())
             {
                 Debug.Assert(leftStaticValue is EnumValue && rightStaticValue is EnumValue);
-                return FoldEnumBinaryOperator(syntax, kind, (EnumValue)leftStaticValue, (EnumValue)rightStaticValue, compilation, diagnostics);
+                return FoldEnumBinaryOperator(syntax, kind, (EnumValue)leftStaticValue, (EnumValue)rightStaticValue, compilation, diagnostics, additionalDiagnosticLocations);
             }
             else
             {
@@ -130,7 +142,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         ((ConstantStaticValue)leftStaticValue).Value,
                         ((ConstantStaticValue)rightStaticValue).Value,
                         resultType,
-                        diagnostics);
+                        diagnostics,
+                        additionalDiagnosticLocations);
                 }
                 return new ConstantStaticValue(resultValue);
             }
@@ -141,14 +154,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             UnaryOperatorKind kind,
             CompileTimeValue staticValue,
             SpecialType resultType,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(staticValue != null && staticValue.Kind == CompileTimeValueKind.Simple);
 
             if (kind.IsEnum())
             {
                 Debug.Assert(staticValue is EnumValue);
-                return FoldEnumIncrementOperator(syntax, kind, (EnumValue)staticValue, diagnostics);
+                return FoldEnumIncrementOperator(syntax, kind, (EnumValue)staticValue, diagnostics, additionalDiagnosticLocations);
             }
             else
             {
@@ -158,7 +172,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     kind,
                     ((ConstantStaticValue)staticValue).Value,
                     resultType,
-                    diagnostics);
+                    diagnostics,
+                    additionalDiagnosticLocations);
                 return new ConstantStaticValue(resultValue);
             }
         }
@@ -168,6 +183,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             TypeSymbol attributeType,
             ImmutableArray<CSharpAttributeData> attributes,
             DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations,
             out CSharpAttributeData candidateAttribute)
         {
             if (attributes.IsDefaultOrEmpty)
@@ -205,7 +221,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     return new AttributeValue(candidateAttribute);
 
                 default:
-                    diagnostics.Add(ErrorCode.ERR_StaticAmbiguousMatch, syntax.Location);
+                    diagnostics.Add(ErrorCode.ERR_StaticAmbiguousMatch, syntax.Location, additionalDiagnosticLocations);
                     throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
         }
@@ -381,9 +397,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return new ArrayValue(resultType, propertiesBuilder.ToImmutable());
         }
 
-        private static void Error(DiagnosticBag diagnostics, ErrorCode errorCode, CSharpSyntaxNode syntax, params object[] args)
+        private static void Error(DiagnosticBag diagnostics, ErrorCode errorCode, CSharpSyntaxNode syntax, ImmutableArray<Location> additionalLocations, params object[] args)
         {
-            diagnostics.Add(errorCode, syntax.Location, args);
+            diagnostics.Add(errorCode, syntax.Location, additionalLocations, args);
         }
 
         private static bool ShouldCheckOverflow(CSharpSyntaxNode syntax)
@@ -435,11 +451,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ConstantValue sourceConstantValue,
             TypeSymbol destination,
             CSharpCompilation compilation,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Conversion conversion = compilation.ClassifyConversion(source, destination);
             Debug.Assert(conversion != null);
-            return FoldConstantConversion(syntax, sourceConstantValue, conversion.Kind, destination, diagnostics);
+            return FoldConstantConversion(syntax, sourceConstantValue, conversion.Kind, destination, diagnostics, additionalDiagnosticLocations);
         }
 
         private static ConstantValue FoldConstantConversion(
@@ -447,7 +464,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ConstantValue sourceConstantValue,
             ConversionKind conversionKind,
             TypeSymbol destination,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(sourceConstantValue != null && (object)destination != null);
 
@@ -478,13 +496,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     return sourceConstantValue;
 
                 case ConversionKind.ImplicitConstant:
-                    return FoldConstantNumericConversion(syntax, sourceConstantValue, destination, diagnostics);
+                    return FoldConstantNumericConversion(syntax, sourceConstantValue, destination, diagnostics, additionalDiagnosticLocations);
 
                 case ConversionKind.ExplicitNumeric:
                 case ConversionKind.ImplicitNumeric:
                 case ConversionKind.ExplicitEnumeration:
                 case ConversionKind.ImplicitEnumeration:
-                    return FoldConstantNumericConversion(syntax, sourceConstantValue, destination, diagnostics);
+                    return FoldConstantNumericConversion(syntax, sourceConstantValue, destination, diagnostics, additionalDiagnosticLocations);
             }
 
             return null;
@@ -494,7 +512,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CSharpSyntaxNode syntax,
             ConstantValue sourceValue,
             TypeSymbol destination,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(sourceValue != null);
             Debug.Assert(!sourceValue.IsBad);
@@ -522,7 +541,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (!CheckConstantBounds(destinationType, sourceValue))
                 {
                     // NOTE: Dev10 puts a suffix, "M", on the constant value.
-                    Error(diagnostics, ErrorCode.ERR_ConstOutOfRange, syntax, sourceValue.Value + "M", destination);
+                    Error(diagnostics, ErrorCode.ERR_ConstOutOfRange, syntax, additionalDiagnosticLocations, sourceValue.Value + "M", destination);
 
                     return ConstantValue.Bad;
                 }
@@ -531,7 +550,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 if (!CheckConstantBounds(destinationType, sourceValue))
                 {
-                    Error(diagnostics, ErrorCode.ERR_ConstOutOfRange, syntax, sourceValue.Value, destination);
+                    Error(diagnostics, ErrorCode.ERR_ConstOutOfRange, syntax, additionalDiagnosticLocations, sourceValue.Value, destination);
 
                     return ConstantValue.Bad;
                 }
@@ -540,7 +559,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 if (!CheckConstantBounds(destinationType, sourceValue))
                 {
-                    Error(diagnostics, ErrorCode.ERR_ConstOutOfRangeChecked, syntax, sourceValue.Value, destination);
+                    Error(diagnostics, ErrorCode.ERR_ConstOutOfRangeChecked, syntax, additionalDiagnosticLocations, sourceValue.Value, destination);
 
                     return ConstantValue.Bad;
                 }
@@ -554,7 +573,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             UnaryOperatorKind kind,
             EnumValue staticValue,
             CSharpCompilation compilation,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(staticValue != null && kind.IsEnum() && !kind.IsLifted());
 
@@ -567,17 +587,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 underlyingType :
                 compilation.GetSpecialType(upconvertSpecialType);
 
-            ConstantValue underlyingValue = Convert(syntax, enumType, staticValue.UnderlyingValue, upconvertType, compilation, diagnostics);
+            ConstantValue underlyingValue = Convert(syntax, enumType, staticValue.UnderlyingValue, upconvertType, compilation, diagnostics, additionalDiagnosticLocations);
 
             UnaryOperatorKind newKind = kind.Operator().WithType(upconvertSpecialType);
 
-            ConstantValue constantValue = FoldConstantUnaryOperator(syntax, newKind, underlyingValue, upconvertType.SpecialType, diagnostics);
+            ConstantValue constantValue = FoldConstantUnaryOperator(syntax, newKind, underlyingValue, upconvertType.SpecialType, diagnostics, additionalDiagnosticLocations);
             Debug.Assert(constantValue != null);
 
             if (!constantValue.IsBad)
             {
                 // Do an unchecked conversion if bitwise complement
-                constantValue = FoldConstantNumericConversion(syntax, constantValue, underlyingType, diagnostics);
+                constantValue = FoldConstantNumericConversion(syntax, constantValue, underlyingType, diagnostics, additionalDiagnosticLocations);
                 return new EnumValue(enumType, constantValue);
             }
 
@@ -589,7 +609,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             UnaryOperatorKind kind,
             ConstantValue value,
             SpecialType resultType,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(value != null && !kind.IsEnum() && !kind.IsLifted());
             // UNDONE: report errors when in a checked context.
@@ -613,7 +634,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 }
                 catch (OverflowException)
                 {
-                    Error(diagnostics, ErrorCode.ERR_CheckedOverflow, syntax);
+                    Error(diagnostics, ErrorCode.ERR_CheckedOverflow, syntax, additionalDiagnosticLocations);
                     return ConstantValue.Bad;
                 }
             }
@@ -704,7 +725,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CSharpSyntaxNode syntax,
             UnaryOperatorKind kind,
             EnumValue staticValue,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(staticValue != null && kind.IsEnum() && !kind.IsLifted());
 
@@ -715,7 +737,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             UnaryOperatorKind newKind = kind.Operator().WithType(underlyingType.SpecialType);
 
-            ConstantValue constantValue = FoldConstantIncrementOperator(syntax, newKind, underlyingValue, underlyingType.SpecialType, diagnostics);
+            ConstantValue constantValue = FoldConstantIncrementOperator(syntax, newKind, underlyingValue, underlyingType.SpecialType, diagnostics, additionalDiagnosticLocations);
             Debug.Assert(constantValue != null);
 
             if (!constantValue.IsBad)
@@ -731,7 +753,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             UnaryOperatorKind kind,
             ConstantValue value,
             SpecialType resultType,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(value != null && !kind.IsEnum() && !kind.IsLifted());
             // UNDONE: report errors when in a checked context.
@@ -750,7 +773,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 }
                 catch (OverflowException)
                 {
-                    Error(diagnostics, ErrorCode.ERR_CheckedOverflow, syntax);
+                    Error(diagnostics, ErrorCode.ERR_CheckedOverflow, syntax, additionalDiagnosticLocations);
                     return ConstantValue.Bad;
                 }
             }
@@ -941,7 +964,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             EnumValue leftStaticValue,
             EnumValue rightStaticValue,
             CSharpCompilation compilation,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             Debug.Assert(leftStaticValue != null && rightStaticValue != null && kind.IsEnum() && !kind.IsLifted());
 
@@ -963,8 +987,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 underlyingType :
                 compilation.GetSpecialType(operandSpecialType);
 
-            ConstantValue leftUnderlyingValue = Convert(syntax, enumType, leftStaticValue.UnderlyingValue, operandType, compilation, diagnostics);
-            ConstantValue rightUnderlyingValue = Convert(syntax, enumType, rightStaticValue.UnderlyingValue, operandType, compilation, diagnostics);
+            ConstantValue leftUnderlyingValue = Convert(syntax, enumType, leftStaticValue.UnderlyingValue, operandType, compilation, diagnostics, additionalDiagnosticLocations);
+            ConstantValue rightUnderlyingValue = Convert(syntax, enumType, rightStaticValue.UnderlyingValue, operandType, compilation, diagnostics, additionalDiagnosticLocations);
 
             BinaryOperatorKind newKind = kind.Operator().WithType(leftUnderlyingValue.SpecialType);
 
@@ -993,13 +1017,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     throw ExceptionUtilities.UnexpectedValue(newKind.Operator());
             }
 
-            ConstantValue constantValue = FoldConstantBinaryOperator(syntax, newKind, leftUnderlyingValue, rightUnderlyingValue, operatorType, diagnostics);
+            ConstantValue constantValue = FoldConstantBinaryOperator(syntax, newKind, leftUnderlyingValue, rightUnderlyingValue, operatorType, diagnostics, additionalDiagnosticLocations);
             Debug.Assert(constantValue != null);
 
             if (operatorType != SpecialType.System_Boolean && !constantValue.IsBad)
             {
                 // We might need to convert back to the underlying type.
-                constantValue = FoldConstantNumericConversion(syntax, constantValue, underlyingType, diagnostics);
+                constantValue = FoldConstantNumericConversion(syntax, constantValue, underlyingType, diagnostics, additionalDiagnosticLocations);
                 return new EnumValue(enumType, constantValue);
             }
 
@@ -1341,10 +1365,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ConstantValue leftValue,
             ConstantValue rightValue,
             SpecialType resultType,
-            DiagnosticBag diagnostics)
+            DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations)
         {
             int compoundStringLength = 0;
-            return FoldConstantBinaryOperator(syntax, kind, leftValue, rightValue, resultType, diagnostics, ref compoundStringLength);
+            return FoldConstantBinaryOperator(syntax, kind, leftValue, rightValue, resultType, diagnostics, additionalDiagnosticLocations, ref compoundStringLength);
         }
 
         private static ConstantValue FoldConstantBinaryOperator(
@@ -1354,6 +1379,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ConstantValue rightValue,
             SpecialType resultType,
             DiagnosticBag diagnostics,
+            ImmutableArray<Location> additionalDiagnosticLocations,
             ref int compoundStringLength)
         {
             Debug.Assert(leftValue != null && rightValue != null && !kind.IsEnum() && !kind.IsLifted());
@@ -1366,7 +1392,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             // Divisions by zero on integral types and decimal always fail even in an unchecked context.
             if (IsDivisionByZero(kind, rightValue))
             {
-                Error(diagnostics, ErrorCode.ERR_IntDivByZero, syntax);
+                Error(diagnostics, ErrorCode.ERR_IntDivByZero, syntax, additionalDiagnosticLocations);
                 return ConstantValue.Bad;
             }
 
@@ -1389,7 +1415,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 if (concatResult.IsBad)
                 {
-                    Error(diagnostics, ErrorCode.ERR_ConstantStringTooLong, syntax);
+                    Error(diagnostics, ErrorCode.ERR_ConstantStringTooLong, syntax, additionalDiagnosticLocations);
                 }
 
                 return concatResult;
@@ -1404,7 +1430,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
             catch (OverflowException)
             {
-                Error(diagnostics, ErrorCode.ERR_DecConstError, syntax);
+                Error(diagnostics, ErrorCode.ERR_DecConstError, syntax, additionalDiagnosticLocations);
                 return ConstantValue.Bad;
             }
 
@@ -1421,7 +1447,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 }
                 catch (OverflowException)
                 {
-                    Error(diagnostics, ErrorCode.ERR_CheckedOverflow, syntax);
+                    Error(diagnostics, ErrorCode.ERR_CheckedOverflow, syntax, additionalDiagnosticLocations);
                     return ConstantValue.Bad;
                 }
             }

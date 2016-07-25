@@ -24,11 +24,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly DecorationBindingTimeAnalyzer _bindingTimeAnalyzer;
         private readonly DiagnosticBag _diagnostics;
         private readonly CancellationToken _cancellationToken;
+        private readonly Location _decorationLocation;
         private readonly List<EncapsulatingStatementKind> _encapsulatingStatements;
         private readonly VariableNameGenerator _variableNameGenerator;
 
         private DecorationRewriterFlags _flags;
-        private LambdaSymbol _containingLambda;
         private ImmutableDictionary<Symbol, Symbol> _replacementSymbols;
         private ImmutableArray<BoundStatement>.Builder _splicedStatementsBuilder;
         private ImmutableArray<LocalSymbol>.Builder _blockLocalsBuilder;
@@ -46,6 +46,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             SyntheticBoundNodeFactory factory,
             DecorationBindingTimeAnalyzer bindingTimeAnalyzer,
             DiagnosticBag diagnostics,
+            Location decorationLocation,
             CancellationToken cancellationToken)
         {
             _compilation = compilation;
@@ -82,6 +83,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             Debug.Assert(factory.CurrentType == targetMethod.ContainingType);
             _bindingTimeAnalyzer = bindingTimeAnalyzer;
             _diagnostics = diagnostics;
+            _decorationLocation = decorationLocation;
             _cancellationToken = cancellationToken;
 
             _encapsulatingStatements = new List<EncapsulatingStatementKind>();
@@ -128,11 +130,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableDictionary<Symbol, BoundExpression> decoratorArguments = BuildDecoratorArguments(decoratorData);
             cancellationToken.ThrowIfCancellationRequested();
 
+            Location decorationLocation = decoratorData.ApplicationSyntaxReference.GetLocation();
+
             // Perform binding-time analysis on the decorator method's body in order to identify variables, expressions and statements which can be statically evaluated
             var bindingTimeAnalyzer = new DecorationBindingTimeAnalyzer(
                 compilation,
                 diagnostics,
-                decoratorData.ApplicationSyntaxReference.GetLocation(),
+                decorationLocation,
                 targetMemberKind,
                 decoratorMethod,
                 decoratorArguments,
@@ -157,6 +161,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 factory,
                 bindingTimeAnalyzer,
                 diagnostics,
+                decorationLocation,
                 cancellationToken);
             return decorationRewriter.Rewrite(decoratorBody);
         }
@@ -386,7 +391,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CompileTimeValue value;
             if (operandValue.Kind == CompileTimeValueKind.Simple && !node.Conversion.IsUserDefined)
             {
-                value = StaticValueUtils.FoldConversion(node.Syntax, operandValue, node.Conversion.Kind, node.Type, _diagnostics);
+                value = StaticValueUtils.FoldConversion(node.Syntax, operandValue, node.Conversion.Kind, node.Type, _diagnostics, ImmutableArray.Create(_decorationLocation));
                 rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
             }
             else if (operandValue.Kind == CompileTimeValueKind.Complex
@@ -574,7 +579,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
                 if (leftResult.Value.Kind != CompileTimeValueKind.Dynamic && rightResult.Value.Kind != CompileTimeValueKind.Dynamic)
                 {
-                    value = StaticValueUtils.FoldBinaryOperator(node.Syntax, node.OperatorKind, leftResult.Value, rightResult.Value, node.Type.SpecialType, _compilation, _diagnostics);
+                    value = StaticValueUtils.FoldBinaryOperator(
+                        node.Syntax,
+                        node.OperatorKind,
+                        leftResult.Value,
+                        rightResult.Value,
+                        node.Type.SpecialType,
+                        _compilation,
+                        _diagnostics,
+                        ImmutableArray.Create(_decorationLocation));
                     rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
                 }
                 else
@@ -770,7 +783,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                              && rightValue.Kind == CompileTimeValueKind.Simple
                              && (rightValue is ConstantStaticValue || rightValue is EnumValue));
 
-                value = StaticValueUtils.FoldBinaryOperator(node.Syntax, node.Operator.Kind, leftValue, rightValue, node.Type.SpecialType, _compilation, _diagnostics);
+                value = StaticValueUtils.FoldBinaryOperator(
+                    node.Syntax,
+                    node.Operator.Kind,
+                    leftValue,
+                    rightValue,
+                    node.Type.SpecialType,
+                    _compilation,
+                    _diagnostics,
+                    ImmutableArray.Create(_decorationLocation));
                 rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
                 mustEmit = false;
 
@@ -960,7 +981,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CompileTimeValue value;
             if (operandValue.Kind == CompileTimeValueKind.Simple && !node.Conversion.IsUserDefined)
             {
-                value = StaticValueUtils.FoldConversion(node.Syntax, operandValue, node.ConversionKind, node.Type, _diagnostics);
+                value = StaticValueUtils.FoldConversion(node.Syntax, operandValue, node.ConversionKind, node.Type, _diagnostics, ImmutableArray.Create(_decorationLocation));
                 rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
             }
             else if (operandValue.Kind == CompileTimeValueKind.Complex
@@ -1402,7 +1423,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             else if (expressionValue.Kind == CompileTimeValueKind.Simple)
             {
                 Debug.Assert(expressionValue is ConstantStaticValue && ((ConstantStaticValue)expressionValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Expression.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Expression.Syntax.Location);
                 return new DecorationRewriteResult(
                     new BoundBadStatement(node.Syntax, ImmutableArray<BoundNode>.Empty, true) { WasCompilerGenerated = true },
                     variableValues,
@@ -1797,7 +1818,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 Debug.Assert(operandValue is ConstantStaticValue || operandValue is EnumValue);
 
                 UnaryOperatorKind operatorKind = node.OperatorKind;
-                CompileTimeValue newOperandValue = StaticValueUtils.FoldIncrementOperator(node.Syntax, operatorKind, operandValue, node.Type.SpecialType, _diagnostics);
+                CompileTimeValue newOperandValue = StaticValueUtils.FoldIncrementOperator(
+                    node.Syntax,
+                    operatorKind,
+                    operandValue,
+                    node.Type.SpecialType,
+                    _diagnostics,
+                    ImmutableArray.Create(_decorationLocation));
                 switch (operatorKind.Operator())
                 {
                     case UnaryOperatorKind.PrefixDecrement:
@@ -2044,13 +2071,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             LambdaSymbol lambda = node.Symbol;
 
             var replacementLambda = new LambdaSymbol(
-                _containingLambda ?? _targetMethod,
+                _factory.CurrentMethod,
                 lambda.Parameters,
                 lambda.RefKind,
                 lambda.ReturnType,
                 lambda.MessageID,
                 node.Syntax,
-                true);
+                lambda.IsSynthesizedLambda());
 
             // Creating a new lambda symbol automatically creates fresh parameter symbols so we need to populate the replacement symbols collection with them
             int parameterCount = lambda.ParameterCount;
@@ -2060,12 +2087,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 _replacementSymbols = _replacementSymbols.Add(lambda.Parameters[i], replacementLambda.Parameters[i]);
             }
 
-            LambdaSymbol outerContainingLambda = _containingLambda;
-            _containingLambda = replacementLambda;
+            MethodSymbol outerMethod = _factory.CurrentMethod;
+            _factory.CurrentMethod = replacementLambda;
 
             DecorationRewriteResult bodyResult = VisitWithExtraFlags(DecorationRewriterFlags.InNestedLambdaBody, node.Body, variableValues);
 
-            _containingLambda = outerContainingLambda;
+            _factory.CurrentMethod = outerMethod;
 
             return new DecorationRewriteResult(
                 node.Update(replacementLambda, GetBlock(bodyResult.Node, node.Body.Syntax), node.Diagnostics, node.Binder, node.Type),
@@ -2459,7 +2486,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         public override DecorationRewriteResult VisitParameter(BoundParameter node, ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
             Debug.Assert(!_flags.HasFlag(DecorationRewriterFlags.InDecoratorArgument));
-            Debug.Assert(_decoratorMethod.ParameterCount == 3);
 
             ParameterSymbol parameterSymbol = node.ParameterSymbol;
             CompileTimeValue value;
@@ -2594,7 +2620,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 BoundStatement rewrittenNode = null;
                 if (_targetMethod.ReturnsVoid)
                 {
-                    if (MetaUtils.StripConversions(rewrittenExpression).Kind == BoundKind.Literal)
+                    BoundExpression strippedExpression = MetaUtils.StripConversions(rewrittenExpression);
+                    if (strippedExpression.Kind == BoundKind.Literal || strippedExpression.Kind == BoundKind.Local || strippedExpression.Kind == BoundKind.Parameter)
                     {
                         rewrittenNode = node.Update(node.RefKind, null);
                     }
@@ -3047,7 +3074,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CompileTimeValue value = null;
             if (operandResult.Value.Kind == CompileTimeValueKind.Simple)
             {
-                value = StaticValueUtils.FoldUnaryOperator(node.Syntax, node.OperatorKind, operandResult.Value, node.Type.SpecialType, _compilation, _diagnostics);
+                value = StaticValueUtils.FoldUnaryOperator(
+                    node.Syntax,
+                    node.OperatorKind,
+                    operandResult.Value,
+                    node.Type.SpecialType,
+                    _compilation,
+                    _diagnostics,
+                    ImmutableArray.Create(_decorationLocation));
                 rewrittenNode = MakeSimpleStaticValueExpression(value, node.Type, node.Syntax);
             }
             else
@@ -3349,15 +3383,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return decoratorMethod;
         }
 
-        private static bool CheckIsSpecificParameter(BoundExpression node, ParameterSymbol parameter)
-        {
-            while (node.Kind == BoundKind.Conversion)
-            {
-                node = ((BoundConversion)node).Operand;
-            }
-            return node.Kind == BoundKind.Parameter && ((BoundParameter)node).ParameterSymbol == parameter;
-        }
-
         private static bool CheckIsNullStaticValue(CompileTimeValue value)
         {
             return value.Kind == CompileTimeValueKind.Simple
@@ -3484,15 +3509,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             variableValuesBuilder.Add(_decoratorMethod.Parameters[1], CompileTimeValue.Dynamic);
 
-            if (_targetMemberKind == DecoratedMemberKind.IndexerSet || _targetMemberKind == DecoratedMemberKind.PropertySet)
-            {
-                variableValuesBuilder.Add(_decoratorMethod.Parameters[2], CompileTimeValue.Dynamic);
-            }
-
             ParameterSymbol argumentsParameter = null;
             if (_targetMemberKind != DecoratedMemberKind.Destructor && _targetMemberKind != DecoratedMemberKind.PropertyGet && _targetMemberKind != DecoratedMemberKind.PropertySet)
             {
-                argumentsParameter = _decoratorMethod.Parameters[_decoratorMethod.ParameterCount - 1];
+                argumentsParameter = _decoratorMethod.Parameters[2];
                 if (_bindingTimeAnalyzer.VariableBindingTimes[argumentsParameter] == BindingTime.StaticArgumentArray)
                 {
                     variableValuesBuilder.Add(argumentsParameter, new ArgumentArrayValue(_targetMethod.Parameters.AsImmutable<Symbol>()));
@@ -3502,6 +3522,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     Debug.Assert(_bindingTimeAnalyzer.VariableBindingTimes[argumentsParameter] == BindingTime.Dynamic);
                     variableValuesBuilder.Add(argumentsParameter, CompileTimeValue.Dynamic);
                 }
+            }
+
+            if (_targetMemberKind == DecoratedMemberKind.IndexerSet || _targetMemberKind == DecoratedMemberKind.PropertySet)
+            {
+                variableValuesBuilder.Add(_decoratorMethod.Parameters[_decoratorMethod.ParameterCount - 1], CompileTimeValue.Dynamic);
             }
 
             try
@@ -3904,33 +3929,30 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 {
                     Debug.Assert(originalSymbol.Kind == SymbolKind.Local);
                     var local = (LocalSymbol)originalSymbol;
+                    TypeSymbol replacementLocalType;
                     if (_decoratorMethod.DecoratorMethodVariableTypes[local].Kind == ExtendedTypeKind.ReturnValue && !_targetMethod.ReturnsVoid)
                     {
-                        replacementSymbol = _factory.SynthesizedLocal(
-                            _targetMethod.ReturnType,
-                            syntax: local.GetDeclaratorSyntax(),
-                            kind: SynthesizedLocalKind.DecoratorLocal,
-                            name: _variableNameGenerator.GenerateFreshName(local.Name));
+                        replacementLocalType = _targetMethod.ReturnType;
                     }
                     else if (_decoratorMethod.DecoratorMethodVariableTypes[local].Kind == ExtendedTypeKind.MemberValue)
                     {
                         Debug.Assert(_targetMethod is SourcePropertyAccessorSymbol && _targetMethod.AssociatedSymbol is PropertySymbol);
                         var associatedProperty = (PropertySymbol)_targetMethod.AssociatedSymbol;
-                        replacementSymbol = _factory.SynthesizedLocal(
-                            associatedProperty.Type,
-                            syntax: local.GetDeclaratorSyntax(),
-                            kind: SynthesizedLocalKind.DecoratorLocal,
-                            name: _variableNameGenerator.GenerateFreshName(local.Name));
+                        replacementLocalType = associatedProperty.Type;
                     }
                     else
                     {
-                        replacementSymbol = _factory.SynthesizedLocal(
-                            local.Type,
-                            syntax: local.GetDeclaratorSyntax(),
-                            kind: SynthesizedLocalKind.DecoratorLocal,
-                            name: _variableNameGenerator.GenerateFreshName(local.Name));
+                        replacementLocalType = local.Type;
                     }
+                    replacementSymbol = _factory.SynthesizedLocal(
+                        replacementLocalType,
+                        syntax: local.GetDeclaratorSyntax(),
+                        kind: SynthesizedLocalKind.DecoratorLocal,
+                        name: _variableNameGenerator.GenerateFreshName(local.Name),
+                        declarationKind: local.DeclarationKind,
+                        constantValue: local.GetConstantValue(null, null));
                 }
+
                 Debug.Assert(replacementSymbol != null);
                 _replacementSymbols = _replacementSymbols.Add(originalSymbol, replacementSymbol);
             }
@@ -4061,6 +4083,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     WasCompilerGenerated = true,
                 };
             }
+        }
+
+        private void AddDiagnostic(ErrorCode errorCode, Location location)
+        {
+            _diagnostics.Add(errorCode, location, ImmutableArray.Create(_decorationLocation));
+        }
+
+        private void AddDiagnostic(ErrorCode errorCode, Location location, params object[] args)
+        {
+            _diagnostics.Add(errorCode, location, ImmutableArray.Create(_decorationLocation), args);
         }
     }
 }

@@ -16,6 +16,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly SourceMemberMethodSymbol _applicationMethod;
         private readonly ImmutableDictionary<Symbol, BoundExpression> _metaclassArguments;
         private readonly DiagnosticBag _diagnostics;
+        private readonly Location _applicationLocation;
         private readonly CancellationToken _cancellationToken;
         private readonly Dictionary<Symbol, CompileTimeValue> _variableValues;
 
@@ -28,6 +29,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             SourceMemberMethodSymbol applicationMethod,
             ImmutableDictionary<Symbol, BoundExpression> metaclassArguments,
             DiagnosticBag diagnostics,
+            Location applicationLocation,
             CancellationToken cancellationToken)
         {
             _compilation = compilation;
@@ -36,6 +38,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             _applicationMethod = applicationMethod;
             _metaclassArguments = metaclassArguments;
             _diagnostics = diagnostics;
+            _applicationLocation = applicationLocation;
             _cancellationToken = cancellationToken;
             _variableValues = new Dictionary<Symbol, CompileTimeValue>();
         }
@@ -73,11 +76,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableDictionary<Symbol, BoundExpression> metaclassArguments = BuildMetaclassArguments(metaclassData);
             cancellationToken.ThrowIfCancellationRequested();
 
+            Location applicationLocation = metaclassData.ApplicationSyntaxReference.GetLocation();
+
             // Perform binding-time analysis on the decorator method's body in order to identify variables, expressions and statements which can be statically evaluated
             var bindingTimeAnalyzer = new MetaclassBindingTimeAnalyzer(
                 compilation,
                 diagnostics,
-                metaclassData.ApplicationSyntaxReference.GetLocation(),
+                applicationLocation,
                 applicationMethod,
                 metaclassArguments,
                 cancellationToken);
@@ -88,7 +93,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             cancellationToken.ThrowIfCancellationRequested();
 
             // Create a synthetic node factory and perform the rewrite
-            var metaclassApplier = new MetaclassApplier(compilation, targetType, bindingTimeAnalyzer, applicationMethod, metaclassArguments, diagnostics, cancellationToken);
+            var metaclassApplier = new MetaclassApplier(compilation, targetType, bindingTimeAnalyzer, applicationMethod, metaclassArguments, diagnostics, applicationLocation, cancellationToken);
             metaclassApplier.PerformApplication(applicationMethodBody);
         }
 
@@ -150,7 +155,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CompileTimeValue operandValue = Visit(node.Operand, arg);
             if (operandValue.Kind == CompileTimeValueKind.Simple && !node.Conversion.IsUserDefined)
             {
-                return StaticValueUtils.FoldConversion(node.Syntax, operandValue, node.Conversion.Kind, node.Type, _diagnostics);
+                return StaticValueUtils.FoldConversion(node.Syntax, operandValue, node.Conversion.Kind, node.Type, _diagnostics, ImmutableArray.Create(_applicationLocation));
             }
             else
             {
@@ -247,7 +252,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             CompileTimeValue rightValue = Visit(node.Right, arg);
             Debug.Assert(leftValue.Kind != CompileTimeValueKind.Dynamic && rightValue.Kind != CompileTimeValueKind.Dynamic);
-            return StaticValueUtils.FoldBinaryOperator(node.Syntax, node.OperatorKind, leftValue, rightValue, node.Type.SpecialType, _compilation, _diagnostics);
+            return StaticValueUtils.FoldBinaryOperator(
+                node.Syntax,
+                node.OperatorKind,
+                leftValue,
+                rightValue,
+                node.Type.SpecialType,
+                _compilation,
+                _diagnostics,
+                ImmutableArray.Create(_applicationLocation));
         }
 
         public override CompileTimeValue VisitBlock(BoundBlock node, object arg)
@@ -309,7 +322,15 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             Debug.Assert((leftValue is ConstantStaticValue || leftValue is EnumValue)
                          && (rightValue is ConstantStaticValue || rightValue is EnumValue));
 
-            CompileTimeValue value = StaticValueUtils.FoldBinaryOperator(node.Syntax, node.Operator.Kind, leftValue, rightValue, node.Type.SpecialType, _compilation, _diagnostics);
+            CompileTimeValue value = StaticValueUtils.FoldBinaryOperator(
+                node.Syntax,
+                node.Operator.Kind,
+                leftValue,
+                rightValue,
+                node.Type.SpecialType,
+                _compilation,
+                _diagnostics,
+                ImmutableArray.Create(_applicationLocation));
 
             if (symbol != null)
             {
@@ -366,7 +387,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CompileTimeValue operandValue = Visit(node.Operand, arg);
             if (operandValue.Kind == CompileTimeValueKind.Simple && !node.ConversionKind.IsUserDefinedConversion())
             {
-                return StaticValueUtils.FoldConversion(node.Syntax, operandValue, node.ConversionKind, node.Type, _diagnostics);
+                return StaticValueUtils.FoldConversion(node.Syntax, operandValue, node.ConversionKind, node.Type, _diagnostics, ImmutableArray.Create(_applicationLocation));
             }
             else
             {
@@ -470,7 +491,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (expressionValue.Kind == CompileTimeValueKind.Simple)
             {
                 Debug.Assert(expressionValue is ConstantStaticValue && ((ConstantStaticValue)expressionValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Expression.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Expression.Syntax.Location);
                 throw new ExecutionInterruptionException(InterruptionKind.Throw);
             }
 
@@ -625,7 +646,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             Debug.Assert(operandValue is ConstantStaticValue || operandValue is EnumValue);
 
             UnaryOperatorKind operatorKind = node.OperatorKind;
-            CompileTimeValue newOperandValue = StaticValueUtils.FoldIncrementOperator(node.Syntax, operatorKind, operandValue, node.Type.SpecialType, _diagnostics);
+            CompileTimeValue newOperandValue = StaticValueUtils.FoldIncrementOperator(
+                node.Syntax,
+                operatorKind,
+                operandValue,
+                node.Type.SpecialType,
+                _diagnostics,
+                ImmutableArray.Create(_applicationLocation));
             CompileTimeValue value;
             switch (operatorKind.Operator())
             {
@@ -821,6 +848,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             Debug.Assert(type is NamedTypeSymbol);
 
             // Process constructor arguments
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by MetaclassApplier.");
             int argumentsCount = node.Arguments.Length;
             var arguments = new BoundExpression[argumentsCount];
             for (int i = 0; i < argumentsCount; i++)
@@ -957,7 +985,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             CompileTimeValue operandValue = Visit(node.Operand, arg);
             Debug.Assert(operandValue.Kind == CompileTimeValueKind.Simple);
 
-            return StaticValueUtils.FoldUnaryOperator(node.Syntax, node.OperatorKind, operandValue, node.Type.SpecialType, _compilation, _diagnostics);
+            return StaticValueUtils.FoldUnaryOperator(
+                node.Syntax,
+                node.OperatorKind,
+                operandValue,
+                node.Type.SpecialType,
+                _compilation,
+                _diagnostics,
+                ImmutableArray.Create(_applicationLocation));
         }
 
         public override CompileTimeValue VisitWhileStatement(BoundWhileStatement node, object arg)
@@ -1186,6 +1221,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     }
                 }
             }
+        }
+
+        private void AddDiagnostic(ErrorCode errorCode, Location location)
+        {
+            _diagnostics.Add(errorCode, location, ImmutableArray.Create(_applicationLocation));
+        }
+
+        private void AddDiagnostic(ErrorCode errorCode, Location location, params object[] args)
+        {
+            _diagnostics.Add(errorCode, location, ImmutableArray.Create(_applicationLocation), args);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Modified by Aleksandar Dalemski
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
@@ -1311,6 +1312,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         ERR_InvalidSpecialMethodCallInDecorator = 7418,
         ERR_BaseDecoratorMethodCallNotSupported = 7419,
         ERR_GenericTraitTypesNotSupported = 7420,
+        ERR_DecoratedImplicitlyDeclaredMember = 7421,
 
         // available 7421-8000
 

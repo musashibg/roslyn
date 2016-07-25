@@ -78,7 +78,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__IsVisible)
                     || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Type__Namespace))
                 {
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
                     throw new ExecutionInterruptionException(InterruptionKind.Throw);
                 }
                 else
@@ -194,7 +194,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__DeclaringType)
                     || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MemberInfo__Name))
                 {
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
                     throw new ExecutionInterruptionException(InterruptionKind.Throw);
                 }
                 else
@@ -250,7 +250,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
                 if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
                 {
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
                     throw new ExecutionInterruptionException(InterruptionKind.Throw);
                 }
                 else
@@ -273,9 +273,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
+                if (accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__PropertyType))
                 {
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
                     throw new ExecutionInterruptionException(InterruptionKind.Throw);
                 }
                 else
@@ -304,7 +304,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__ParameterType)
                     || accessedProperty == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_ParameterInfo__Position))
                 {
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Syntax.Location);
                     throw new ExecutionInterruptionException(InterruptionKind.Throw);
                 }
                 else

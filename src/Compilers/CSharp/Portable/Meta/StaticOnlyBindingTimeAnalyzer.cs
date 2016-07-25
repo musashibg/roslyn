@@ -1,4 +1,6 @@
-﻿using System.Threading;
+﻿// Copyright (c) Aleksandar Dalemski.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+
+using System.Threading;
 
 namespace Microsoft.CodeAnalysis.CSharp.Meta
 {
@@ -15,7 +17,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
             if (result != null && result.BindingTime == BindingTime.Dynamic && !flags.HasFlag(BindingTimeAnalyzerFlags.InDecoratorCreationExpression))
             {
-                Error(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
                 throw new BindingTimeAnalysisException();
             }
 
@@ -24,31 +26,31 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitCatchBlock(BoundCatchBlock node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
         public override BindingTimeAnalysisResult VisitFixedStatement(BoundFixedStatement node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
         public override BindingTimeAnalysisResult VisitLockStatement(BoundLockStatement node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
         public override BindingTimeAnalysisResult VisitTryStatement(BoundTryStatement node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
         public override BindingTimeAnalysisResult VisitUsingStatement(BoundUsingStatement node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_DynamicBindingTimeInCompileTimeOnlyCode, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
     }

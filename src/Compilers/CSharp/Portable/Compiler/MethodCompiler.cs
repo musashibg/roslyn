@@ -1,4 +1,5 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Modified by Aleksandar Dalemski
 
 using System;
 using System.Collections.Concurrent;
@@ -936,7 +937,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 {
                     // Apply any decorators
                     flowAnalyzedBody = DecorationPass.Rewrite(methodSymbol, flowAnalyzedBody, compilationState, diagsForCurrentMethod, _cancellationToken);
-                    hasErrors = diagsForCurrentMethod.HasAnyErrors();
+                    hasErrors = flowAnalyzedBody.HasErrors || diagsForCurrentMethod.HasAnyErrors();
                 }
 
                 // Record whether or not the bound tree for the lowered method body (including any initializers) contained any

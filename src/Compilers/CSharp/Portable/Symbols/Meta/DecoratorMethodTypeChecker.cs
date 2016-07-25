@@ -1,4 +1,6 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Meta;
+﻿// Copyright (c) Aleksandar Dalemski.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+
+using Microsoft.CodeAnalysis.CSharp.Meta;
 using Roslyn.Utilities;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -65,14 +67,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
             variableTypesBuilder.Add(decoratorMethod.Parameters[1], ExtendedTypeInfo.CreateThisObjectType(compilation));
 
-            if (_targetMemberKind == DecoratedMemberKind.IndexerSet || _targetMemberKind == DecoratedMemberKind.PropertySet)
-            {
-                variableTypesBuilder.Add(decoratorMethod.Parameters[2], ExtendedTypeInfo.CreateMemberValueType(compilation, false));
-            }
-
             if (_targetMemberKind != DecoratedMemberKind.Destructor && _targetMemberKind != DecoratedMemberKind.PropertyGet && _targetMemberKind != DecoratedMemberKind.PropertySet)
             {
-                variableTypesBuilder.Add(decoratorMethod.Parameters[decoratorMethod.ParameterCount - 1], ExtendedTypeInfo.CreateArgumentArrayType(compilation, false));
+                variableTypesBuilder.Add(decoratorMethod.Parameters[2], ExtendedTypeInfo.CreateArgumentArrayType(compilation, false));
+            }
+
+            if (_targetMemberKind == DecoratedMemberKind.IndexerSet || _targetMemberKind == DecoratedMemberKind.PropertySet)
+            {
+                variableTypesBuilder.Add(decoratorMethod.Parameters[decoratorMethod.ParameterCount - 1], ExtendedTypeInfo.CreateMemberValueType(compilation, false));
             }
             _variableTypes = variableTypesBuilder.ToImmutable();
 
@@ -139,7 +141,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitAnonymousObjectCreationExpression(BoundAnonymousObjectCreationExpression node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitArguments(node.Constructor, node.Arguments, default(ImmutableArray<RefKind>), ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.Constructor, node.Arguments, default(ImmutableArray<int>), default(ImmutableArray<RefKind>), ref subtypingAssertions);
             isSuccessful &= VisitList(node.Declarations, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
@@ -345,66 +347,45 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                 // Boolean-valued binary operator expressions might be conditionals that introduce subtyping assertions, so we handle them separately
                 ImmutableHashSet<SubtypingAssertion> assertionsIfTrue = null;
                 ImmutableHashSet<SubtypingAssertion> assertionsIfFalse = null;
-                switch (node.OperatorKind & BinaryOperatorKind.OpMask)
+                BinaryOperatorKind operatorKind = node.OperatorKind & BinaryOperatorKind.OpMask;
+                switch (operatorKind)
                 {
                     case BinaryOperatorKind.Equal:
-                        if (node.Left.Type == _compilation.GetWellKnownType(WellKnownType.System_Type))
-                        {
-                            ExtendedTypeInfo leftTypeValue = TryParseTypeFromExpression(node.Left);
-                            ExtendedTypeInfo rightTypeValue = TryParseTypeFromExpression(node.Right);
-                            if (leftTypeValue != null && rightTypeValue != null
-                                && !(leftTypeValue.IsOrdinaryType && rightTypeValue.IsOrdinaryType))
-                            {
-                                assertionsIfTrue = ImmutableHashSet.Create(
-                                    SubtypingAssertionComparer.Singleton,
-                                    new SubtypingAssertion(leftTypeValue, rightTypeValue),
-                                    new SubtypingAssertion(rightTypeValue, leftTypeValue)
-                                );
-
-                                // Check for comparison with void: a type being different from void means that it is safely castable to object
-                                if (rightTypeValue.IsOrdinaryType && rightTypeValue.OrdinaryType.SpecialType == SpecialType.System_Void)
-                                {
-                                    assertionsIfFalse = ImmutableHashSet.Create(
-                                        SubtypingAssertionComparer.Singleton,
-                                        new SubtypingAssertion(new ExtendedTypeInfo(_compilation.ObjectType), leftTypeValue));
-                                }
-                                else if (leftTypeValue.IsOrdinaryType && leftTypeValue.OrdinaryType.SpecialType == SpecialType.System_Void)
-                                {
-                                    assertionsIfFalse = ImmutableHashSet.Create(
-                                        SubtypingAssertionComparer.Singleton,
-                                        new SubtypingAssertion(new ExtendedTypeInfo(_compilation.ObjectType), rightTypeValue));
-                                }
-                            }
-                        }
-                        break;
-
                     case BinaryOperatorKind.NotEqual:
-                        if (node.Left.Type == _compilation.GetWellKnownType(WellKnownType.System_Type))
+                        // .NET 2.0 - 3.5 does not have an equality operator overload for System.Type, so we must strip implicit conversions
+                        BoundExpression strippedLeft = MetaUtils.StripConversions(node.Left, true);
+                        BoundExpression strippedRight = MetaUtils.StripConversions(node.Right, true);
+                        TypeSymbol typeType = _compilation.GetWellKnownType(WellKnownType.System_Type);
+                        if (strippedLeft.Type == typeType && strippedRight.Type == typeType)
                         {
-                            ExtendedTypeInfo leftTypeValue = TryParseTypeFromExpression(node.Left);
-                            ExtendedTypeInfo rightTypeValue = TryParseTypeFromExpression(node.Right);
+                            ExtendedTypeInfo leftTypeValue = TryParseTypeFromExpression(strippedLeft);
+                            ExtendedTypeInfo rightTypeValue = TryParseTypeFromExpression(strippedRight);
                             if (leftTypeValue != null && rightTypeValue != null
                                 && !(leftTypeValue.IsOrdinaryType && rightTypeValue.IsOrdinaryType))
                             {
-                                assertionsIfFalse = ImmutableHashSet.Create(
+                                ImmutableHashSet<SubtypingAssertion> assertionsIfEqual = ImmutableHashSet.Create(
                                     SubtypingAssertionComparer.Singleton,
                                     new SubtypingAssertion(leftTypeValue, rightTypeValue),
                                     new SubtypingAssertion(rightTypeValue, leftTypeValue)
                                 );
 
                                 // Check for comparison with void: a type being different from void means that it is safely castable to object
+                                ImmutableHashSet<SubtypingAssertion> assertionsIfNotEqual = null;
                                 if (rightTypeValue.IsOrdinaryType && rightTypeValue.OrdinaryType.SpecialType == SpecialType.System_Void)
                                 {
-                                    assertionsIfTrue = ImmutableHashSet.Create(
+                                    assertionsIfNotEqual = ImmutableHashSet.Create(
                                         SubtypingAssertionComparer.Singleton,
                                         new SubtypingAssertion(new ExtendedTypeInfo(_compilation.ObjectType), leftTypeValue));
                                 }
                                 else if (leftTypeValue.IsOrdinaryType && leftTypeValue.OrdinaryType.SpecialType == SpecialType.System_Void)
                                 {
-                                    assertionsIfTrue = ImmutableHashSet.Create(
+                                    assertionsIfNotEqual = ImmutableHashSet.Create(
                                         SubtypingAssertionComparer.Singleton,
                                         new SubtypingAssertion(new ExtendedTypeInfo(_compilation.ObjectType), rightTypeValue));
                                 }
+
+                                assertionsIfTrue = (operatorKind == BinaryOperatorKind.Equal) ? assertionsIfEqual : assertionsIfNotEqual;
+                                assertionsIfFalse = (operatorKind == BinaryOperatorKind.Equal) ? assertionsIfNotEqual : assertionsIfEqual;
                             }
                         }
                         break;
@@ -457,7 +438,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
             #region Handle special method invocations
 
-            if (CheckIsSpliceLocation(node))
+            bool isSpliceLocation = MetaUtils.CheckIsSpliceLocation(
+                node,
+                _compilation,
+                _targetMemberKind,
+                _decoratorMethod,
+                addDiagnosticCallback: (c, l, args) => _diagnostics.Add(c, l, args));
+            if (isSpliceLocation)
             {
                 if (_flags.HasFlag(DecoratorMethodTypeCheckerFlags.ProhibitSpliceLocation))
                 {
@@ -465,9 +452,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     return new DecoratorTypingResult(false, ExtendedTypeInfo.CreateReturnValueType(_compilation, false), subtypingAssertions);
                 }
 
+                ExtendedTypeInfo spliceLocationResultType;
                 if (_targetMemberKind == DecoratedMemberKind.IndexerSet || _targetMemberKind == DecoratedMemberKind.PropertySet)
                 {
                     // Ensure that the parameter or local variable passed as a property-indexer value in the splice location invocation is well-typed
+                    Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecoratorMethodTypeChecker.");
                     BoundExpression valueArgument = node.Arguments[1];
 
                     DecoratorTypingResult valueArgumentTypingResult = Visit(valueArgument, subtypingAssertions);
@@ -514,11 +503,19 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     }
                     isSuccessful &= valueArgumentTypingResult.IsSuccessful;
                     subtypingAssertions = valueArgumentTypingResult.UpdatedSubtypingAssertions;
+                    spliceLocationResultType = new ExtendedTypeInfo(_compilation.GetSpecialType(SpecialType.System_Void));
+                }
+                else
+                {
+                    spliceLocationResultType = (_targetMemberKind == DecoratedMemberKind.IndexerGet || _targetMemberKind == DecoratedMemberKind.PropertyGet)
+                                                    ? ExtendedTypeInfo.CreateMemberValueType(_compilation, false)
+                                                    : ExtendedTypeInfo.CreateReturnValueType(_compilation, false);
                 }
 
                 if (_targetMemberKind != DecoratedMemberKind.Destructor && _targetMemberKind != DecoratedMemberKind.PropertyGet && _targetMemberKind != DecoratedMemberKind.PropertySet)
                 {
                     // Ensure that the parameter or local variable passed as an argument array in the splice location invocation is well-typed
+                    Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecoratorMethodTypeChecker.");
                     BoundExpression argumentArrayArgument;
                     switch (_targetMemberKind)
                     {
@@ -548,10 +545,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     subtypingAssertions = argumentArrayArgumentTypingResult.UpdatedSubtypingAssertions;
                 }
 
-                return new DecoratorTypingResult(isSuccessful, ExtendedTypeInfo.CreateReturnValueType(_compilation, false), subtypingAssertions);
+                return new DecoratorTypingResult(isSuccessful, spliceLocationResultType, subtypingAssertions);
             }
 
-            if (CheckIsBaseDecoratorMethodCall(node))
+            if (MetaUtils.CheckIsBaseMethodCall(node, _decoratorMethod))
             {
                 // Base method calls are not allowed
                 _diagnostics.Add(ErrorCode.ERR_BaseDecoratorMethodCallNotSupported, node.Syntax.Location);
@@ -562,6 +559,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             {
                 // MetaPrimitives.CloneArguments takes a decorated member argument array and returns another decorated member argument array
                 Debug.Assert(node.Arguments.Length == 1);
+                Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecoratorMethodTypeChecker.");
 
                 BoundExpression argument = node.Arguments[0];
                 DecoratorTypingResult argumentTypingResult = Visit(argument, subtypingAssertions);
@@ -578,6 +576,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             {
                 // MetaPrimitives.CloneArguments takes a decorated member argument array and returns a regular array of objects
                 Debug.Assert(node.Arguments.Length == 1);
+                Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecoratorMethodTypeChecker.");
 
                 BoundExpression argument = node.Arguments[0];
                 DecoratorTypingResult argumentTypingResult = Visit(argument, subtypingAssertions);
@@ -594,6 +593,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             {
                 // MetaPrimitives.DefaultValue(<type expression>) might return a specially-typed value
                 Debug.Assert(node.Arguments.Length == 1 && node.Type.IsObjectType());
+                Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecoratorMethodTypeChecker.");
 
                 DecoratorTypingResult argumentResult = Visit(node.Arguments[0], subtypingAssertions);
 
@@ -611,6 +611,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             {
                 // <type expression 1>.IsAssignableFrom(<type expression 2>) might introduce a subtyping assertion
                 Debug.Assert(receiverOpt != null && node.Arguments.Length == 1 && node.Type.SpecialType == SpecialType.System_Boolean);
+                Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecoratorMethodTypeChecker.");
 
                 ExtendedTypeInfo supertypeValue = TryParseTypeFromExpression(receiverOpt);
                 ExtendedTypeInfo subtypeValue = TryParseTypeFromExpression(node.Arguments[0]);
@@ -629,6 +630,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             {
                 // MetaExtensions.IsAssignableFrom(<type expression 1>, <type expression 2>) might introduce a subtyping assertion
                 Debug.Assert(node.Arguments.Length == 2 && node.Type.SpecialType == SpecialType.System_Boolean);
+                Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecoratorMethodTypeChecker.");
 
                 ExtendedTypeInfo supertypeValue = TryParseTypeFromExpression(node.Arguments[0]);
                 ExtendedTypeInfo subtypeValue = TryParseTypeFromExpression(node.Arguments[1]);
@@ -664,7 +666,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                 isSuccessful &= receiverTypingResult.IsSuccessful;
             }
 
-            isSuccessful &= VisitArguments(method, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
+            isSuccessful &= VisitArguments(method, node.Arguments, node.ArgsToParamsOpt, node.ArgumentRefKindsOpt, ref subtypingAssertions);
 
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
@@ -718,7 +720,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitCollectionElementInitializer(BoundCollectionElementInitializer node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitArguments(node.AddMethod, node.Arguments, default(ImmutableArray<RefKind>), ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.AddMethod, node.Arguments, node.ArgsToParamsOpt, default(ImmutableArray<RefKind>), ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -896,7 +898,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitDynamicCollectionElementInitializer(BoundDynamicCollectionElementInitializer node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitArguments(node.ApplicableMethods, node.Arguments, default(ImmutableArray<RefKind>), ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.ApplicableMethods, node.Arguments, default(ImmutableArray<int>), default(ImmutableArray<RefKind>), ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -910,7 +912,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                 isSuccessful &= receiverTypingResult.IsSuccessful;
                 subtypingAssertions = receiverTypingResult.UpdatedSubtypingAssertions;
             }
-            isSuccessful &= VisitArguments(node.ApplicableIndexers, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
+            isSuccessful &= VisitArguments(node.ApplicableIndexers, node.Arguments, default(ImmutableArray<int>), node.ArgumentRefKindsOpt, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -920,7 +922,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             bool isSuccessful = expressionTypingResult.IsSuccessful;
             subtypingAssertions = expressionTypingResult.UpdatedSubtypingAssertions;
 
-            isSuccessful &= VisitArguments(node.ApplicableMethods, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
+            isSuccessful &= VisitArguments(node.ApplicableMethods, node.Arguments, default(ImmutableArray<int>), node.ArgumentRefKindsOpt, ref subtypingAssertions);
 
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
@@ -933,7 +935,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitDynamicObjectCreationExpression(BoundDynamicObjectCreationExpression node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitArguments(node.ApplicableMethods, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.ApplicableMethods, node.Arguments, default(ImmutableArray<int>), node.ArgumentRefKindsOpt, ref subtypingAssertions);
 
             BoundExpression initializerExpressionOpt = node.InitializerExpressionOpt;
             if (initializerExpressionOpt != null)
@@ -1205,7 +1207,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                 // Argument arrays should not have indexers (array access is handled in VisitArrayAccess)
                 Debug.Assert(receiverTypingResult.Type.Kind != ExtendedTypeKind.ArgumentArray);
             }
-            isSuccessful &= VisitArguments(node.Indexer, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
+            isSuccessful &= VisitArguments(node.Indexer, node.Arguments, node.ArgsToParamsOpt, node.ArgumentRefKindsOpt, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -1302,11 +1304,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             ExtendedTypeInfo localExtendedType;
             if (localOrdinaryType.IsObjectType())
             {
-                // As the current implementation does not support ambiguity between different special types, we make use of the fact that member values
-                // are only relevant in property/index setter decoration, and return values are not relevant in them
-                localExtendedType = (_targetMemberKind == DecoratedMemberKind.IndexerSet || _targetMemberKind == DecoratedMemberKind.PropertySet)
-                                        ? ExtendedTypeInfo.CreateMemberValueType(_compilation, true, local)
-                                        : ExtendedTypeInfo.CreateReturnValueType(_compilation, true, local);
+                // As the current implementation does not support ambiguity between different special types, we make use of the fact that return values
+                // are only relevant in property/index getter and setter decoration, and return values are not relevant in them
+                localExtendedType = (_targetMemberKind == DecoratedMemberKind.Constructor || _targetMemberKind == DecoratedMemberKind.Destructor
+                                     || _targetMemberKind == DecoratedMemberKind.Method)
+                                        ? ExtendedTypeInfo.CreateReturnValueType(_compilation, true, local)
+                                        : ExtendedTypeInfo.CreateMemberValueType(_compilation, true, local);
             }
             else if (localOrdinaryType.IsArray() && ((ArrayTypeSymbol)localOrdinaryType).ElementType.IsObjectType())
             {
@@ -1488,7 +1491,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitObjectCreationExpression(BoundObjectCreationExpression node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitArguments(node.Constructor, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.Constructor, node.Arguments, node.ArgsToParamsOpt, node.ArgumentRefKindsOpt, ref subtypingAssertions);
 
             BoundExpression initializerExpressionOpt = node.InitializerExpressionOpt;
             if (initializerExpressionOpt != null)
@@ -1509,7 +1512,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitObjectInitializerMember(BoundObjectInitializerMember node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            bool isSuccessful = VisitArguments(node.MemberSymbol, node.Arguments, node.ArgumentRefKindsOpt, ref subtypingAssertions);
+            bool isSuccessful = VisitArguments(node.MemberSymbol, node.Arguments, node.ArgsToParamsOpt, node.ArgumentRefKindsOpt, ref subtypingAssertions);
             return new DecoratorTypingResult(isSuccessful, new ExtendedTypeInfo(node.Type), subtypingAssertions);
         }
 
@@ -1564,7 +1567,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             {
                 // Handle special property accesses
                 if ((_targetMemberKind == DecoratedMemberKind.Constructor || _targetMemberKind == DecoratedMemberKind.Destructor || _targetMemberKind == DecoratedMemberKind.Method)
-                    && CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0])
+                    && MetaUtils.CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0])
                     && node.PropertySymbol == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__IsStatic))
                 {
                     Debug.Assert(node.Type.SpecialType == SpecialType.System_Boolean);
@@ -1658,8 +1661,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
 
         public override DecoratorTypingResult VisitReturnStatement(BoundReturnStatement node, ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
-            ExtendedTypeInfo returnValueType = ExtendedTypeInfo.CreateReturnValueType(_compilation, false);
-
             BoundExpression expressionOpt = node.ExpressionOpt;
             if (expressionOpt == null)
             {
@@ -1675,6 +1676,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             if (!_flags.HasFlag(DecoratorMethodTypeCheckerFlags.InNestedLambdaBody))
             {
                 // If we are not inside a nested lambda, we should validate the return expression's type
+                ExtendedTypeInfo returnValueType = (_targetMemberKind == DecoratedMemberKind.IndexerGet || _targetMemberKind == DecoratedMemberKind.PropertyGet)
+                                                    ? ExtendedTypeInfo.CreateMemberValueType(_compilation, false)
+                                                    : ExtendedTypeInfo.CreateReturnValueType(_compilation, false);
+
                 ExtendedTypeInfo expressionType = expressionTypingResult.Type;
                 if (expressionType.IsAmbiguous)
                 {
@@ -2062,13 +2067,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         public bool VisitArguments(
             IEnumerable<Symbol> applicableMethodsOrProperties,
             ImmutableArray<BoundExpression> arguments,
+            ImmutableArray<int> argsToParamsOpt,
             ImmutableArray<RefKind> argumentRefKindsOpt,
             ref ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
             bool isSuccessful = true;
             foreach (Symbol methodOrProperty in applicableMethodsOrProperties)
             {
-                isSuccessful &= VisitArguments(methodOrProperty, arguments, argumentRefKindsOpt, ref subtypingAssertions);
+                isSuccessful &= VisitArguments(methodOrProperty, arguments, argsToParamsOpt, argumentRefKindsOpt, ref subtypingAssertions);
             }
             return isSuccessful;
         }
@@ -2092,29 +2098,39 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
         public bool VisitArguments(
             Symbol methodOrProperty,
             ImmutableArray<BoundExpression> arguments,
+            ImmutableArray<int> argsToParamsOpt,
             ImmutableArray<RefKind> argumentRefKindsOpt,
             ref ImmutableHashSet<SubtypingAssertion> subtypingAssertions)
         {
             Debug.Assert(methodOrProperty == null || methodOrProperty is MethodSymbol || methodOrProperty is PropertySymbol);
 
-            ImmutableArray<TypeSymbol> parameterTypes;
+            ImmutableArray<ParameterSymbol> parameters;
             if (methodOrProperty == null)
             {
-                parameterTypes = Enumerable.Repeat<TypeSymbol>(_compilation.ObjectType, arguments.Length).ToImmutableArray();
+                parameters = Enumerable.Repeat<ParameterSymbol>(null, arguments.Length).ToImmutableArray();
             }
             else if (methodOrProperty is MethodSymbol)
             {
-                parameterTypes = ((MethodSymbol)methodOrProperty).ParameterTypes;
+                parameters = ((MethodSymbol)methodOrProperty).Parameters;
             }
             else if (methodOrProperty is PropertySymbol)
             {
-                parameterTypes = ((PropertySymbol)methodOrProperty).ParameterTypes;
+                parameters = ((PropertySymbol)methodOrProperty).Parameters;
             }
 
             bool isSuccessful = true;
             for (int i = 0; i < arguments.Length; i++)
             {
                 BoundExpression argument = arguments[i];
+                ParameterSymbol parameter;
+                if (argsToParamsOpt.IsDefault)
+                {
+                    parameter = parameters[i];
+                }
+                else
+                {
+                    parameter = parameters[argsToParamsOpt[i]];
+                }
                 DecoratorTypingResult argumentTypingResult = Visit(argument, subtypingAssertions);
 
                 subtypingAssertions = argumentTypingResult.UpdatedSubtypingAssertions;
@@ -2142,12 +2158,35 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                 }
 
                 ExtendedTypeInfo argumentType = argumentTypingResult.Type;
+                TypeSymbol parameterType;
+                if (parameter == null)
+                {
+                    parameterType = _compilation.ObjectType;
+                }
+                else if (parameter.IsParams)
+                {
+                    // A "params" parameter can be matched by either an array argument or one or more element arguments
+                    Debug.Assert(parameter.Type.IsArray());
+                    if (MetaUtils.CheckTypeIsAssignableFrom(parameter.Type, argumentType.OrdinaryType))
+                    {
+                        parameterType = parameter.Type;
+                    }
+                    else
+                    {
+                        parameterType = ((ArrayTypeSymbol)parameter.Type).ElementType;
+                    }
+                }
+                else
+                {
+                    parameterType = parameter.Type;
+                }
+
                 if (!argumentType.IsOrdinaryType)
                 {
                     switch (argumentType.Kind)
                     {
                         case ExtendedTypeKind.ThisObject:
-                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterTypes[i]), argumentType, subtypingAssertions))
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterType), argumentType, subtypingAssertions))
                             {
                                 argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberThisObjectCast, argument);
                             }
@@ -2164,7 +2203,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                             break;
 
                         case ExtendedTypeKind.ReturnValue:
-                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterTypes[i]), argumentType, subtypingAssertions))
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterType), argumentType, subtypingAssertions))
                             {
                                 argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberReturnValueCast, argument);
                             }
@@ -2172,7 +2211,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                             if (argumentRefKind != RefKind.None)
                             {
                                 // If a return value variable is used as a ref or out argument, the call parameter's type needs to be assignable to the decorated member's return type
-                                if (!CheckSpecialTypeIsAssignableFrom(argumentType, new ExtendedTypeInfo(parameterTypes[i]), subtypingAssertions))
+                                if (!CheckSpecialTypeIsAssignableFrom(argumentType, new ExtendedTypeInfo(parameterType), subtypingAssertions))
                                 {
                                     argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberReturnValueRefParameterUse, argument);
                                 }
@@ -2180,7 +2219,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                             break;
 
                         case ExtendedTypeKind.MemberValue:
-                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterTypes[i]), argumentType, subtypingAssertions))
+                            if (!CheckSpecialTypeIsAssignableTo(new ExtendedTypeInfo(parameterType), argumentType, subtypingAssertions))
                             {
                                 argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberValueCast, argument);
                             }
@@ -2188,7 +2227,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                             if (argumentRefKind != RefKind.None)
                             {
                                 // If a member value variable is used as a ref or out argument, the call parameter's type needs to be assignable to the decorated member's type
-                                if (!CheckSpecialTypeIsAssignableFrom(argumentType, new ExtendedTypeInfo(parameterTypes[i]), subtypingAssertions))
+                                if (!CheckSpecialTypeIsAssignableFrom(argumentType, new ExtendedTypeInfo(parameterType), subtypingAssertions))
                                 {
                                     argumentTypingResult = UpdateResultOnIncompatibleSpecialType(argumentTypingResult, ErrorCode.ERR_UnsafeDecoratedMemberValueRefParameterUse, argument);
                                 }
@@ -2411,170 +2450,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
             return false;
         }
 
-        private static bool CheckIsSpecificParameter(BoundExpression node, ParameterSymbol parameter)
-        {
-            while (node.Kind == BoundKind.Conversion)
-            {
-                node = ((BoundConversion)node).Operand;
-            }
-            return node.Kind == BoundKind.Parameter && ((BoundParameter)node).ParameterSymbol == parameter;
-        }
-
-        private bool CheckIsSpliceLocation(BoundCall call)
-        {
-            MethodSymbol method = call.Method;
-            switch (_targetMemberKind)
-            {
-                case DecoratedMemberKind.Constructor:
-                case DecoratedMemberKind.Method:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
-                    {
-                        // This is a call to MethodBase.Invoke(object obj, object[] parameters)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.Destructor:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
-                    {
-                        // This is a call to MethodBase.Invoke(object obj, object[] parameters) with null as a second argument (destructors never have arguments)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && call.Arguments[1].Kind == BoundKind.Literal
-                            && ((BoundLiteral)call.Arguments[1]).ConstantValue.IsNull)
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.IndexerGet:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetValue2))
-                    {
-                        // This is a call to PropertyInfo.GetValue(object obj, object[] index)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.GetValue(object obj, object[] parameters) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this indexer through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.IndexerSet:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__SetValue2))
-                    {
-                        // This is a call to PropertyInfo.SetValue(object obj, object value, object[] index)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && (call.Arguments[2].Kind == BoundKind.Parameter || call.Arguments[2].Kind == BoundKind.Local))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.SetValue(object obj, object value, object[] index) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this indexer through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.PropertyGet:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetValue))
-                    {
-                        // This is a call to PropertyInfo.GetValue(object obj)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1]))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.GetValue(object obj) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this property through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.PropertySet:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__SetValue))
-                    {
-                        // This is a call to PropertyInfo.SetValue(object obj, object value)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1]))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.SetValue(object obj, object value) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this property through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                default:
-                    throw ExceptionUtilities.Unreachable;
-            }
-            return false;
-        }
-
-        private bool CheckIsBaseDecoratorMethodCall(BoundCall call)
-        {
-            MethodSymbol method = call.Method;
-            if (method.Name != _decoratorMethod.Name
-                || method.ParameterCount != _decoratorMethod.ParameterCount)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < method.ParameterCount; i++)
-            {
-                ParameterSymbol methodParameter = method.Parameters[i];
-                ParameterSymbol decoratorMethodParameter = _decoratorMethod.Parameters[i];
-                if (methodParameter.Type != decoratorMethodParameter.Type
-                    || methodParameter.RefKind != decoratorMethodParameter.RefKind)
-                {
-                    return false;
-                }
-            }
-
-            BoundExpression receiverOpt = call.ReceiverOpt;
-            return receiverOpt != null && receiverOpt.Kind == BoundKind.BaseReference;
-        }
-
         private ExtendedTypeInfo TryParseTypeFromExpression(BoundExpression node)
         {
             Debug.Assert(node.Type == _compilation.GetWellKnownType(WellKnownType.System_Type));
@@ -2591,7 +2466,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType)
                         || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ThisObjectType2))
                     {
-                        if (CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[0]))
+                        Debug.Assert(call.ArgsToParamsOpt.IsDefault);
+                        if (MetaUtils.CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[0]))
                         {
                             return ExtendedTypeInfo.CreateThisObjectType(_compilation);
                         }
@@ -2599,7 +2475,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
                              || method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType2))
                     {
-                        if (CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[0])
+                        Debug.Assert(call.ArgsToParamsOpt.IsDefault);
+                        if (MetaUtils.CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[0])
                             && call.Arguments[1].Kind == BoundKind.Local)
                         {
                             return ExtendedTypeInfo.CreateParameterType(_compilation, ((BoundLocal)call.Arguments[1]).LocalSymbol);
@@ -2613,14 +2490,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                     BoundExpression receiverOpt = propertyAccess.ReceiverOpt;
                     if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodInfo__ReturnType))
                     {
-                        if (receiverOpt != null && CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0]))
+                        if (receiverOpt != null && MetaUtils.CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0]))
                         {
                             return ExtendedTypeInfo.CreateReturnValueType(_compilation, false);
                         }
                     }
                     else if (property == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__PropertyType))
                     {
-                        if (receiverOpt != null && CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0]))
+                        if (receiverOpt != null && MetaUtils.CheckIsSpecificParameter(receiverOpt, _decoratorMethod.Parameters[0]))
                         {
                             return ExtendedTypeInfo.CreateMemberValueType(_compilation, false);
                         }

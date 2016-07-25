@@ -1,4 +1,5 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Modified by Aleksandar Dalemski
 
 using System;
 using System.Collections.Generic;
@@ -1491,7 +1492,20 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             if (_ilEmitStyle == ILEmitStyle.Debug)
             {
                 var syntax = local.GetDeclaratorSyntax();
-                int syntaxOffset = _method.CalculateLocalSyntaxOffset(syntax.SpanStart, syntax.SyntaxTree);
+                int syntaxOffset;
+                if (localKind == SynthesizedLocalKind.DecoratorParameter
+                    || localKind == SynthesizedLocalKind.DecoratorLocal
+                    || localKind == SynthesizedLocalKind.DecoratorTempResult
+                    || localKind == SynthesizedLocalKind.DecoratorTempLocal
+                    || localKind == SynthesizedLocalKind.DecoratedMethodParameter)
+                {
+                    // Such syntesized locals come from a different syntax tree
+                    syntaxOffset = -1;
+                }
+                else
+                {
+                    syntaxOffset = _method.CalculateLocalSyntaxOffset(syntax.SpanStart, syntax.SyntaxTree);
+                }
 
                 int ordinal = _synthesizedLocalOrdinals.AssignLocalOrdinal(localKind, syntaxOffset);
 

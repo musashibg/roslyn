@@ -14,13 +14,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             MethodSymbol method = node.Method;
 
             // Handle splice locations
-            if (CheckIsSpliceLocation(node))
+            if (MetaUtils.CheckIsSpliceLocation(node, _compilation, _targetMemberKind, _decoratorMethod, AddDiagnostic))
             {
                 BoundExpression rewrittenNode;
                 bool mustEmit;
                 if (_flags.HasFlag(DecorationRewriterFlags.ProhibitSpliceLocation))
                 {
-                    _diagnostics.Add(ErrorCode.ERR_InvalidSpliceLocation, node.Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_InvalidSpliceLocation, node.Syntax.Location);
                     rewrittenNode = MakeBadExpression(node.Syntax, node.Type);
                     mustEmit = true;
                 }
@@ -67,9 +67,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
 
             // Handle base method calls (forbidden)
-            if (CheckIsBaseDecoratorMethodCall(node))
+            if (MetaUtils.CheckIsBaseMethodCall(node, _decoratorMethod))
             {
-                _diagnostics.Add(ErrorCode.ERR_BaseDecoratorMethodCallNotSupported, node.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_BaseDecoratorMethodCallNotSupported, node.Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(node.Syntax, node.Type),
                     variableValues,
@@ -139,6 +139,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             {
                 return VisitDefaultValueCall(node, receiverResult, argumentsResults, variableValues);
             }
+            else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsPropertyAccessor))
+            {
+                return VisitIsPropertyAccessorCall(node, receiverResult, argumentsResults, variableValues);
+            }
             else if (method == _compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsReadOnly))
             {
                 return VisitIsReadOnlyCall(node, receiverResult, argumentsResults, variableValues);
@@ -175,161 +179,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 variableValues,
                 true,
                 CompileTimeValue.Dynamic);
-        }
-
-        private bool CheckIsSpliceLocation(BoundCall call)
-        {
-            MethodSymbol method = call.Method;
-            switch (_targetMemberKind)
-            {
-                case DecoratedMemberKind.Constructor:
-                case DecoratedMemberKind.Method:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
-                    {
-                        // This is a call to MethodBase.Invoke(object obj, object[] parameters)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.Destructor:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_MethodBase__Invoke))
-                    {
-                        // This is a call to MethodBase.Invoke(object obj, object[] parameters) with null as a second argument (destructors never have arguments)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && call.Arguments[1].Kind == BoundKind.Literal
-                            && ((BoundLiteral)call.Arguments[1]).ConstantValue.IsNull)
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to MethodBase.Invoke(object obj, object[] parameters) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this method through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.IndexerGet:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetValue2))
-                    {
-                        // This is a call to PropertyInfo.GetValue(object obj, object[] index)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && (call.Arguments[1].Kind == BoundKind.Parameter || call.Arguments[1].Kind == BoundKind.Local))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.GetValue(object obj, object[] parameters) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this indexer through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.IndexerSet:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__SetValue2))
-                    {
-                        // This is a call to PropertyInfo.SetValue(object obj, object value, object[] index)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1])
-                            && (call.Arguments[2].Kind == BoundKind.Parameter || call.Arguments[2].Kind == BoundKind.Local))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.SetValue(object obj, object value, object[] index) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this indexer through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.PropertyGet:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__GetValue))
-                    {
-                        // This is a call to PropertyInfo.GetValue(object obj)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1]))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.GetValue(object obj) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this property through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                case DecoratedMemberKind.PropertySet:
-                    if (call.Method == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_PropertyInfo__SetValue))
-                    {
-                        // This is a call to PropertyInfo.SetValue(object obj, object value)
-                        if (call.ReceiverOpt != null
-                            && CheckIsSpecificParameter(call.ReceiverOpt, _decoratorMethod.Parameters[0])
-                            && CheckIsSpecificParameter(call.Arguments[0], _decoratorMethod.Parameters[1]))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            // Disallow calls to PropertyInfo.SetValue(object obj, object value) which are not obvious splices
-                            // (as they might use a different thisObject, or they might refer to this property through a different local variable, leading to infinite recursion)
-                            _diagnostics.Add(ErrorCode.ERR_InvalidSpecialMethodCallInDecorator, call.Syntax.Location, method);
-                        }
-                    }
-                    break;
-
-                default:
-                    throw ExceptionUtilities.Unreachable;
-            }
-            return false;
-        }
-
-        private bool CheckIsBaseDecoratorMethodCall(BoundCall call)
-        {
-            MethodSymbol method = call.Method;
-            if (method.Name != _decoratorMethod.Name
-                || method.ParameterCount != _decoratorMethod.ParameterCount)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < method.ParameterCount; i++)
-            {
-                ParameterSymbol methodParameter = method.Parameters[i];
-                ParameterSymbol decoratorMethodParameter = _decoratorMethod.Parameters[i];
-                if (methodParameter.Type != decoratorMethodParameter.Type
-                    || methodParameter.RefKind != decoratorMethodParameter.RefKind)
-                {
-                    return false;
-                }
-            }
-
-            BoundExpression receiverOpt = call.ReceiverOpt;
-            return receiverOpt != null && receiverOpt.Kind == BoundKind.BaseReference;
         }
 
         private void SpliceMethodBody(
@@ -558,14 +407,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(receiverResult != null && argumentsResults.Length <= 1);
+
             CompileTimeValue receiverValue = receiverResult.Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -612,14 +463,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(receiverResult != null && argumentsResults.Length <= 1);
+
             CompileTimeValue receiverValue = receiverResult.Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -666,14 +519,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(receiverResult != null && argumentsResults.Length <= 1);
+
             CompileTimeValue receiverValue = receiverResult.Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -720,6 +575,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
+
             CompileTimeValue targetTypeValue;
             CompileTimeValue sourceTypeValue;
             bool isExtensionMethod;
@@ -743,7 +600,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (targetTypeValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)targetTypeValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[0] : node.ReceiverOpt).Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[0] : node.ReceiverOpt).Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -754,7 +611,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (sourceTypeValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)sourceTypeValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[1] : node.Arguments[0]).Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, (isExtensionMethod ? node.Arguments[1] : node.Arguments[0]).Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -795,7 +652,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -846,7 +703,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -892,14 +749,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(receiverResult != null && argumentsResults.Length == 1);
+
             CompileTimeValue receiverValue = receiverResult.Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -944,14 +803,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(receiverResult != null && argumentsResults.Length == 2);
+
             CompileTimeValue receiverValue = receiverResult.Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
             if (receiverValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)receiverValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.ReceiverOpt.Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -998,14 +859,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(argumentsResults.Length == 1 && node.Method.TypeArguments.Length == 1);
+
             CompileTimeValue argumentValue = argumentsResults[0].Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
             if (argumentValue is ConstantStaticValue)
             {
                 Debug.Assert(((ConstantStaticValue)argumentValue).Value.IsNull);
-                _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                 return new DecorationRewriteResult(
                     MakeBadExpression(syntax, node.Type),
                     variableValues,
@@ -1032,7 +895,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         Debug.Assert(argumentValue is TypeValue
                                      && invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
                         TypeSymbol type = ((TypeValue)argumentValue).Type;
-                        value = StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, type.GetAttributes(), _diagnostics, out candidateAttribute);
+                        value = StaticValueUtils.LookupCustomAttributeValue(
+                            node.Syntax,
+                            requestedAttributeType,
+                            type.GetAttributes(),
+                            _diagnostics,
+                            ImmutableArray.Create(_decorationLocation),
+                            out candidateAttribute);
                     }
                     else
                     {
@@ -1041,26 +910,50 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                         {
                             Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
                             MethodSymbol method = ((MethodInfoValue)argumentValue).Method;
-                            value = StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, method.GetAttributes(), _diagnostics, out candidateAttribute);
+                            value = StaticValueUtils.LookupCustomAttributeValue(
+                                node.Syntax,
+                                requestedAttributeType,
+                                method.GetAttributes(),
+                                _diagnostics,
+                                ImmutableArray.Create(_decorationLocation),
+                                out candidateAttribute);
                         }
                         else if (argumentValue is ConstructorInfoValue)
                         {
                             Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
                             MethodSymbol constructor = ((ConstructorInfoValue)argumentValue).Constructor;
-                            value = StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, constructor.GetAttributes(), _diagnostics, out candidateAttribute);
+                            value = StaticValueUtils.LookupCustomAttributeValue(
+                                node.Syntax,
+                                requestedAttributeType,
+                                constructor.GetAttributes(),
+                                _diagnostics,
+                                ImmutableArray.Create(_decorationLocation),
+                                out candidateAttribute);
                         }
                         else if (argumentValue is PropertyInfoValue)
                         {
                             Debug.Assert(invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T));
                             PropertySymbol property = ((PropertyInfoValue)argumentValue).Property;
-                            value = StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, property.GetAttributes(), _diagnostics, out candidateAttribute);
+                            value = StaticValueUtils.LookupCustomAttributeValue(
+                                node.Syntax,
+                                requestedAttributeType,
+                                property.GetAttributes(),
+                                _diagnostics,
+                                ImmutableArray.Create(_decorationLocation),
+                                out candidateAttribute);
                         }
                         else
                         {
                             Debug.Assert(argumentValue is ParameterInfoValue
                                          && invokedMethod.OriginalDefinition == _compilation.GetWellKnownTypeMember(WellKnownMember.System_Reflection_CustomAttributeExtensions__GetCustomAttribute_T2));
                             ParameterSymbol parameter = ((ParameterInfoValue)argumentValue).Parameter;
-                            value = StaticValueUtils.LookupCustomAttributeValue(node.Syntax, requestedAttributeType, parameter.GetAttributes(), _diagnostics, out candidateAttribute);
+                            value = StaticValueUtils.LookupCustomAttributeValue(
+                                node.Syntax,
+                                requestedAttributeType,
+                                parameter.GetAttributes(),
+                                _diagnostics,
+                                ImmutableArray.Create(_decorationLocation),
+                                out candidateAttribute);
                         }
                     }
 
@@ -1090,7 +983,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(argumentsResults.Length == 1);
+
             CompileTimeValue argumentArrayValue = argumentsResults[0].Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
@@ -1235,7 +1130,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(argumentsResults.Length == 1);
+
             CompileTimeValue argumentArrayValue = argumentsResults[0].Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
@@ -1310,7 +1207,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(argumentsResults.Length == 1);
+
             CompileTimeValue typeValue = argumentsResults[0].Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
@@ -1319,7 +1218,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (typeValue is ConstantStaticValue)
                 {
                     Debug.Assert(((ConstantStaticValue)typeValue).Value.IsNull);
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                     return new DecorationRewriteResult(
                         MakeBadExpression(syntax, node.Type),
                         variableValues,
@@ -1370,13 +1269,59 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 CompileTimeValue.Dynamic);
         }
 
+        private DecorationRewriteResult VisitIsPropertyAccessorCall(
+            BoundCall node,
+            DecorationRewriteResult receiverResult,
+            ImmutableArray<DecorationRewriteResult> argumentsResults,
+            ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
+        {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
+            Debug.Assert(argumentsResults.Length == 1);
+
+            CompileTimeValue methodInfoValue = argumentsResults[0].Value;
+            CSharpSyntaxNode syntax = node.Syntax;
+
+            if (methodInfoValue.Kind != CompileTimeValueKind.Dynamic)
+            {
+                if (methodInfoValue is ConstantStaticValue)
+                {
+                    Debug.Assert(((ConstantStaticValue)methodInfoValue).Value.IsNull);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    return new DecorationRewriteResult(
+                        MakeBadExpression(syntax, node.Type),
+                        variableValues,
+                        true,
+                        CompileTimeValue.Dynamic);
+                }
+
+                Debug.Assert(methodInfoValue is MethodInfoValue);
+                MethodSymbol method = ((MethodInfoValue)methodInfoValue).Method;
+
+                bool isPropertyAccessor = (method.MethodKind == MethodKind.PropertyGet || method.MethodKind == MethodKind.PropertySet);
+                var value = new ConstantStaticValue(ConstantValue.Create(isPropertyAccessor));
+                return new DecorationRewriteResult(
+                    MakeSimpleStaticValueExpression(value, node.Type, syntax),
+                    variableValues,
+                    false,
+                    value);
+            }
+
+            return new DecorationRewriteResult(
+                node.Update((BoundExpression)receiverResult.Node, node.Method, argumentsResults.SelectAsArray(r => (BoundExpression)r.Node)),
+                variableValues,
+                true,
+                CompileTimeValue.Dynamic);
+        }
+
         private DecorationRewriteResult VisitIsReadOnlyCall(
             BoundCall node,
             DecorationRewriteResult receiverResult,
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(argumentsResults.Length == 1);
+
             CompileTimeValue propertyInfoValue = argumentsResults[0].Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
@@ -1385,7 +1330,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (propertyInfoValue is ConstantStaticValue)
                 {
                     Debug.Assert(((ConstantStaticValue)propertyInfoValue).Value.IsNull);
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                     return new DecorationRewriteResult(
                         MakeBadExpression(syntax, node.Type),
                         variableValues,
@@ -1418,7 +1363,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(argumentsResults.Length == 1);
+
             CompileTimeValue propertyInfoValue = argumentsResults[0].Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
@@ -1427,7 +1374,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (propertyInfoValue is ConstantStaticValue)
                 {
                     Debug.Assert(((ConstantStaticValue)propertyInfoValue).Value.IsNull);
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                     return new DecorationRewriteResult(
                         MakeBadExpression(syntax, node.Type),
                         variableValues,
@@ -1460,7 +1407,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(argumentsResults.Length == 2);
+
             CompileTimeValue memberInfoValue = argumentsResults[0].Value;
             CompileTimeValue parameterIndexValue = argumentsResults[1].Value;
             CSharpSyntaxNode syntax = node.Syntax;
@@ -1470,7 +1419,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (memberInfoValue is ConstantStaticValue)
                 {
                     Debug.Assert(((ConstantStaticValue)memberInfoValue).Value.IsNull);
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                     return new DecorationRewriteResult(
                         MakeBadExpression(syntax, node.Type),
                         variableValues,
@@ -1511,7 +1460,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
                 if (parameterIndex < 0 || parameterIndex >= parameterCount)
                 {
-                    _diagnostics.Add(ErrorCode.ERR_StaticIndexOutOfBounds, syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticIndexOutOfBounds, syntax.Location);
                     return new DecorationRewriteResult(
                         MakeBadExpression(syntax, node.Type),
                         variableValues,
@@ -1553,7 +1502,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             ImmutableArray<DecorationRewriteResult> argumentsResults,
             ImmutableDictionary<Symbol, CompileTimeValue> variableValues)
         {
+            Debug.Assert(node.ArgsToParamsOpt.IsDefault, "Reordered arguments are not supported by DecorationRewriter.");
             Debug.Assert(argumentsResults.Length == 1);
+
             CompileTimeValue memberInfoValue = argumentsResults[0].Value;
             CSharpSyntaxNode syntax = node.Syntax;
 
@@ -1562,7 +1513,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 if (memberInfoValue is ConstantStaticValue)
                 {
                     Debug.Assert(((ConstantStaticValue)memberInfoValue).Value.IsNull);
-                    _diagnostics.Add(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
+                    AddDiagnostic(ErrorCode.ERR_StaticNullReference, node.Arguments[0].Syntax.Location);
                     return new DecorationRewriteResult(
                         MakeBadExpression(syntax, node.Type),
                         variableValues,

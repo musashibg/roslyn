@@ -1,4 +1,6 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Symbols;
+﻿// Copyright (c) Aleksandar Dalemski.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+
+using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Roslyn.Utilities;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -11,8 +13,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
     internal abstract class BaseBindingTimeAnalyzer : BoundTreeVisitor<BindingTimeAnalyzerFlags, BindingTimeAnalysisResult>
     {
         private readonly DiagnosticBag _diagnostics;
-        private readonly CancellationToken _cancellationToken;
         private readonly Location _sourceLocation;
+        private readonly CancellationToken _cancellationToken;
         private readonly List<EncapsulatingStatementKind> _encapsulatingStatements;
 
         private ImmutableDictionary<Symbol, BindingTime> _variableBindingTimes;
@@ -53,7 +55,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitAddressOfOperator(BoundAddressOfOperator node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
@@ -72,13 +74,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitArgList(BoundArgList node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
         public override BindingTimeAnalysisResult VisitArgListOperator(BoundArgListOperator node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
@@ -235,7 +237,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
             else
             {
-                Error(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
                 throw new BindingTimeAnalysisException();
             }
         }
@@ -286,9 +288,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             MethodSymbol method = node.Method;
             if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__AddTrait)
                 || method.OriginalDefinition == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__AddTrait_T)
-                || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ApplyDecorator))
+                || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ApplyDecorator)
+                || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsImplicitlyDeclared)
+                || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsIterator))
             {
-                Error(ErrorCode.ERR_MethodOnlySupportedInMetaclass, node.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_MethodOnlySupportedInMetaclass, node.Syntax.Location);
                 throw new BindingTimeAnalysisException();
             }
 
@@ -313,6 +317,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaExtensions__IsAssignableFrom)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArguments)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray)
+                    || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsPropertyAccessor)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsReadOnly)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsWriteOnly)
                     || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__ParameterType)
@@ -385,7 +390,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 {
                     return new BindingTimeAnalysisResult(BindingTime.StaticArgumentArray);
                 }
-                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsReadOnly)
+                else if (method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsPropertyAccessor)
+                         || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsReadOnly)
                          || method == Compilation.GetWellKnownTypeMember(WellKnownMember.CSharp_Meta_MetaPrimitives__IsWriteOnly))
                 {
                     if (argumentsResults[0].BindingTime != BindingTime.Dynamic)
@@ -1067,7 +1073,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitMakeRefOperator(BoundMakeRefOperator node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
@@ -1177,13 +1183,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitPointerElementAccess(BoundPointerElementAccess node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
         public override BindingTimeAnalysisResult VisitPointerIndirectionOperator(BoundPointerIndirectionOperator node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
@@ -1318,13 +1324,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitRefTypeOperator(BoundRefTypeOperator node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
         public override BindingTimeAnalysisResult VisitRefValueOperator(BoundRefValueOperator node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
@@ -1444,7 +1450,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
             else
             {
-                Error(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
+                AddDiagnostic(ErrorCode.ERR_ThisReferenceInDecoratorOrMetaclass, node.Syntax.Location);
                 throw new BindingTimeAnalysisException();
             }
         }
@@ -1587,13 +1593,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
 
         public override BindingTimeAnalysisResult VisitYieldBreakStatement(BoundYieldBreakStatement node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
         public override BindingTimeAnalysisResult VisitYieldReturnStatement(BoundYieldReturnStatement node, BindingTimeAnalyzerFlags flags)
         {
-            Error(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
+            AddDiagnostic(ErrorCode.ERR_LanguageFeatureNotSupportedInDecoratorOrMetaclass, node.Syntax.Location);
             throw new BindingTimeAnalysisException();
         }
 
@@ -1692,7 +1698,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return false;
         }
 
-        protected void Error(ErrorCode errorCode, Location location)
+        protected void AddDiagnostic(ErrorCode errorCode, Location location)
         {
             if (_sourceLocation == null)
             {
@@ -1704,7 +1710,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             }
         }
 
-        protected void Error(ErrorCode errorCode, Location location, params object[] args)
+        protected void AddDiagnostic(ErrorCode errorCode, Location location, params object[] args)
         {
             if (_sourceLocation == null)
             {

@@ -3308,6 +3308,33 @@ namespace Microsoft.CodeAnalysis
                     (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Object,
                     (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Type,
 
+                // CSharp_Meta_MetaPrimitives__IsImplicitlyDeclared
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)WellKnownType.ExtSentinel, (byte)(WellKnownType.CSharp_Meta_MetaPrimitives                            // DeclaringTypeId
+                                                        - WellKnownType.ExtSentinel),
+                0,                                                                                                          // Arity
+                    1,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_MemberInfo,
+
+                // CSharp_Meta_MetaPrimitives__IsIterator
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)WellKnownType.ExtSentinel, (byte)(WellKnownType.CSharp_Meta_MetaPrimitives                            // DeclaringTypeId
+                                                        - WellKnownType.ExtSentinel),
+                0,                                                                                                          // Arity
+                    1,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_MethodInfo,
+
+                // CSharp_Meta_MetaPrimitives__IsPropertyAccessor
+                (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
+                (byte)WellKnownType.ExtSentinel, (byte)(WellKnownType.CSharp_Meta_MetaPrimitives                            // DeclaringTypeId
+                                                        - WellKnownType.ExtSentinel),
+                0,                                                                                                          // Arity
+                    1,                                                                                                      // Method Signature
+                    (byte)SignatureTypeCode.TypeHandle, (byte)SpecialType.System_Boolean,
+                    (byte)SignatureTypeCode.TypeHandle, (byte)WellKnownType.System_Reflection_MethodInfo,
+
                 // CSharp_Meta_MetaPrimitives__IsReadOnly
                 (byte)(MemberFlags.Method | MemberFlags.Static),                                                            // Flags
                 (byte)WellKnownType.ExtSentinel, (byte)(WellKnownType.CSharp_Meta_MetaPrimitives                            // DeclaringTypeId
@@ -3777,6 +3804,9 @@ namespace Microsoft.CodeAnalysis
                 "CloneArguments",                           // CSharp_Meta_MetaPrimitives__CloneArguments
                 "CloneArgumentsToObjectArray",              // CSharp_Meta_MetaPrimitives__CloneArgumentsToObjectArray
                 "DefaultValue",                             // CSharp_Meta_MetaPrimitives__DefaultValue
+                "IsImplicitlyDeclared",                     // CSharp_Meta_MetaPrimitives__IsImplicitlyDeclared
+                "IsIterator",                               // CSharp_Meta_MetaPrimitives__IsIterator
+                "IsPropertyAccessor",                       // CSharp_Meta_MetaPrimitives__IsPropertyAccessor
                 "IsReadOnly",                               // CSharp_Meta_MetaPrimitives__IsReadOnly
                 "IsWriteOnly",                              // CSharp_Meta_MetaPrimitives__IsWriteOnly
                 "ParameterType",                            // CSharp_Meta_MetaPrimitives__ParameterType

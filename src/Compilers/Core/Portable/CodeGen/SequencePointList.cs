@@ -98,7 +98,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
                 RawSequencePoint point = seqPointBuilder[i + start];
                 int ilOffset = builder.GetILOffsetFromMarker(point.ILMarker);
                 Debug.Assert(ilOffset >= 0);
-                result[i] = new OffsetAndSpan(ilOffset, point.Span);
+                result[i] = new OffsetAndSpan(ilOffset, point.Span, point.SyntaxTree);
             }
 
             return result;
@@ -216,7 +216,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
                     bool isHidden = span == RawSequencePoint.HiddenSequencePointSpan;
                     if (!isHidden)
                     {
-                        FileLinePositionSpan fileLinePositionSpan = this._tree.GetMappedLineSpanAndVisibility(span, out isHidden);
+                        FileLinePositionSpan fileLinePositionSpan = offsetAndSpan.SyntaxTree.GetMappedLineSpanAndVisibility(span, out isHidden);
                         if (!isHidden)
                         {
 
@@ -237,11 +237,13 @@ namespace Microsoft.CodeAnalysis.CodeGen
         {
             public readonly int Offset;
             public readonly TextSpan Span;
+            public readonly SyntaxTree SyntaxTree;
 
-            public OffsetAndSpan(int offset, TextSpan span)
+            public OffsetAndSpan(int offset, TextSpan span, SyntaxTree syntaxTree)
             {
                 this.Offset = offset;
                 this.Span = span;
+                this.SyntaxTree = syntaxTree;
             }
         }
     }

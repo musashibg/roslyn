@@ -15,7 +15,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
         private readonly DiagnosticBag _diagnostics;
 
         private SplicedMethodBodyRewriterFlags _flags;
-        private LambdaSymbol _containingLambda;
         private ImmutableDictionary<Symbol, Symbol> _replacementSymbols;
         private ImmutableArray<LocalSymbol>.Builder _blockLocalsBuilder;
 
@@ -83,6 +82,26 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             return node.Update(locals, exceptionSourceOpt, node.ExceptionTypeOpt, exceptionFilterOpt, body, node.IsSynthesizedAsyncCatchAll);
         }
 
+        public override BoundNode VisitForEachStatement(BoundForEachStatement node)
+        {
+            var iterationVariableType = (BoundTypeExpression)this.Visit(node.IterationVariableType);
+            LocalSymbol iterationVariableOpt = node.IterationVariableOpt == null ? null : (LocalSymbol)GetReplacementSymbol(node.IterationVariableOpt);
+            var expression = (BoundExpression)this.Visit(node.Expression);
+            BoundForEachDeconstructStep deconstructionOpt = node.DeconstructionOpt;
+            var body = (BoundStatement)this.Visit(node.Body);
+            return node.Update(
+                node.EnumeratorInfoOpt,
+                node.ElementConversion,
+                iterationVariableType,
+                iterationVariableOpt,
+                expression,
+                deconstructionOpt,
+                body,
+                node.Checked,
+                node.BreakLabel,
+                node.ContinueLabel);
+        }
+
         public override BoundNode VisitForStatement(BoundForStatement node)
         {
             ImmutableArray<LocalSymbol>.Builder outerBlockLocalsBuilder = _blockLocalsBuilder;
@@ -104,13 +123,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
             LambdaSymbol lambda = node.Symbol;
 
             var replacementLambda = new LambdaSymbol(
-                _containingLambda ?? _factory.CurrentMethod,
+                _factory.CurrentMethod,
                 lambda.Parameters,
                 lambda.RefKind,
                 lambda.ReturnType,
                 lambda.MessageID,
                 node.Syntax,
-                true);
+                lambda.IsSynthesizedLambda());
 
             // Creating a new lambda symbol automatically creates fresh parameter symbols so we need to populate the replacement symbols collection with them
             int parameterCount = lambda.ParameterCount;
@@ -120,12 +139,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 _replacementSymbols = _replacementSymbols.Add(lambda.Parameters[i], replacementLambda.Parameters[i]);
             }
 
-            LambdaSymbol outerContainingLambda = _containingLambda;
-            _containingLambda = replacementLambda;
+            MethodSymbol outerMethod = _factory.CurrentMethod;
+            _factory.CurrentMethod = replacementLambda;
 
             var body = (BoundBlock)VisitWithExtraFlags(SplicedMethodBodyRewriterFlags.InNestedLambdaBody, node.Body);
 
-            _containingLambda = outerContainingLambda;
+            _factory.CurrentMethod = outerMethod;
 
             return node.Update(replacementLambda, body, node.Diagnostics, node.Binder, node.Type);
         }
@@ -296,7 +315,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                     local.Type,
                     syntax: local.GetDeclaratorSyntax(),
                     kind: SynthesizedLocalKind.DecoratorLocal,
-                    name: _variableNamesGenerator.GenerateFreshName(local.Name));
+                    name: _variableNamesGenerator.GenerateFreshName(local.Name),
+                    declarationKind: local.DeclarationKind,
+                    constantValue: local.GetConstantValue(null, null));
                 Debug.Assert(replacementSymbol != null);
                 _replacementSymbols = _replacementSymbols.Add(originalSymbol, replacementSymbol);
             }

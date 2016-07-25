@@ -1,4 +1,6 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Meta;
+﻿// Copyright (c) Aleksandar Dalemski.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+
+using Microsoft.CodeAnalysis.CSharp.Meta;
 using Roslyn.Utilities;
 using System.Collections.Immutable;
 
@@ -170,9 +172,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols.Meta
                    && method.ParameterCount == 4
                    && method.Parameters[0].Type == compilation.GetWellKnownType(WellKnownType.System_Reflection_PropertyInfo)
                    && method.Parameters[1].Type.IsObjectType()
-                   && method.Parameters[2].Type.IsObjectType()
-                   && method.Parameters[3].Type.IsArray()
-                   && ((ArrayTypeSymbol)method.Parameters[3].Type).ElementType.IsObjectType()
+                   && method.Parameters[2].Type.IsArray()
+                   && ((ArrayTypeSymbol)method.Parameters[2].Type).ElementType.IsObjectType()
+                   && method.Parameters[3].Type.IsObjectType()
                    && method.GetConstructedLeastOverriddenMethod(null).ContainingType == compilation.GetWellKnownType(WellKnownType.CSharp_Meta_Decorator);
         }
 

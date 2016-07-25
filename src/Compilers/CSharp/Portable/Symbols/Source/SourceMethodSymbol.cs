@@ -1,4 +1,5 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Modified by Aleksandar Dalemski
 
 using Microsoft.CodeAnalysis.CSharp.Symbols.Meta;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -168,6 +169,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         private readonly NamedTypeSymbol _containingType;
         private ParameterSymbol _lazyThisParameter;
+        private bool? _lazyIsIterator;
+        private bool _isIteratorElementTypeDiscovered;
         private TypeSymbol _iteratorElementType;
 
         private CustomAttributesBag<CSharpAttributeData> _lazyCustomAttributesBag;
@@ -653,6 +656,27 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return true;
         }
 
+        internal override bool IsIterator
+        {
+            get
+            {
+                if (!_lazyIsIterator.HasValue)
+                {
+                    if (_isIteratorElementTypeDiscovered)
+                    {
+                        // If the body has already been bound and an iterator element type has been set, we know that whether the method is an iterator or not
+                        _lazyIsIterator = (_iteratorElementType != null);
+                    }
+                    else
+                    {
+                        // Otherwise, we check the body syntax for yield statements (ignoring nested lambdas, local functions and anonymous methods)
+                        _lazyIsIterator = IteratorSyntaxChecker.IsIterator((CSharpSyntaxNode)BodySyntax);
+                    }
+                }
+                return _lazyIsIterator.Value;
+            }
+        }
+
         internal override TypeSymbol IteratorElementType
         {
             get
@@ -663,6 +687,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             {
                 Debug.Assert((object)_iteratorElementType == null || _iteratorElementType == value);
                 Interlocked.CompareExchange(ref _iteratorElementType, value, null);
+                _isIteratorElementTypeDiscovered = true;
             }
         }
 
@@ -1656,21 +1681,14 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 
         internal override int CalculateLocalSyntaxOffset(int localPosition, SyntaxTree localTree)
         {
-            // DECORATORS: Introducing decorator code breaks the following invariants
-            
-            //Debug.Assert(this.BodySyntax != null);
-            //Debug.Assert(this.BodySyntax.SyntaxTree == localTree);
-            //Debug.Assert(this.BodySyntax.Span.Contains(localPosition));
-
-            // All locals are declared within the body of the method.
-            if (this.BodySyntax != null && localTree == this.BodySyntax.SyntaxTree)
+            // Decorators compose rewritten bodies from multiple syntax trees, so we return a default offset -1 for code outside the original body's syntax fragment
+            if (this.BodySyntax != null && this.BodySyntax.SyntaxTree == localTree && this.BodySyntax.Span.Contains(localPosition))
             {
-                Debug.Assert(this.BodySyntax.Span.Contains(localPosition));
                 return localPosition - this.BodySyntax.SpanStart;
             }
             else
             {
-                return localPosition;
+                return -1;
             }
         }
 
