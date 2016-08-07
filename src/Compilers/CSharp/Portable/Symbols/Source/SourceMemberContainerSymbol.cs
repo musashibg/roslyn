@@ -168,7 +168,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         private ThreeState _lazyContainsExtensionMethods;
         private ThreeState _lazyAnyMemberHasAttributes;
 
-        private readonly ManualResetEventSlim _allPartsCompleteEvent;
         // No Interlocked.CompareExchange for boolean values forces us to use int
         private int _currentlyProcessingFlag;
 
@@ -202,8 +201,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 : SpecialType.None;
 
             _flags = new Flags(specialType, modifiers, typeKind);
-
-            _allPartsCompleteEvent = new ManualResetEventSlim();
 
             var containingType = this.ContainingType;
             if ((object)containingType != null && containingType.IsSealed && this.DeclaredAccessibility.HasProtected())
@@ -395,7 +392,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             var sourceBaseType = BaseType as SourceMemberContainerTypeSymbol;
             if (sourceBaseType != null)
             {
-                sourceBaseType.WaitForCompletion(CancellationToken.None);
+                sourceBaseType.WaitForCompletion(CompletionPart.FinishInterfaces, CancellationToken.None);
             }
 
             base.BeforeMakeInterfaceInfo();
@@ -463,7 +460,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 var sourceBaseType = BaseType as SourceMemberContainerTypeSymbol;
                 if (sourceBaseType != null)
                 {
-                    sourceBaseType.WaitForCompletion(cancellationToken);
+                    sourceBaseType.WaitForCompletion(CompletionPart.All, cancellationToken);
                 }
 
                 DiagnosticBag diagnostics = DiagnosticBag.GetInstance();
@@ -762,9 +759,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             return state.HasComplete(part);
         }
 
-        internal void WaitForCompletion(CancellationToken cancellationToken)
+        internal void WaitForCompletion(CompletionPart part, CancellationToken cancellationToken)
         {
-            if (HasComplete(CompletionPart.All))
+            if (HasComplete(part))
             {
                 return;
             }
@@ -774,16 +771,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 ForceComplete(null, cancellationToken);
             }
 
-            while (!HasComplete(CompletionPart.All))
-            {
-                _allPartsCompleteEvent.Wait(100, cancellationToken);
-            }
-
-            // If all parts are complete, ensure the event is set
-            if (!_allPartsCompleteEvent.IsSet)
-            {
-                _allPartsCompleteEvent.Set();
-            }
+            state.SpinWaitComplete(part, cancellationToken);
         }
 
         protected abstract void CheckBase(DiagnosticBag diagnostics);
@@ -794,16 +782,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             if (Interlocked.CompareExchange(ref _currentlyProcessingFlag, 1, 0) == 1)
             {
                 // Another thread is already executing ForceComplete on this type. We wait until it is done
-                while (!HasComplete(CompletionPart.All))
-                {
-                    _allPartsCompleteEvent.Wait(100, cancellationToken);
-                }
-
-                // If all parts are complete, ensure the event is set
-                if (!_allPartsCompleteEvent.IsSet)
-                {
-                    _allPartsCompleteEvent.Set();
-                }
+                state.SpinWaitComplete(CompletionPart.All, cancellationToken);
                 return;
             }
 
@@ -921,7 +900,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                                     // the PointedAtManagedTypeChecks, so just kick out now.
                                     var allParts = CompletionPart.NamedTypeSymbolWithLocationAll;
                                     state.SpinWaitComplete(allParts, cancellationToken);
-                                    _allPartsCompleteEvent.Set();
                                     return;
                                 }
 
@@ -938,7 +916,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                             break;
 
                         case CompletionPart.None:
-                            _allPartsCompleteEvent.Set();
                             return;
 
                         default:
@@ -2315,7 +2292,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             var sourceBaseType = BaseType as SourceMemberContainerTypeSymbol;
             if (sourceBaseType != null)
             {
-                sourceBaseType.WaitForCompletion(cancellationToken);
+                sourceBaseType.WaitForCompletion(CompletionPart.All, cancellationToken);
             }
 
             DiagnosticBag diagnostics = DiagnosticBag.GetInstance();

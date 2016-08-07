@@ -45,7 +45,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 }
 
                 var metaclassClass = (SourceMemberContainerTypeSymbol)metaclass.MetaclassClass;
-                metaclassClass.WaitForCompletion(cancellationToken);
+                metaclassClass.WaitForCompletion(CompletionPart.All, cancellationToken);
                 if (metaclass.HasErrors || metaclassClass.HasDecoratorOrMetaclassMembersErrors)
                 {
                     // Do not apply metaclasses which contain errors

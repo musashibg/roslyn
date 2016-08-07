@@ -58,7 +58,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Meta
                 }
 
                 var decoratorClass = (SourceMemberContainerTypeSymbol)decorator.DecoratorClass;
-                decoratorClass.WaitForCompletion(cancellationToken);
+                decoratorClass.WaitForCompletion(CompletionPart.All, cancellationToken);
                 if (decorator.HasErrors || decoratorClass.HasDecoratorMethodErrors || decoratorClass.HasDecoratorOrMetaclassMembersErrors)
                 {
                     // Do not apply decorators which contain errors
